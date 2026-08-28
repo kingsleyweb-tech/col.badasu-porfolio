@@ -89,7 +89,7 @@ export const officer = {
   rank: 'Colonel',
   name: 'Henry Kwaku Badasu',
   formalName: 'BADASU KWAKU HENRY',
-  force: 'Ghana Armed Forces',
+  force: 'Col.Badasu',
   motto: 'Professionalism, Integrity and Discipline',
   branch: 'Teshie, Accra - Ghana',
   academy: 'Ghana Military Academy',

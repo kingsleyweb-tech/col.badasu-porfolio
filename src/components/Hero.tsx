@@ -7,39 +7,39 @@ import { ImageSlideshow } from './ImageSlideshow'
 
 const heroSlides = [
   {
-    eyebrow: 'Senior Army Officer',
+    eyebrow: 'Personal Portfolio',
     title: `${officer.rank} ${officer.name}`,
-    text: officer.motto
+    text: 'A personal professional profile tracing my journey of military service, leadership, and continued dedication.'
   },
   {
-    eyebrow: officer.force,
-    title: 'Service Defined by Leadership',
-    text: officer.shortBio
+    eyebrow: 'Service Record',
+    title: 'A Journey of Service, Leadership and Dedication',
+    text: `${officer.rank} ${officer.name}'s profile brings together supplied notes on his career, peace support service, education, and professional development.`
   },
   {
     eyebrow: 'Command and Staff',
-    title: 'Operational Leadership Across Missions',
-    text: 'A career shaped by command responsibility, headquarters administration, and multinational peace support operations.'
+    title: 'Colonel Badasu in Command and Staff Service',
+    text: 'A profile page for his documented command responsibilities, headquarters administration, and multinational peace support experience.'
   },
   {
     eyebrow: 'Peace Support',
-    title: 'United Nations and ECOWAS Service',
-    text: 'Experience across Sierra Leone, Liberia, Cote d\'Ivoire, DR Congo, Lebanon, South Sudan, and The Gambia.'
+    title: 'His Peace Support Service',
+    text: 'A dedicated record of supplied United Nations and ECOWAS service references across multiple mission environments.'
   },
   {
     eyebrow: 'Institutional Service',
-    title: 'Risk, Crisis, and Security Management',
-    text: 'Professional work spanning security planning, operational coordination, training, mentoring, and public service.'
+    title: 'Leadership Beyond the Field',
+    text: 'A personal portfolio space for Colonel Badasu\'s professional work in security planning, operational coordination, training, and mentorship.'
   },
   {
     eyebrow: 'Professional Development',
-    title: 'Strategic Training and Education',
-    text: 'Academic, military, and professional preparation for senior responsibilities in complex security environments.'
+    title: 'Prepared for Senior Responsibility',
+    text: 'A focused view of his supplied academic, military, and professional preparation without adding unverified claims.'
   },
   {
     eyebrow: 'Gallery',
-    title: 'A Visual Record of Service',
-    text: 'Selected moments from ceremonial, operational, training, and professional engagements.'
+    title: 'Colonel Badasu in Pictures',
+    text: 'Selected local images presented as part of his personal professional profile and service story.'
   }
 ]
 
@@ -66,9 +66,27 @@ export function Hero() {
             exit={{ opacity: 0, y: -24, filter: 'blur(8px)' }}
             transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
           >
-            <span>{slide.eyebrow}</span>
-            <h1>{slide.title}</h1>
-            <p>{slide.text}</p>
+            <motion.span
+              initial={{ opacity: 0, x: -34 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {slide.eyebrow}
+            </motion.span>
+            <motion.h1
+              initial={{ opacity: 0, y: 42 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.68, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {slide.title}
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.58, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {slide.text}
+            </motion.p>
           </motion.div>
         </AnimatePresence>
         <Link className="btn btn--primary" to="/biography">

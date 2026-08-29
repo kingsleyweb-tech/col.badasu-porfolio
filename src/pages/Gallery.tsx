@@ -16,7 +16,7 @@ export function Gallery() {
           <div className="gallery-grid">
             {galleryImages.map((image, imageIndex) => (
               <button type="button" key={image.src} onClick={() => setIndex(imageIndex)} aria-label={`Open ${image.caption}`}>
-                <img src={image.src} alt={image.alt} loading="lazy" />
+                <img src={image.src} alt={image.alt} width={image.width} height={image.height} loading="lazy" decoding="async" />
               </button>
             ))}
           </div>

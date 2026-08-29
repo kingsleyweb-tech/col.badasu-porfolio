@@ -11,7 +11,7 @@ type AchievementCardProps = {
 export function AchievementCard({ title, description, image, to }: AchievementCardProps) {
   return (
     <article className="achievement-card">
-      <img src={image} alt="" loading="lazy" />
+      <img src={image} alt="" loading="lazy" decoding="async" />
       <div>
         <h3>{title}</h3>
         <p>{description}</p>

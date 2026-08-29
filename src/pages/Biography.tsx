@@ -1,5 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { BackButton } from '../components/BackButton'
 import { InfoCard } from '../components/InfoCard'
 import { SectionHeading } from '../components/SectionHeading'
 import { biographicDetails, images, officer, promotionDetails } from '../data/officerData'
@@ -17,17 +16,11 @@ export function Biography() {
             <a href="#personal">Languages</a>
           </aside>
           <div className="text-block">
-            <div className="page-actions">
-              <Link className="btn btn--secondary" to="/">
-                <ArrowLeft size={18} aria-hidden="true" /> Back to home
-              </Link>
-            </div>
-
             <section id="overview">
               <SectionHeading eyebrow="Overview" title="Summary of Experience" />
               <div className="biography-overview">
                 <div className="biography-overview__image">
-                  <img src={images[1].src} alt={`${officer.rank} ${officer.name}`} />
+                  <img src={images[1].src} alt={`${officer.rank} ${officer.name}`} width={images[1].width} height={images[1].height} loading="lazy" decoding="async" />
                 </div>
                 <div>
                   {officer.biography.map((paragraph) => (
@@ -98,6 +91,7 @@ export function PageHero({ eyebrow, title, description }: PageHeroProps) {
   return (
     <section className="page-hero">
       <div className="container">
+        <BackButton />
         <span>{eyebrow}</span>
         <h1>{title}</h1>
         <p>{description}</p>

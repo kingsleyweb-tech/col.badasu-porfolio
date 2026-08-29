@@ -1,6 +1,8 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { Footer } from './components/Footer'
 import { Navbar } from './components/Navbar'
+import { RouteScrollToTop } from './components/RouteScrollToTop'
+import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { Achievements } from './pages/Achievements'
 import { Awards } from './pages/Awards'
 import { Biography } from './pages/Biography'
@@ -9,9 +11,23 @@ import { Education } from './pages/Education'
 import { Gallery } from './pages/Gallery'
 import { Home } from './pages/Home'
 
+const footerHiddenRoutes = new Set(['/awards', '/career', '/biography'])
+
 function App() {
   return (
     <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
+  )
+}
+
+function AppShell() {
+  const { pathname } = useLocation()
+  const showFooter = !footerHiddenRoutes.has(pathname)
+
+  return (
+    <>
+      <RouteScrollToTop />
       <Navbar />
       <main>
         <Routes>
@@ -24,8 +40,9 @@ function App() {
           <Route path="/gallery" element={<Gallery />} />
         </Routes>
       </main>
-      <Footer />
-    </BrowserRouter>
+      {showFooter && <Footer />}
+      <ScrollToTopButton />
+    </>
   )
 }
 

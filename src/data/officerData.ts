@@ -37,6 +37,8 @@ export type ImageAsset = {
   src: string
   alt: string
   caption: string
+  width: number
+  height: number
 }
 
 export type TimelineItem = {
@@ -123,26 +125,26 @@ export const biographicDetails: DetailItem[] = [
 ]
 
 export const images: ImageAsset[] = [
-  { src: a1, alt: 'Colonel portfolio image placeholder 1', caption: 'Official portrait placeholder' },
-  { src: a2, alt: 'Colonel portfolio image placeholder 2', caption: 'Ceremonial image placeholder' },
-  { src: a3, alt: 'Colonel portfolio image placeholder 3', caption: 'Command appointment placeholder' },
-  { src: a4, alt: 'Colonel portfolio image placeholder 4', caption: 'Operational service placeholder' },
-  { src: a5, alt: 'Colonel portfolio image placeholder 5', caption: 'Professional engagement placeholder' },
-  { src: a6, alt: 'Colonel portfolio image placeholder 6', caption: 'Training and education placeholder' },
-  { src: a7, alt: 'Colonel portfolio image placeholder 7', caption: 'Gallery image placeholder' }
+  { src: a1, alt: 'Colonel Badasu portrait for personal portfolio', caption: 'Official portrait placeholder', width: 828, height: 1265 },
+  { src: a2, alt: 'Colonel Badasu professional service image', caption: 'Ceremonial image placeholder', width: 828, height: 1265 },
+  { src: a3, alt: 'Colonel Badasu career service image', caption: 'Command appointment placeholder', width: 423, height: 266 },
+  { src: a4, alt: 'Colonel Badasu operational service image', caption: 'Operational service placeholder', width: 1600, height: 1386 },
+  { src: a5, alt: 'Colonel Badasu professional engagement image', caption: 'Professional engagement placeholder', width: 1536, height: 1021 },
+  { src: a6, alt: 'Colonel Badasu training and education image', caption: 'Training and education placeholder', width: 474, height: 266 },
+  { src: a7, alt: 'Colonel Badasu gallery image', caption: 'Gallery image placeholder', width: 274, height: 300 }
 ]
 
 // Separate gallery images (a1–a23) — update as more images are added to gallery folder
 export const galleryImages: ImageAsset[] = [
-  { src: ga1, alt: 'Gallery photo 1', caption: 'Photo 1' },
-  { src: ga2, alt: 'Gallery photo 2', caption: 'Photo 2' },
-  { src: ga3, alt: 'Gallery photo 3', caption: 'Photo 3' },
-  { src: ga4, alt: 'Gallery photo 4', caption: 'Photo 4' },
-  { src: ga5, alt: 'Gallery photo 5', caption: 'Photo 5' },
-  { src: ga6, alt: 'Gallery photo 6', caption: 'Photo 6' },
-  { src: ga7, alt: 'Gallery photo 7', caption: 'Photo 7' },
+  { src: ga1, alt: 'Gallery photo 1', caption: 'Photo 1', width: 828, height: 1265 },
+  { src: ga2, alt: 'Gallery photo 2', caption: 'Photo 2', width: 828, height: 1265 },
+  { src: ga3, alt: 'Gallery photo 3', caption: 'Photo 3', width: 423, height: 266 },
+  { src: ga4, alt: 'Gallery photo 4', caption: 'Photo 4', width: 1600, height: 1386 },
+  { src: ga5, alt: 'Gallery photo 5', caption: 'Photo 5', width: 1536, height: 1021 },
+  { src: ga6, alt: 'Gallery photo 6', caption: 'Photo 6', width: 474, height: 266 },
+  { src: ga7, alt: 'Gallery photo 7', caption: 'Photo 7', width: 274, height: 300 },
   // { src: ga8, alt: 'Gallery photo 8', caption: 'Photo 8' },   // uncomment when a8.png is added
-  { src: ga9, alt: 'Gallery photo 9', caption: 'Photo 9' },
+  { src: ga9, alt: 'Gallery photo 9', caption: 'Photo 9', width: 474, height: 315 },
   // { src: ga10, alt: 'Gallery photo 10', caption: 'Photo 10' }, // uncomment when a10.png is added
   // { src: ga11, alt: 'Gallery photo 11', caption: 'Photo 11' }, // uncomment when a11.png is added
   // { src: ga12, alt: 'Gallery photo 12', caption: 'Photo 12' }, // uncomment when a12.png is added

@@ -376,6 +376,72 @@ main {
   background: var(--green-50);
 }
 
+.back-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-bottom: 38px;
+  padding: 0 17px;
+  border: 1px solid rgba(23, 63, 42, 0.24);
+  border-radius: 7px;
+  color: var(--green-900);
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 10px 26px rgba(17, 17, 17, 0.06);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.back-button:hover {
+  transform: translateX(-3px);
+  border-color: rgba(23, 63, 42, 0.38);
+  background: var(--white);
+  box-shadow: 0 14px 30px rgba(17, 17, 17, 0.08);
+}
+
+.page-hero .back-button {
+  display: flex;
+  width: fit-content;
+  margin-bottom: 42px;
+}
+
+.scroll-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: var(--white);
+  background: var(--green-700);
+  box-shadow: 0 14px 32px rgba(17, 17, 17, 0.18);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(16px) scale(0.94);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+}
+
+.scroll-top.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.scroll-top:hover {
+  background: var(--green-900);
+  box-shadow: 0 18px 38px rgba(17, 17, 17, 0.22);
+  transform: translateY(-3px) scale(1);
+}
+
 .section {
   padding: 94px 0;
 }
@@ -1064,6 +1130,7 @@ main {
   display: grid;
   justify-items: center;
   gap: 10px;
+  max-width: 620px;
 }
 
 .footer__brand img {
@@ -1075,6 +1142,10 @@ main {
   margin: 0;
   font-size: 1.55rem;
   font-weight: 800;
+}
+
+.footer__brand span {
+  color: #d9f0df;
 }
 
 .footer h3 {
@@ -1090,9 +1161,10 @@ main {
 }
 
 .footer nav {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 14px;
-  justify-items: center;
+  justify-content: center;
 }
 
 .footer a {
@@ -1263,7 +1335,19 @@ main {
   }
 
   .footer nav {
+    display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .back-button {
+    width: 100%;
+  }
+
+  .scroll-top {
+    right: 16px;
+    bottom: 16px;
+    width: 46px;
+    height: 46px;
   }
 
   .reveal-card {

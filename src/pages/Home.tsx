@@ -21,7 +21,7 @@ export function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.55, ease: 'easeOut' }}
           >
-            <img src={images[1].src} alt="Profile introduction placeholder" />
+            <img src={images[1].src} alt="Profile introduction placeholder" width={images[1].width} height={images[1].height} loading="lazy" decoding="async" />
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 24 }}

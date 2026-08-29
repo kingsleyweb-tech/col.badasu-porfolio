@@ -29,24 +29,59 @@ export function ImageSlideshow({ images, active, onActiveChange }: ImageSlidesho
   }, [images.length, onActiveChange])
 
   useEffect(() => {
-    const timer = window.setInterval(() => goTo(active + 1), 5000)
-    return () => window.clearInterval(timer)
+    const timer = window.setTimeout(() => goTo(active + 1), 7000)
+    return () => window.clearTimeout(timer)
   }, [active, goTo])
 
   const current = images[active]
+  const next = images[(active + 1) % images.length]
+
+  useEffect(() => {
+    const first = images[0]
+    if (!first) {
+      return
+    }
+
+    const existing = document.querySelector<HTMLLinkElement>(`link[rel="preload"][href="${first.src}"]`)
+    const link = existing ?? document.createElement('link')
+    link.rel = 'preload'
+    link.as = 'image'
+    link.href = first.src
+    link.setAttribute('fetchpriority', 'high')
+
+    if (!existing) {
+      document.head.appendChild(link)
+    }
+  }, [images])
+
+  useEffect(() => {
+    if (!next) {
+      return
+    }
+
+    const image = new Image()
+    image.decoding = 'async'
+    image.src = next.src
+  }, [next])
 
   return (
     <div className={`slideshow slideshow--${transition}`}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="sync" initial={false}>
         <motion.img
           key={current.src}
           src={current.src}
           alt={current.alt}
+          width={current.width}
+          height={current.height}
+          loading="eager"
+          fetchPriority={active === 0 ? 'high' : 'auto'}
+          decoding="async"
+          sizes="100vw"
           className="slideshow__image"
           initial={reduceMotion ? { opacity: 0 } : transitionInitial(transition)}
           animate={reduceMotion ? { opacity: 1 } : transitionAnimate(transition)}
           exit={reduceMotion ? { opacity: 0 } : transitionExit(transition)}
-          transition={{ duration: reduceMotion ? 0.15 : 0.9, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: reduceMotion ? 0.15 : 0.72, ease: [0.22, 1, 0.36, 1] }}
         />
       </AnimatePresence>
 

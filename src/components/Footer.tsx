@@ -8,11 +8,12 @@ export function Footer() {
     <footer className="footer">
       <div className="footer__inner">
         <div className="footer__brand">
-          <img src={brandAssets.gafLogo} alt="Ghana Armed Forces crest" />
-          <h2>{officer.force}</h2>
-          <p>{officer.motto}</p>
+          <img src={brandAssets.gafLogo} alt="Ghana Armed Forces crest" width="329" height="61" loading="lazy" decoding="async" />
+          <span>Personal Portfolio</span>
+          <h2>{officer.rank} {officer.name}</h2>
+          <p>A concise professional profile of his service, leadership, education, and documented achievements.</p>
         </div>
-        <h3>Related Links</h3>
+        <h3>Quick Links</h3>
         <nav aria-label="Footer navigation">
           {links.map((link) => (
             <Link key={link} to={`/${link.toLowerCase()}`}>

@@ -24,7 +24,7 @@ export function HoverRevealCard({ image, title, description, to, category, meta 
       viewport={{ once: true, margin: '-70px' }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
     >
-      <img src={image} alt="" loading="lazy" />
+      <img src={image} alt="" loading="lazy" decoding="async" />
       <div className="reveal-card__shade" aria-hidden="true" />
       <div className="reveal-card__content">
         {category ? <span className="reveal-card__eyebrow">{category}</span> : null}

@@ -29,7 +29,7 @@ export function Navbar() {
       <nav className="nav" aria-label="Primary navigation">
         <Link className="brand" to="/" onClick={() => setOpen(false)}>
           <span className="brand__crest">
-            <img src={brandAssets.gafLogo} alt="Ghana Armed Forces crest" />
+            <img src={brandAssets.gafLogo} alt="Ghana Armed Forces crest" width="329" height="61" decoding="async" />
           </span>
           <span>
             <strong>{officer.rank} {officer.name}</strong>

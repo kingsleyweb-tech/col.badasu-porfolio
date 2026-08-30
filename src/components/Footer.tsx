@@ -3,7 +3,11 @@ import { brandAssets, officer } from '../data/officerData'
 
 const links = ['Biography', 'Career', 'Achievements', 'Awards', 'Education', 'Gallery']
 
-export function Footer() {
+type FooterProps = {
+  onQrModalOpen: () => void
+}
+
+export function Footer({ onQrModalOpen }: FooterProps) {
   return (
     <footer className="footer">
       <div className="footer__inner">
@@ -20,6 +24,14 @@ export function Footer() {
               {link}
             </Link>
           ))}
+          <button 
+            className="footer__qr-trigger" 
+            type="button" 
+            onClick={onQrModalOpen}
+            title="Share this portfolio"
+          >
+            QR Code
+          </button>
         </nav>
       </div>
       <p className="footer__copy">Copyright {new Date().getFullYear()} {officer.rank} {officer.name}. All rights reserved.</p>

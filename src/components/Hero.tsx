@@ -43,6 +43,16 @@ const heroSlides = [
   }
 ]
 
+const quickLinks = [
+  { label: 'Home', to: '/' },
+  { label: 'Biography', to: '/biography' },
+  { label: 'Career', to: '/career' },
+  { label: 'Achievements', to: '/achievements' },
+  { label: 'Awards', to: '/awards' },
+  { label: 'Education', to: '/education' },
+  { label: 'Gallery', to: '/gallery' }
+]
+
 export function Hero() {
   const [active, setActive] = useState(0)
   const slide = heroSlides[active] ?? heroSlides[0]
@@ -51,12 +61,26 @@ export function Hero() {
     <section className="hero-shell">
       <ImageSlideshow images={images} active={active} onActiveChange={setActive} />
       <div className="hero-shell__overlay" aria-hidden="true" />
+
+      {/* Full-width scrollable quick links strip at top of hero */}
+      <div className="hero-quick-links" aria-label="Quick navigation">
+        <span className="hero-quick-links__label">QUICK LINKS</span>
+        <nav className="hero-quick-links__track" aria-label="Hero quick links">
+          {quickLinks.map((item) => (
+            <Link key={item.to} to={item.to} className="hero-quick-link-btn">
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
       <motion.div
         className="hero-shell__content"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
       >
+
         <AnimatePresence mode="wait">
           <motion.div
             className="hero-shell__copy"

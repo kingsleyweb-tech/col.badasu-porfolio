@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Menu, X } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { brandAssets, officer } from '../data/officerData'
 
@@ -14,7 +13,6 @@ const navItems = [
 ]
 
 export function Navbar() {
-  const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -27,7 +25,7 @@ export function Navbar() {
   return (
     <header className={`site-header ${scrolled ? 'site-header--scrolled' : ''}`}>
       <nav className="nav" aria-label="Primary navigation">
-        <Link className="brand" to="/" onClick={() => setOpen(false)}>
+        <Link className="brand" to="/">
           <span className="brand__crest">
             <img src={brandAssets.gafLogo} alt="Ghana Armed Forces crest" width="329" height="61" decoding="async" />
           </span>
@@ -37,13 +35,10 @@ export function Navbar() {
           </span>
         </Link>
 
-        <button className="nav__toggle" type="button" aria-expanded={open} aria-label="Toggle menu" onClick={() => setOpen((value) => !value)}>
-          {open ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
-        </button>
-
-        <div className={`nav__links ${open ? 'is-open' : ''}`}>
+        {/* Desktop nav links — hidden on mobile via CSS */}
+        <div className="nav__links">
           {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} onClick={() => setOpen(false)}>
+            <NavLink key={item.to} to={item.to}>
               {item.label}
             </NavLink>
           ))}
@@ -52,3 +47,4 @@ export function Navbar() {
     </header>
   )
 }
+

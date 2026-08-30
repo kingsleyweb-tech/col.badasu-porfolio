@@ -29,7 +29,7 @@ export function ImageSlideshow({ images, active, onActiveChange }: ImageSlidesho
   }, [images.length, onActiveChange])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => goTo(active + 1), 7000)
+    const timer = window.setTimeout(() => goTo(active + 1), 8000)
     return () => window.clearTimeout(timer)
   }, [active, goTo])
 

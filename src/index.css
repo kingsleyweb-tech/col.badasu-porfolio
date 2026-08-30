@@ -1486,6 +1486,12 @@ main {
     cursor: pointer;
   }
 
+  .feature-news-grid .reveal-card > .optimized-image {
+    height: 100%;
+    min-height: 118px;
+    border-radius: 0;
+  }
+
   .feature-news-grid .reveal-card img {
     height: 100%;
     min-height: 118px;
@@ -1564,6 +1570,7 @@ main {
   .contributions-list .reveal-card {
     grid-template-columns: 56px minmax(0, 1fr);
     min-height: 74px;
+    align-items: center;
     border: 0;
     border-bottom: 1px solid rgba(17, 17, 17, 0.08);
     border-radius: 0;
@@ -1574,13 +1581,21 @@ main {
     border-bottom: 0;
   }
 
-  .contributions-list .reveal-card img {
+  .contributions-list .reveal-card > .optimized-image {
     width: 38px;
     height: 38px;
     min-height: 38px;
     align-self: center;
     justify-self: center;
     border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .contributions-list .reveal-card img {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border-radius: 0;
   }
 
   .contributions-list .reveal-card__content {

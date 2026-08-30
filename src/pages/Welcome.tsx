@@ -2,10 +2,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Clock, ArrowRight } from 'lucide-react'
-import { brandAssets } from '../data/officerData'
-import leadershipImg from '../assets/images/leadership.png'
-import serviceImg from '../assets/images/service.png'
-import excellenceImg from '../assets/images/excellence.png'
+import { OptimizedImage } from '../components/OptimizedImage'
+import { brandAssets, welcomeFeatureImages } from '../data/officerData'
 
 export function Welcome() {
   const [seconds, setSeconds] = useState(9)
@@ -82,10 +80,12 @@ export function Welcome() {
 
       {/* Top Header GAF Logo */}
       <div className="welcome-page__top-bar">
-        <img 
-          src={brandAssets.gafLogo} 
-          alt="Ghana Armed Forces crest" 
-          className="welcome-page__gaf-logo"
+        <OptimizedImage
+          asset={brandAssets.gafLogo}
+          className="welcome-page__gaf-logo-wrap"
+          imageClassName="welcome-page__gaf-logo"
+          loading="eager"
+          sizes="72px"
         />
       </div>
 
@@ -133,7 +133,7 @@ export function Welcome() {
         <motion.div variants={fadeInVariants} className="welcome-page__features">
           <div className="welcome-feature-card">
             <div className="welcome-feature-card__img-container">
-              <img src={leadershipImg} alt="Leadership" />
+              <OptimizedImage asset={welcomeFeatureImages.leadership} sizes="32px" />
             </div>
             <h3>LEADERSHIP</h3>
             <p>Leading with vision, integrity and purpose.</p>
@@ -141,7 +141,7 @@ export function Welcome() {
 
           <div className="welcome-feature-card">
             <div className="welcome-feature-card__img-container">
-              <img src={serviceImg} alt="Service" />
+              <OptimizedImage asset={welcomeFeatureImages.service} sizes="32px" />
             </div>
             <h3>SERVICE</h3>
             <p>Dedicated to duty, country and people.</p>
@@ -149,7 +149,7 @@ export function Welcome() {
 
           <div className="welcome-feature-card">
             <div className="welcome-feature-card__img-container">
-              <img src={excellenceImg} alt="Excellence" />
+              <OptimizedImage asset={welcomeFeatureImages.excellence} sizes="32px" />
             </div>
             <h3>EXCELLENCE</h3>
             <p>Striving for the highest standards in all I do.</p>

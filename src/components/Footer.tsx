@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { brandAssets, officer } from '../data/officerData'
+import { OptimizedImage } from './OptimizedImage'
 
 const links = ['Biography', 'Career', 'Achievements', 'Awards', 'Education', 'Gallery']
 
@@ -12,7 +13,7 @@ export function Footer({ onQrModalOpen }: FooterProps) {
     <footer className="footer">
       <div className="footer__inner">
         <div className="footer__brand">
-          <img src={brandAssets.gafLogo} alt="Ghana Armed Forces crest" width="329" height="61" loading="lazy" decoding="async" />
+          <OptimizedImage asset={brandAssets.gafLogo} sizes="220px" />
           <span>Personal Portfolio</span>
           <h2>{officer.rank} {officer.name}</h2>
           <p>A concise professional profile of his service, leadership, education, and documented achievements.</p>

@@ -13,7 +13,7 @@ export function Achievements() {
           <SectionHeading eyebrow="Highlights" title="Selected Areas of Contribution" />
           <div className="achievement-list">
             {achievements.map((achievement, index) => (
-              <AchievementCard key={achievement.title} {...achievement} image={images[index % images.length].src} />
+              <AchievementCard key={achievement.title} {...achievement} image={images[index % images.length]} />
             ))}
           </div>
         </div>

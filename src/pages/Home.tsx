@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Hero } from '../components/Hero'
 import { HoverRevealCard } from '../components/HoverRevealCard'
 import { InfoCard } from '../components/InfoCard'
+import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
 import { achievements, careerHighlights, education, images, officer, operations } from '../data/officerData'
 
@@ -21,7 +22,7 @@ export function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.55, ease: 'easeOut' }}
           >
-            <img src={images[1].src} alt="Profile introduction placeholder" width={images[1].width} height={images[1].height} loading="lazy" decoding="async" />
+            <OptimizedImage asset={images[1]} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 520px" />
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 24 }}

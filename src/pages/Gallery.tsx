@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Lightbox from 'yet-another-react-lightbox'
+import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
 import { galleryImages } from '../data/officerData'
 import { PageHero } from './Biography'
@@ -16,7 +17,7 @@ export function Gallery() {
           <div className="gallery-grid">
             {galleryImages.map((image, imageIndex) => (
               <button type="button" key={image.src} onClick={() => setIndex(imageIndex)} aria-label={`Open ${image.caption}`}>
-                <img src={image.src} alt={image.alt} width={image.width} height={image.height} loading="lazy" decoding="async" />
+                <OptimizedImage asset={image} variant="thumbnail" sizes="(max-width: 760px) 100vw, 33vw" />
               </button>
             ))}
           </div>
@@ -26,7 +27,16 @@ export function Gallery() {
         open={index >= 0}
         index={index}
         close={() => setIndex(-1)}
-        slides={galleryImages.map((image) => ({ src: image.src, alt: image.alt, title: image.caption }))}
+        slides={galleryImages.map((image) => ({
+          src: image.src,
+          alt: image.alt,
+          title: image.caption,
+          srcSet: image.srcSet.split(', ').map((candidate) => {
+            const [src, width] = candidate.split(' ')
+            const parsedWidth = Number.parseInt(width, 10)
+            return { src, width: parsedWidth, height: Math.round((parsedWidth * image.height) / image.width) }
+          }).filter((candidate) => candidate.src && Number.isFinite(candidate.width))
+        }))}
       />
     </>
   )

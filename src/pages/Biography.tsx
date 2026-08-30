@@ -1,5 +1,6 @@
 import { BackButton } from '../components/BackButton'
 import { InfoCard } from '../components/InfoCard'
+import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
 import { biographicDetails, images, officer, promotionDetails } from '../data/officerData'
 
@@ -20,7 +21,7 @@ export function Biography() {
               <SectionHeading eyebrow="Overview" title="Summary of Experience" />
               <div className="biography-overview">
                 <div className="biography-overview__image">
-                  <img src={images[1].src} alt={`${officer.rank} ${officer.name}`} width={images[1].width} height={images[1].height} loading="lazy" decoding="async" />
+                  <OptimizedImage asset={images[1]} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 360px" />
                 </div>
                 <div>
                   {officer.biography.map((paragraph) => (

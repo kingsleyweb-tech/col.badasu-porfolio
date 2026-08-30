@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import type { ImageAsset } from '../data/officerData'
+import { OptimizedImage } from './OptimizedImage'
 
 type HoverRevealCardProps = {
-  image: string
+  image: ImageAsset
   title: string
   description: string
   to: string
@@ -24,7 +26,7 @@ export function HoverRevealCard({ image, title, description, to, category, meta 
       viewport={{ once: true, margin: '-70px' }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
     >
-      <img src={image} alt="" loading="lazy" decoding="async" />
+      <OptimizedImage asset={image} alt="" variant="thumbnail" sizes="(max-width: 760px) 118px, (max-width: 1180px) 45vw, 280px" />
       <div className="reveal-card__shade" aria-hidden="true" />
       <div className="reveal-card__content">
         {category ? <span className="reveal-card__eyebrow">{category}</span> : null}

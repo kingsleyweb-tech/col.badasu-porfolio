@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import type { ImageAsset } from '../data/officerData'
+import { OptimizedImage } from './OptimizedImage'
 
 type TransitionName = 'bars' | 'glitter' | 'zoom' | 'reveal' | 'vortex'
 
@@ -29,7 +30,7 @@ export function ImageSlideshow({ images, active, onActiveChange }: ImageSlidesho
   }, [images.length, onActiveChange])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => goTo(active + 1), 8000)
+    const timer = window.setTimeout(() => goTo(active + 1), 3000)
     return () => window.clearTimeout(timer)
   }, [active, goTo])
 
@@ -47,6 +48,8 @@ export function ImageSlideshow({ images, active, onActiveChange }: ImageSlidesho
     link.rel = 'preload'
     link.as = 'image'
     link.href = first.src
+    link.imageSrcset = first.srcSet
+    link.imageSizes = '100vw'
     link.setAttribute('fetchpriority', 'high')
 
     if (!existing) {
@@ -62,27 +65,28 @@ export function ImageSlideshow({ images, active, onActiveChange }: ImageSlidesho
     const image = new Image()
     image.decoding = 'async'
     image.src = next.src
+    image.srcset = next.srcSet
+    image.sizes = '100vw'
   }, [next])
 
   return (
     <div className={`slideshow slideshow--${transition}`}>
       <AnimatePresence mode="sync" initial={false}>
-        <motion.img
+        <motion.div
           key={current.src}
-          src={current.src}
-          alt={current.alt}
-          width={current.width}
-          height={current.height}
-          loading="eager"
-          fetchPriority={active === 0 ? 'high' : 'auto'}
-          decoding="async"
-          sizes="100vw"
           className="slideshow__image"
           initial={reduceMotion ? { opacity: 0 } : transitionInitial(transition)}
           animate={reduceMotion ? { opacity: 1 } : transitionAnimate(transition)}
           exit={reduceMotion ? { opacity: 0 } : transitionExit(transition)}
           transition={{ duration: reduceMotion ? 0.15 : 0.72, ease: [0.22, 1, 0.36, 1] }}
-        />
+        >
+          <OptimizedImage
+            asset={current}
+            loading="eager"
+            fetchPriority={active === 0 ? 'high' : 'auto'}
+            sizes="100vw"
+          />
+        </motion.div>
       </AnimatePresence>
 
       {!reduceMotion && transition === 'bars' && (

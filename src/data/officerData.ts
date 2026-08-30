@@ -1,40 +1,34 @@
-// Hero slideshow images
-import a1 from '../assets/images/hero/a1.png'
-import a2 from '../assets/images/hero/a2.png'
-import a3 from '../assets/images/hero/a3.png'
-import a4 from '../assets/images/hero/a4.png'
-import a5 from '../assets/images/hero/a5.png'
-import a6 from '../assets/images/hero/a6.png'
-import a7 from '../assets/images/hero/a7.png'
-import gafLogo from '../assets/images/gaf.png'
+import imageManifest from '../assets/images/__optimized__/manifest.json'
 
-// Gallery images (a1–a23 — add more as files become available)
-import ga1 from '../assets/images/gallery/a1.png'
-import ga2 from '../assets/images/gallery/a2.png'
-import ga3 from '../assets/images/gallery/a3.png'
-import ga4 from '../assets/images/gallery/a4.png'
-import ga5 from '../assets/images/gallery/a5.png'
-import ga6 from '../assets/images/gallery/a6.png'
-import ga7 from '../assets/images/gallery/a7.png'
-// import ga8 from '../assets/images/gallery/a8.png'   // add when available
-import ga9 from '../assets/images/gallery/a9.png'
-// import ga10 from '../assets/images/gallery/a10.png' // add when available
-// import ga11 from '../assets/images/gallery/a11.png' // add when available
-// import ga12 from '../assets/images/gallery/a12.png' // add when available
-// import ga13 from '../assets/images/gallery/a13.png' // add when available
-// import ga14 from '../assets/images/gallery/a14.png' // add when available
-// import ga15 from '../assets/images/gallery/a15.png' // add when available
-// import ga16 from '../assets/images/gallery/a16.png' // add when available
-// import ga17 from '../assets/images/gallery/a17.png' // add when available
-// import ga18 from '../assets/images/gallery/a18.png' // add when available
-// import ga19 from '../assets/images/gallery/a19.png' // add when available
-// import ga20 from '../assets/images/gallery/a20.png' // add when available
-// import ga21 from '../assets/images/gallery/a21.png' // add when available
-// import ga22 from '../assets/images/gallery/a22.png' // add when available
-// import ga23 from '../assets/images/gallery/a23.png' // add when available
+const optimizedModules = import.meta.glob('../assets/images/__optimized__/**/*.webp', {
+  eager: true,
+  import: 'default',
+  query: '?url'
+}) as Record<string, string>
+
+const originalModules = import.meta.glob('../assets/images/**/*.{png,jpg,jpeg,webp}', {
+  eager: true,
+  import: 'default',
+  query: '?url'
+}) as Record<string, string>
+
+type GeneratedImage = {
+  width: number
+  height: number
+  full: string
+  thumbnail: string
+  placeholder: string
+  variants: { width: number; src: string }[]
+}
+
+const generatedImages = imageManifest as Record<string, GeneratedImage>
 
 export type ImageAsset = {
   src: string
+  fallbackSrc: string
+  thumbnailSrc: string
+  placeholderSrc: string
+  srcSet: string
   alt: string
   caption: string
   width: number
@@ -51,7 +45,7 @@ export type TimelineItem = {
 export type FeatureCard = {
   title: string
   description: string
-  image: string
+  image: ImageAsset
   to: string
   category?: string
   meta?: string
@@ -84,7 +78,7 @@ export type WorkHistoryItem = {
 }
 
 export const brandAssets = {
-  gafLogo
+  gafLogo: imageAsset('image.png', 'Ghana Armed Forces crest', 'Ghana Armed Forces crest')
 }
 
 export const officer = {
@@ -125,40 +119,25 @@ export const biographicDetails: DetailItem[] = [
 ]
 
 export const images: ImageAsset[] = [
-  { src: a1, alt: 'Colonel Badasu portrait for personal portfolio', caption: 'Official portrait placeholder', width: 828, height: 1265 },
-  { src: a2, alt: 'Colonel Badasu professional service image', caption: 'Ceremonial image placeholder', width: 828, height: 1265 },
-  { src: a3, alt: 'Colonel Badasu career service image', caption: 'Command appointment placeholder', width: 423, height: 266 },
-  { src: a4, alt: 'Colonel Badasu operational service image', caption: 'Operational service placeholder', width: 1600, height: 1386 },
-  { src: a5, alt: 'Colonel Badasu professional engagement image', caption: 'Professional engagement placeholder', width: 1536, height: 1021 },
-  { src: a6, alt: 'Colonel Badasu training and education image', caption: 'Training and education placeholder', width: 474, height: 266 },
-  { src: a7, alt: 'Colonel Badasu gallery image', caption: 'Gallery image placeholder', width: 274, height: 300 }
+  imageAsset('hero/a1.png', 'Colonel Badasu portrait for personal portfolio', 'Official portrait placeholder'),
+  imageAsset('hero/a2.png', 'Colonel Badasu professional service image', 'Ceremonial image placeholder'),
+  imageAsset('hero/a3.png', 'Colonel Badasu career service image', 'Command appointment placeholder'),
+  imageAsset('hero/a4.png', 'Colonel Badasu operational service image', 'Operational service placeholder'),
+  imageAsset('hero/a5.png', 'Colonel Badasu professional engagement image', 'Professional engagement placeholder'),
+  imageAsset('hero/a6.png', 'Colonel Badasu training and education image', 'Training and education placeholder'),
+  imageAsset('hero/a7.png', 'Colonel Badasu gallery image', 'Gallery image placeholder')
 ]
 
 // Separate gallery images (a1–a23) — update as more images are added to gallery folder
 export const galleryImages: ImageAsset[] = [
-  { src: ga1, alt: 'Gallery photo 1', caption: 'Photo 1', width: 828, height: 1265 },
-  { src: ga2, alt: 'Gallery photo 2', caption: 'Photo 2', width: 828, height: 1265 },
-  { src: ga3, alt: 'Gallery photo 3', caption: 'Photo 3', width: 423, height: 266 },
-  { src: ga4, alt: 'Gallery photo 4', caption: 'Photo 4', width: 1600, height: 1386 },
-  { src: ga5, alt: 'Gallery photo 5', caption: 'Photo 5', width: 1536, height: 1021 },
-  { src: ga6, alt: 'Gallery photo 6', caption: 'Photo 6', width: 474, height: 266 },
-  { src: ga7, alt: 'Gallery photo 7', caption: 'Photo 7', width: 274, height: 300 },
-  // { src: ga8, alt: 'Gallery photo 8', caption: 'Photo 8' },   // uncomment when a8.png is added
-  { src: ga9, alt: 'Gallery photo 9', caption: 'Photo 9', width: 474, height: 315 },
-  // { src: ga10, alt: 'Gallery photo 10', caption: 'Photo 10' }, // uncomment when a10.png is added
-  // { src: ga11, alt: 'Gallery photo 11', caption: 'Photo 11' }, // uncomment when a11.png is added
-  // { src: ga12, alt: 'Gallery photo 12', caption: 'Photo 12' }, // uncomment when a12.png is added
-  // { src: ga13, alt: 'Gallery photo 13', caption: 'Photo 13' }, // uncomment when a13.png is added
-  // { src: ga14, alt: 'Gallery photo 14', caption: 'Photo 14' }, // uncomment when a14.png is added
-  // { src: ga15, alt: 'Gallery photo 15', caption: 'Photo 15' }, // uncomment when a15.png is added
-  // { src: ga16, alt: 'Gallery photo 16', caption: 'Photo 16' }, // uncomment when a16.png is added
-  // { src: ga17, alt: 'Gallery photo 17', caption: 'Photo 17' }, // uncomment when a17.png is added
-  // { src: ga18, alt: 'Gallery photo 18', caption: 'Photo 18' }, // uncomment when a18.png is added
-  // { src: ga19, alt: 'Gallery photo 19', caption: 'Photo 19' }, // uncomment when a19.png is added
-  // { src: ga20, alt: 'Gallery photo 20', caption: 'Photo 20' }, // uncomment when a20.png is added
-  // { src: ga21, alt: 'Gallery photo 21', caption: 'Photo 21' }, // uncomment when a21.png is added
-  // { src: ga22, alt: 'Gallery photo 22', caption: 'Photo 22' }, // uncomment when a22.png is added
-  // { src: ga23, alt: 'Gallery photo 23', caption: 'Photo 23' }, // uncomment when a23.png is added
+  imageAsset('gallery/a1.png', 'Colonel Badasu gallery portrait', 'Photo 1'),
+  imageAsset('gallery/a2.png', 'Colonel Badasu gallery portrait', 'Photo 2'),
+  imageAsset('gallery/a3.png', 'Colonel Badasu in professional service setting', 'Photo 3'),
+  imageAsset('gallery/a4.png', 'Colonel Badasu operational service moment', 'Photo 4'),
+  imageAsset('gallery/a5.png', 'Colonel Badasu professional engagement', 'Photo 5'),
+  imageAsset('gallery/a6.png', 'Colonel Badasu training and education moment', 'Photo 6'),
+  imageAsset('gallery/a7.png', 'Colonel Badasu gallery image', 'Photo 7'),
+  imageAsset('gallery/a9.png', 'Colonel Badasu gallery image', 'Photo 9')
 ]
 
 export const workHistory: WorkHistoryItem[] = [
@@ -340,7 +319,7 @@ export const careerHighlights: FeatureCard[] = [
   {
     title: 'Chief Operations Officer, ECOMIG Force Headquarters',
     description: 'Planning, force generation, rotation, repatriation, doctrine review, and peacekeeping threat assessment.',
-    image: a3,
+    image: imageAsset('career/a3.png', 'Colonel Badasu command appointment image', 'Command appointment image'),
     to: '/career',
     category: 'Command',
     meta: 'Career Record'
@@ -348,7 +327,7 @@ export const careerHighlights: FeatureCard[] = [
   {
     title: 'Deputy Director Army Peacekeeping Operations',
     description: 'Nomination, screening, pre-deployment training, rotation planning, and peacekeeping reporting.',
-    image: a4,
+    image: imageAsset('career/a4.png', 'Colonel Badasu operational service image', 'Operational service image'),
     to: '/career',
     category: 'Operations',
     meta: 'Career Record'
@@ -356,7 +335,7 @@ export const careerHighlights: FeatureCard[] = [
   {
     title: 'Deputy Director Army Administration',
     description: 'Headquarters administration, operational coordination, training activities, and stakeholder liaison.',
-    image: a5,
+    image: imageAsset('career/a5.png', 'Colonel Badasu professional engagement image', 'Professional engagement image'),
     to: '/career',
     category: 'Staff',
     meta: 'Career Record'
@@ -364,7 +343,7 @@ export const careerHighlights: FeatureCard[] = [
   {
     title: 'UN and ECOWAS Operational Service',
     description: 'Assignments across Sierra Leone, Liberia, Cote d\'Ivoire, DR Congo, Lebanon, South Sudan, and The Gambia.',
-    image: a6,
+    image: imageAsset('career/a6.png', 'Colonel Badasu training and education image', 'Training and education image'),
     to: '/career',
     category: 'Service',
     meta: 'Career Record'
@@ -375,7 +354,7 @@ export const achievements: FeatureCard[] = [
   {
     title: 'UN Peacekeeping Operations in Africa',
     description: 'Extensive operational experience in United Nations peacekeeping operations across Africa.',
-    image: a2,
+    image: imageAsset('achievements/a2.png', 'Colonel Badasu peacekeeping operations image', 'Peacekeeping operations image'),
     to: '/achievements',
     category: 'Peacekeeping',
     meta: 'Institutional Service'
@@ -383,7 +362,7 @@ export const achievements: FeatureCard[] = [
   {
     title: 'Risk, Crisis, and Security Management',
     description: 'Demonstrated understanding of risk, crisis, and security management in military operational contexts.',
-    image: a4,
+    image: imageAsset('achievements/a4.png', 'Colonel Badasu security management image', 'Security management image'),
     to: '/achievements',
     category: 'Security',
     meta: 'Institutional Service'
@@ -391,7 +370,7 @@ export const achievements: FeatureCard[] = [
   {
     title: 'Strategic Leadership Preparation',
     description: 'War College Strategic Level Leadership and Management preparation for senior military responsibilities.',
-    image: a5,
+    image: imageAsset('achievements/a5.png', 'Colonel Badasu strategic leadership image', 'Strategic leadership image'),
     to: '/achievements',
     category: 'Leadership',
     meta: 'Institutional Service'
@@ -399,7 +378,7 @@ export const achievements: FeatureCard[] = [
   {
     title: 'Professional Mentorship and Service',
     description: 'Mentorship for ASIS International Certifications and guidance for professional development.',
-    image: a7,
+    image: imageAsset('achievements/a7.png', 'Colonel Badasu professional mentorship image', 'Professional mentorship image'),
     to: '/achievements',
     category: 'Mentorship',
     meta: 'Institutional Service'
@@ -705,3 +684,45 @@ export const promotionDetails: DetailItem[] = [
   { label: 'Captain', value: '22 August 2003' },
   { label: 'Major', value: '22 August 2008' }
 ]
+
+export const welcomeFeatureImages = {
+  leadership: imageAsset('leadership.png', 'Leadership', 'Leadership'),
+  service: imageAsset('service.png', 'Service', 'Service'),
+  excellence: imageAsset('excellence.png', 'Excellence', 'Excellence')
+}
+
+function imageAsset(relativePath: string, alt: string, caption: string): ImageAsset {
+  const generated = generatedImages[relativePath]
+  const fallbackSrc = originalModules[`../assets/images/${relativePath}`]
+
+  if (!generated || !fallbackSrc) {
+    throw new Error(`Missing image asset metadata for ${relativePath}`)
+  }
+
+  const src = optimizedModules[`../assets/images/${generated.full}`]
+  const thumbnailSrc = optimizedModules[`../assets/images/${generated.thumbnail}`]
+  const placeholderSrc = optimizedModules[`../assets/images/${generated.placeholder}`]
+  const srcSet = generated.variants
+    .map((variant) => {
+      const variantSrc = optimizedModules[`../assets/images/${variant.src}`]
+      return variantSrc ? `${variantSrc} ${variant.width}w` : ''
+    })
+    .filter(Boolean)
+    .join(', ')
+
+  if (!src || !thumbnailSrc || !placeholderSrc) {
+    throw new Error(`Missing optimized image files for ${relativePath}`)
+  }
+
+  return {
+    src,
+    fallbackSrc,
+    thumbnailSrc,
+    placeholderSrc,
+    srcSet,
+    alt,
+    caption,
+    width: generated.width,
+    height: generated.height
+  }
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { brandAssets, officer } from '../data/officerData'
+import { OptimizedImage } from './OptimizedImage'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -27,7 +28,7 @@ export function Navbar() {
       <nav className="nav" aria-label="Primary navigation">
         <Link className="brand" to="/">
           <span className="brand__crest">
-            <img src={brandAssets.gafLogo} alt="Ghana Armed Forces crest" width="329" height="61" decoding="async" />
+            <OptimizedImage asset={brandAssets.gafLogo} loading="eager" sizes="58px" />
           </span>
           <span>
             <strong>{officer.rank} {officer.name}</strong>
@@ -47,4 +48,3 @@ export function Navbar() {
     </header>
   )
 }
-

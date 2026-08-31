@@ -70,10 +70,13 @@ export default async function handler(request, response) {
 
 async function listFolders(cloudName, apiKey, apiSecret) {
   const data = await cloudinaryFetch(cloudName, apiKey, apiSecret, `/folders/${encodePath(rootFolder)}`)
-  return (data.folders || []).map((folder) => ({
-    name: folder.name,
-    path: folder.path
-  }))
+  const ignoredFolders = new Set(['portfolio', 'portfolio website', 'portfolio-website', 'website', 'hero', 'career', 'achievements', 'gallery', '__optimized__'])
+  return (data.folders || [])
+    .filter((folder) => !ignoredFolders.has(folder.name.toLowerCase().trim()))
+    .map((folder) => ({
+      name: folder.name,
+      path: folder.path
+    }))
 }
 
 async function listResources(cloudName, apiKey, apiSecret, prefix, nextCursor, maxResults = pageSize) {
@@ -180,7 +183,9 @@ const nameMapping = {
   'photos': 'Historical Service Portraits & Archives',
   'sea border operation': 'Maritime Security & Sea Border Patrols',
   'tv3': 'National Television Appearances & Media Features',
-  'university of london graduation': 'Academic Convocation & University of London Milestones'
+  'university of london graduation': 'Academic Convocation & University of London Milestones',
+  'military': 'Military Honors, Strategy & Ceremonial Engagements',
+  'adventure': 'Tactical Expeditions & Field Adventures'
 };
 
 function getCollectionDisplayName(folderName) {

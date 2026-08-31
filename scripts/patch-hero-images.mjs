@@ -14,7 +14,18 @@ const manifestPath = path.join(outputRoot, 'manifest.json')
 const quality = 82
 const heroProfile = { widths: [480, 768, 1200, 1600, 2000], fullWidth: 2000, thumbWidth: 768 }
 
-const newImages = ['hero/graduation.jpeg', 'hero/tv3.jpeg', 'hero/ecowas.jpeg', 'hero/boundary.jpeg']
+const newImages = [
+  'hero/graduation.jpeg',
+  'hero/tv3.jpeg',
+  'hero/ecowas.jpeg',
+  'hero/boundary.jpeg',
+  'hero/profile-home.jpeg',
+  'career/boundary.jpeg',
+  'career/ecowas.jpeg',
+  'achievements/ecowas.jpeg',
+  'achievements/jungle.jpeg',
+  'achievements/boundary.jpeg'
+]
 
 function slash(str) { return str.replace(/\\/g, '/') }
 function usefulWidths(widths, sourceWidth) { return widths.filter(w => w < sourceWidth) }

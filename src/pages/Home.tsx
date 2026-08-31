@@ -6,7 +6,7 @@ import { HoverRevealCard } from '../components/HoverRevealCard'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { achievements, careerHighlights, education, homeCategoryLinks, images, officer, operations } from '../data/officerData'
+import { achievements, careerHighlights, education, homeCategoryLinks, officer, operations, profileHomeImage } from '../data/officerData'
 
 export function Home() {
   return (
@@ -22,7 +22,7 @@ export function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.55, ease: 'easeOut' }}
           >
-            <OptimizedImage asset={images[1]} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 520px" />
+            <OptimizedImage asset={profileHomeImage} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 520px" />
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 24 }}

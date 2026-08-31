@@ -15,18 +15,8 @@ if (!cloudName || !apiKey || !apiSecret) {
 const sourceRoot = path.join(process.cwd(), 'src', 'assets', 'images');
 
 const targetFolders = [
-  'boundary opearations',
-  'collaborations',
-  'ecowas',
-  'ghana-boundary commission',
-  'interviewing',
-  'jungle',
-  'meetiings',
-  'operation wth imigration',
-  'photos',
-  'sea border operation',
-  'tv3',
-  'university of london graduation'
+  'adventure',
+  'military'
 ];
 
 const supportedExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp']);

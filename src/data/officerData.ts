@@ -1,27 +1,5 @@
-import imageManifest from '../assets/images/__optimized__/manifest.json'
-
-const optimizedModules = import.meta.glob('../assets/images/__optimized__/**/*.webp', {
-  eager: true,
-  import: 'default',
-  query: '?url'
-}) as Record<string, string>
-
-const originalModules = import.meta.glob('../assets/images/**/*.{png,jpg,jpeg,webp}', {
-  eager: true,
-  import: 'default',
-  query: '?url'
-}) as Record<string, string>
-
-type GeneratedImage = {
-  width: number
-  height: number
-  full: string
-  thumbnail: string
-  placeholder: string
-  variants: { width: number; src: string }[]
-}
-
-const generatedImages = imageManifest as Record<string, GeneratedImage>
+const CLOUD_NAME = 'lxjudwn8'
+const ROOT_FOLDER = 'colonel-badasu/site'
 
 export type ImageAsset = {
   src: string
@@ -133,6 +111,8 @@ export const images: ImageAsset[] = [
   imageAsset('hero/ecowas.jpeg', 'Colonel Badasu at ECOWAS peace support mission', 'ECOWAS Peace Support Operations'),
   imageAsset('hero/boundary.jpeg', 'Colonel Badasu during border security and tactical operations', 'Border Security & Tactical Operations')
 ]
+
+export const profileHomeImage = imageAsset('hero/profile-home.jpeg', 'Colonel Badasu University of London Graduation photo', 'Academic Convocation')
 
 // Separate gallery images (a1–a23) — update as more images are added to gallery folder
 export const galleryImages: ImageAsset[] = [
@@ -325,7 +305,7 @@ export const careerHighlights: FeatureCard[] = [
   {
     title: 'Chief Operations Officer, ECOMIG Force Headquarters',
     description: 'Planning, force generation, rotation, repatriation, doctrine review, and peacekeeping threat assessment.',
-    image: imageAsset('career/a3.png', 'Colonel Badasu command appointment image', 'Command appointment image'),
+    image: imageAsset('career/boundary.jpeg', 'Colonel Badasu border security operations image', 'Border security operations'),
     to: '/career',
     category: 'Command',
     meta: 'Career Record'
@@ -333,7 +313,7 @@ export const careerHighlights: FeatureCard[] = [
   {
     title: 'Deputy Director Army Peacekeeping Operations',
     description: 'Nomination, screening, pre-deployment training, rotation planning, and peacekeeping reporting.',
-    image: imageAsset('career/a4.png', 'Colonel Badasu operational service image', 'Operational service image'),
+    image: imageAsset('career/ecowas.jpeg', 'Colonel Badasu ECOWAS peacekeeping image', 'ECOWAS peacekeeping'),
     to: '/career',
     category: 'Operations',
     meta: 'Career Record'
@@ -360,7 +340,7 @@ export const achievements: FeatureCard[] = [
   {
     title: 'UN Peacekeeping Operations in Africa',
     description: 'Extensive operational experience in United Nations peacekeeping operations across Africa.',
-    image: imageAsset('achievements/a2.png', 'Colonel Badasu peacekeeping operations image', 'Peacekeeping operations image'),
+    image: imageAsset('achievements/ecowas.jpeg', 'Colonel Badasu peacekeeping operations image', 'Peacekeeping operations'),
     to: '/career#operational-experience',
     category: 'Peacekeeping',
     meta: 'Institutional Service'
@@ -376,7 +356,7 @@ export const achievements: FeatureCard[] = [
   {
     title: 'Strategic Leadership Preparation',
     description: 'War College Strategic Level Leadership and Management preparation for senior military responsibilities.',
-    image: imageAsset('achievements/a5.png', 'Colonel Badasu strategic leadership image', 'Strategic leadership image'),
+    image: imageAsset('achievements/jungle.jpeg', 'Colonel Badasu jungle operations image', 'Jungle operations'),
     to: '/education#professional-courses',
     category: 'Leadership',
     meta: 'Institutional Service'
@@ -384,7 +364,7 @@ export const achievements: FeatureCard[] = [
   {
     title: 'Professional Mentorship and Service',
     description: 'Mentorship for ASIS International Certifications and guidance for professional development.',
-    image: imageAsset('achievements/a7.png', 'Colonel Badasu professional mentorship image', 'Professional mentorship image'),
+    image: imageAsset('achievements/boundary.jpeg', 'Colonel Badasu boundary operations image', 'Boundary operations'),
     to: '/career#work-history',
     category: 'Mentorship',
     meta: 'Institutional Service'
@@ -823,27 +803,19 @@ export const welcomeFeatureImages = {
 }
 
 function imageAsset(relativePath: string, alt: string, caption: string): ImageAsset {
-  const generated = generatedImages[relativePath]
-  const fallbackSrc = originalModules[`../assets/images/${relativePath}`]
+  const cleanPath = relativePath.replace(/^\//, '').replace(/\.[^.]+$/, '')
+  const publicPath = cleanPath.includes('/') ? cleanPath : `root/${cleanPath}`
+  const baseCloudinary = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload`
 
-  if (!generated || !fallbackSrc) {
-    throw new Error(`Missing image asset metadata for ${relativePath}`)
-  }
-
-  const src = optimizedModules[`../assets/images/${generated.full}`]
-  const thumbnailSrc = optimizedModules[`../assets/images/${generated.thumbnail}`]
-  const placeholderSrc = optimizedModules[`../assets/images/${generated.placeholder}`]
-  const srcSet = generated.variants
-    .map((variant) => {
-      const variantSrc = optimizedModules[`../assets/images/${variant.src}`]
-      return variantSrc ? `${variantSrc} ${variant.width}w` : ''
-    })
-    .filter(Boolean)
+  const src = `${baseCloudinary}/f_auto,q_auto,w_1600/${ROOT_FOLDER}/${publicPath}`
+  const fallbackSrc = `${baseCloudinary}/f_auto,q_auto/${ROOT_FOLDER}/${publicPath}`
+  const thumbnailSrc = `${baseCloudinary}/f_auto,q_auto,c_fill,g_auto,w_600,h_450/${ROOT_FOLDER}/${publicPath}`
+  const placeholderSrc = `${baseCloudinary}/f_auto,q_auto,w_32/${ROOT_FOLDER}/${publicPath}`
+  
+  const widths = [480, 768, 1200, 1600]
+  const srcSet = widths
+    .map((w) => `${baseCloudinary}/f_auto,q_auto,w_${w}/${ROOT_FOLDER}/${publicPath} ${w}w`)
     .join(', ')
-
-  if (!src || !thumbnailSrc || !placeholderSrc) {
-    throw new Error(`Missing optimized image files for ${relativePath}`)
-  }
 
   return {
     src,
@@ -853,7 +825,7 @@ function imageAsset(relativePath: string, alt: string, caption: string): ImageAs
     srcSet,
     alt,
     caption,
-    width: generated.width,
-    height: generated.height
+    width: 1200,
+    height: 900
   }
 }

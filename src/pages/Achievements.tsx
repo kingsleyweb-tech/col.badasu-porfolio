@@ -1,7 +1,7 @@
 import { AchievementCard } from '../components/AchievementCard'
 import { InfoCard } from '../components/InfoCard'
 import { SectionHeading } from '../components/SectionHeading'
-import { achievementCategoryLinks, achievements, images, recentAssignments, volunteerExperience } from '../data/officerData'
+import { achievementCategoryLinks, achievements, recentAssignments, volunteerExperience } from '../data/officerData'
 import { PageHero } from './Biography'
 
 export function Achievements() {
@@ -20,8 +20,8 @@ export function Achievements() {
         <div className="container">
           <SectionHeading eyebrow="Highlights" title="Selected Areas of Contribution" />
           <div className="achievement-list">
-            {achievements.map((achievement, index) => (
-              <AchievementCard key={achievement.title} {...achievement} image={images[index % images.length]} />
+            {achievements.map((achievement) => (
+              <AchievementCard key={achievement.title} {...achievement} />
             ))}
           </div>
         </div>

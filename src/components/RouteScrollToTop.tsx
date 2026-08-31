@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
 export function RouteScrollToTop() {
-  const { pathname, search } = useLocation()
+  const { hash, pathname, search } = useLocation()
 
   useEffect(() => {
     if (!('scrollRestoration' in window.history)) {
@@ -18,6 +18,12 @@ export function RouteScrollToTop() {
   }, [])
 
   useLayoutEffect(() => {
+    if (hash) {
+      const target = document.getElementById(hash.slice(1))
+      target?.scrollIntoView()
+      return
+    }
+
     window.scrollTo(0, 0)
 
     const frame = window.requestAnimationFrame(() => {
@@ -25,15 +31,23 @@ export function RouteScrollToTop() {
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [pathname, search])
+  }, [hash, pathname, search])
 
   useEffect(() => {
+    if (hash) {
+      const timer = window.setTimeout(() => {
+        document.getElementById(hash.slice(1))?.scrollIntoView()
+      }, 0)
+
+      return () => window.clearTimeout(timer)
+    }
+
     const timer = window.setTimeout(() => {
       window.scrollTo(0, 0)
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [pathname, search])
+  }, [hash, pathname, search])
 
   return null
 }

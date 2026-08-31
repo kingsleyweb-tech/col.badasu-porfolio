@@ -2,7 +2,7 @@ import { BackButton } from '../components/BackButton'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { biographicDetails, images, officer, promotionDetails } from '../data/officerData'
+import { biographicDetails, biographyCategoryLinks, images, officer, promotionDetails } from '../data/officerData'
 
 export function Biography() {
   return (
@@ -11,10 +11,9 @@ export function Biography() {
       <section className="section">
         <div className="container content-layout">
           <aside className="side-nav" aria-label="Biography sections">
-            <a href="#overview">Overview</a>
-            <a href="#details">Biographic Form</a>
-            <a href="#service">Service Profile</a>
-            <a href="#personal">Languages</a>
+            {biographyCategoryLinks.map((link) => (
+              <a key={link.to} href={link.to}>{link.label}</a>
+            ))}
           </aside>
           <div className="text-block">
             <section id="overview">
@@ -71,9 +70,24 @@ export function Biography() {
 
             <section id="personal">
               <SectionHeading eyebrow="Languages & Interests" title="Personal Profile Notes" />
-              <p><strong>Spoken and written languages:</strong> {officer.languages.join(', ')}.</p>
-              <p><strong>French language level:</strong> {officer.frenchLevel}.</p>
-              <p><strong>Interests:</strong> {officer.hobbies.join(', ')}.</p>
+              <div className="detail-grid">
+                <div className="detail-card" id="languages">
+                  <span>Spoken Languages</span>
+                  <strong>{officer.spokenLanguages.join(', ')}</strong>
+                </div>
+                <div className="detail-card">
+                  <span>Written Languages</span>
+                  <strong>{officer.writtenLanguages.join(', ')}</strong>
+                </div>
+                <div className="detail-card">
+                  <span>French Language Level</span>
+                  <strong>{officer.frenchLevel}</strong>
+                </div>
+                <div className="detail-card" id="hobbies">
+                  <span>Hobbies</span>
+                  <strong>{officer.hobbies.join(', ')}</strong>
+                </div>
+              </div>
             </section>
           </div>
         </div>

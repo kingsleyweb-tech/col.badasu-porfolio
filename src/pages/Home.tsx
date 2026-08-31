@@ -6,7 +6,7 @@ import { HoverRevealCard } from '../components/HoverRevealCard'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { achievements, careerHighlights, education, images, officer, operations } from '../data/officerData'
+import { achievements, careerHighlights, education, homeCategoryLinks, images, officer, operations } from '../data/officerData'
 
 export function Home() {
   return (
@@ -55,6 +55,17 @@ export function Home() {
           <div className="card-grid feature-news-grid">
             {careerHighlights.map((item) => (
               <HoverRevealCard key={item.title} {...item} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="container">
+          <SectionHeading eyebrow="Categories" title="Browse the Profile by Category" description="Direct links to the grouped biography, career, achievements, awards, education, operations, and gallery sections." />
+          <div className="category-directory">
+            {homeCategoryLinks.map((link) => (
+              <Link key={link.to} to={link.to}>{link.label}</Link>
             ))}
           </div>
         </div>

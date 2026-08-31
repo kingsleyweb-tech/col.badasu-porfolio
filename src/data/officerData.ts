@@ -70,6 +70,11 @@ export type DetailItem = {
   value: string
 }
 
+export type CategoryLink = {
+  label: string
+  to: string
+}
+
 export type WorkHistoryItem = {
   title: string
   location: string
@@ -99,7 +104,8 @@ export const officer = {
     'Throughout his career, Col. Henry Kwaku Badasu has distinguished himself as a dedicated and effective leader, with a keen understanding of the complexities of military operations. He has served in a variety of leadership positions, including in combat operations and logistics management. His commitment to the welfare of his subordinates and his unflinching dedication to the mission have earned him the respect and admiration of his peers, subordinates, and superiors alike.',
     'As a senior Army officer in the Ghana Armed Forces, Col. Henry Kwaku Badasu continues to serve his country with distinction and honour. His expertise in UN peacekeeping operations in Africa and his skills in risk, crisis, and security management has been invaluable to the Ghana Armed Forces. He is a consummate professional and leader who embodies the highest standards of military ethics and conduct.'
   ],
-  languages: ['Ewe', 'Twi', 'English', 'French'],
+  spokenLanguages: ['Ewe', 'Twi', 'English', 'French'],
+  writtenLanguages: ['Ewe', 'Twi', 'English', 'French'],
   frenchLevel: 'Advanced Level, B1, B2',
   hobbies: ['Reading', 'Singing', 'Badminton', 'Lawn Tennis']
 }
@@ -355,7 +361,7 @@ export const achievements: FeatureCard[] = [
     title: 'UN Peacekeeping Operations in Africa',
     description: 'Extensive operational experience in United Nations peacekeeping operations across Africa.',
     image: imageAsset('achievements/a2.png', 'Colonel Badasu peacekeeping operations image', 'Peacekeeping operations image'),
-    to: '/achievements',
+    to: '/career#operational-experience',
     category: 'Peacekeeping',
     meta: 'Institutional Service'
   },
@@ -363,7 +369,7 @@ export const achievements: FeatureCard[] = [
     title: 'Risk, Crisis, and Security Management',
     description: 'Demonstrated understanding of risk, crisis, and security management in military operational contexts.',
     image: imageAsset('achievements/a4.png', 'Colonel Badasu security management image', 'Security management image'),
-    to: '/achievements',
+    to: '/career#work-history',
     category: 'Security',
     meta: 'Institutional Service'
   },
@@ -371,7 +377,7 @@ export const achievements: FeatureCard[] = [
     title: 'Strategic Leadership Preparation',
     description: 'War College Strategic Level Leadership and Management preparation for senior military responsibilities.',
     image: imageAsset('achievements/a5.png', 'Colonel Badasu strategic leadership image', 'Strategic leadership image'),
-    to: '/achievements',
+    to: '/education#professional-courses',
     category: 'Leadership',
     meta: 'Institutional Service'
   },
@@ -379,7 +385,7 @@ export const achievements: FeatureCard[] = [
     title: 'Professional Mentorship and Service',
     description: 'Mentorship for ASIS International Certifications and guidance for professional development.',
     image: imageAsset('achievements/a7.png', 'Colonel Badasu professional mentorship image', 'Professional mentorship image'),
-    to: '/achievements',
+    to: '/career#work-history',
     category: 'Mentorship',
     meta: 'Institutional Service'
   }
@@ -502,13 +508,86 @@ export const militaryDiplomas: EducationItem[] = [
     institution: 'British Field Training Team in Accra, Ghana',
     period: 'Period not stated',
     description: 'Integrated Combat Service Support - Logistics Estimates course.'
+  }
+]
+
+export const unitarPociCertificates: EducationItem[] = [
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'History of Peacekeeping, 1997-2006',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
   },
   {
     category: 'UNITAR-POCI Certificates',
-    title: 'UNITAR-POCI Certificates of Completion',
+    title: 'History of Peacekeeping, 1988-1996',
     institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
     period: 'June 2004 - July 2005',
-    description: 'History of Peacekeeping from 1997 - 2006 and 1988 - 1996; Principles of Peace Support Operations; Ethics in Peacekeeping; Security Measures for United Nations Peacekeepers; Operational Logistical Support; Logistical Support to UN Peacekeeping Operations; The Conduct of Humanitarian Relief Operations; Disarmament, Demobilization and Reintegration (DDR): Principles of Intervention and Management in Peacekeeping Operations; Advanced Topics in UN Logistics; and Commanding United Nations Peacekeeping Operations.'
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'Principles of Peace Support Operations',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'Ethics in Peacekeeping',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'Security Measures for United Nations Peacekeepers',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'Operational Logistical Support',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'Logistical Support to UN Peacekeeping Operations',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'The Conduct of Humanitarian Relief Operations',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'Disarmament, Demobilization and Reintegration (DDR): Principles of Intervention and Management in Peacekeeping Operations',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'Advanced Topics in UN Logistics',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
+  },
+  {
+    category: 'UNITAR-POCI Certificates',
+    title: 'Commanding United Nations Peacekeeping Operations',
+    institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire',
+    period: 'June 2004 - July 2005',
+    description: 'UNITAR-POCI certificate of completion obtained at UNOCI FHQ, Abidjan, Cote d\'Ivoire.'
   }
 ]
 
@@ -623,6 +702,7 @@ export const professionalCourses: EducationItem[] = [
 export const education: EducationItem[] = [
   ...professionalCertificates,
   ...militaryDiplomas,
+  ...unitarPociCertificates,
   ...professionalCourses
 ]
 
@@ -643,13 +723,13 @@ export const recentAssignments = [
 ]
 
 export const operations = [
-  'UNAMSIL - Sierra Leone - deployed three times',
-  'UNMIL - Liberia - deployed once',
-  'UNOCI - La Cote d\'Ivoire - deployed thrice',
-  'MONUC - Democratic Republic of Congo - Kinshasa - deployed once',
-  'UNIFIL - Southern Lebanon - deployed once',
-  'UNMISS - South Sudan - deployed once',
-  'ECOMIG - The Gambia'
+  'UNAMSIL - United Nations Mission in Sierra Leone - deployed three times',
+  'UNMIL - United Nations Mission in Liberia - deployed once',
+  'UNOCI - United Nations Operation in Cote d\'Ivoire - deployed thrice',
+  'MONUC - United Nations Mission in the Democratic Republic of the Congo, Kinshasa - deployed once',
+  'UNIFIL - United Nations Interim Force in Lebanon - deployed once, in Southern Lebanon',
+  'UNMISS - United Nations Mission in South Sudan - served once',
+  'ECOMIG - ECOWAS Mission in The Gambia - served once'
 ]
 
 export const awards: AwardItem[] = [
@@ -683,6 +763,57 @@ export const awards: AwardItem[] = [
 export const promotionDetails: DetailItem[] = [
   { label: 'Captain', value: '22 August 2003' },
   { label: 'Major', value: '22 August 2008' }
+]
+
+export const homeCategoryLinks: CategoryLink[] = [
+  { label: 'Biography', to: '/biography#overview' },
+  { label: 'Biographic Form', to: '/biography#details' },
+  { label: 'Service Profile', to: '/biography#service' },
+  { label: 'Languages & Hobbies', to: '/biography#personal' },
+  { label: 'Career Timeline', to: '/career#timeline' },
+  { label: 'Work History', to: '/career#work-history' },
+  { label: 'Recent Assignments', to: '/career#recent-assignments' },
+  { label: 'Operational Experience', to: '/career#operational-experience' },
+  { label: 'Volunteer Service', to: '/achievements#volunteer-service' },
+  { label: 'Regional Service', to: '/achievements#regional-service' },
+  { label: 'Decorations', to: '/awards#decorations' },
+  { label: 'Professional Development', to: '/education#professional-development' },
+  { label: 'Military Diplomas', to: '/education#military-diplomas' },
+  { label: 'UNITAR-POCI', to: '/education#unitar-poci' },
+  { label: 'Professional Courses', to: '/education#professional-courses' },
+  { label: 'Gallery', to: '/gallery' }
+]
+
+export const biographyCategoryLinks: CategoryLink[] = [
+  { label: 'Overview', to: '#overview' },
+  { label: 'Biographic Form', to: '#details' },
+  { label: 'Service Profile', to: '#service' },
+  { label: 'Languages', to: '#languages' },
+  { label: 'Hobbies', to: '#hobbies' }
+]
+
+export const careerCategoryLinks: CategoryLink[] = [
+  { label: 'Timeline', to: '#timeline' },
+  { label: 'Detailed Work History', to: '#work-history' },
+  { label: 'Recent Assignments', to: '#recent-assignments' },
+  { label: 'Operational Experience', to: '#operational-experience' }
+]
+
+export const achievementCategoryLinks: CategoryLink[] = [
+  { label: 'Highlights', to: '#highlights' },
+  { label: 'Volunteer Service', to: '#volunteer-service' },
+  { label: 'Regional Service', to: '#regional-service' }
+]
+
+export const awardCategoryLinks: CategoryLink[] = [
+  { label: 'Decorations', to: '#decorations' }
+]
+
+export const educationCategoryLinks: CategoryLink[] = [
+  { label: 'Professional Development', to: '#professional-development' },
+  { label: 'Military Diplomas', to: '#military-diplomas' },
+  { label: 'UNITAR-POCI', to: '#unitar-poci' },
+  { label: 'Professional Courses', to: '#professional-courses' }
 ]
 
 export const welcomeFeatureImages = {

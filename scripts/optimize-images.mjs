@@ -98,7 +98,12 @@ async function main() {
     console.log(`optimized ${relativePath}`)
   }
 
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+  const nextManifest = `${JSON.stringify(manifest, null, 2)}\n`
+  const previousManifestText = `${JSON.stringify(previousManifest, null, 2)}\n`
+
+  if (nextManifest !== previousManifestText) {
+    await writeFile(manifestPath, nextManifest)
+  }
 }
 
 async function findSourceImages(directory) {

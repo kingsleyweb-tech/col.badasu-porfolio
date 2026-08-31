@@ -46,6 +46,7 @@ function AppShell() {
           <Route path="/awards" element={<Awards />} />
           <Route path="/education" element={<Education />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/gallery/:collectionSlug" element={<Gallery />} />
         </Routes>
       </main>
       {showFooter && <Footer onQrModalOpen={() => setQrModalOpen(true)} />}

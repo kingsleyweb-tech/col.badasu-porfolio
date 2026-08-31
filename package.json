@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:vite": "vite",
+    "dev:api": "node --env-file=.env scripts/dev-api-server.mjs",
     "optimize-images": "node scripts/optimize-images.mjs",
     "build": "npm run optimize-images && tsc -b && vite build",
     "lint": "eslint .",

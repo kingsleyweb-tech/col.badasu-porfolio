@@ -23,7 +23,7 @@ The site is designed to feel professional, personal, and responsive, with subtle
 - Personal hero section for Colonel Badasu
 - Animated hero text and image slideshow
 - Hero slideshow changes every 7 seconds
-- Local image assets only
+- Cloudinary-backed Gallery collections with a local optimized fallback
 - Lazy loading for below-the-fold images
 - First hero image preload for faster initial rendering
 - Reusable Back button on internal pages
@@ -89,4 +89,6 @@ The application uses supplied profile content and placeholder wording where full
 
 ## Image Notes
 
-All images should remain local to the project, preferably inside `src/assets/images/`. When adding new images, include sensible alt text and dimensions in the data file where appropriate to help prevent layout shifts.
+The public Gallery reads Cloudinary folders through the Vercel serverless endpoint in `api/gallery.js`. Set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, and optionally `CLOUDINARY_GALLERY_ROOT` in Vercel or a local `.env` file. Never expose `CLOUDINARY_API_SECRET` through `VITE_` variables or frontend code.
+
+Local images in `src/assets/images/` remain available as a development fallback and are optimized by `scripts/optimize-images.mjs`.

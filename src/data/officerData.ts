@@ -125,13 +125,13 @@ export const biographicDetails: DetailItem[] = [
 ]
 
 export const images: ImageAsset[] = [
-  imageAsset('hero/a1.png', 'Colonel Badasu portrait for personal portfolio', 'Official portrait placeholder'),
-  imageAsset('hero/a2.png', 'Colonel Badasu professional service image', 'Ceremonial image placeholder'),
-  imageAsset('hero/a3.png', 'Colonel Badasu career service image', 'Command appointment placeholder'),
-  imageAsset('hero/a4.png', 'Colonel Badasu operational service image', 'Operational service placeholder'),
-  imageAsset('hero/a5.png', 'Colonel Badasu professional engagement image', 'Professional engagement placeholder'),
-  imageAsset('hero/a6.png', 'Colonel Badasu training and education image', 'Training and education placeholder'),
-  imageAsset('hero/a7.png', 'Colonel Badasu gallery image', 'Gallery image placeholder')
+  imageAsset('hero/a1.png', 'Colonel Badasu official portrait', 'Official portrait'),
+  imageAsset('hero/a4.png', 'Colonel Badasu operational service image', 'Operational service'),
+  imageAsset('hero/a5.png', 'Colonel Badasu professional engagement image', 'Professional engagement'),
+  imageAsset('hero/graduation.jpeg', 'Colonel Badasu at University of London graduation ceremony', 'Academic Convocation & University of London Milestones'),
+  imageAsset('hero/tv3.jpeg', 'Colonel Badasu during national television appearance', 'National Television Appearances & Media Features'),
+  imageAsset('hero/ecowas.jpeg', 'Colonel Badasu at ECOWAS peace support mission', 'ECOWAS Peace Support Operations'),
+  imageAsset('hero/boundary.jpeg', 'Colonel Badasu during border security and tactical operations', 'Border Security & Tactical Operations')
 ]
 
 // Separate gallery images (a1–a23) — update as more images are added to gallery folder

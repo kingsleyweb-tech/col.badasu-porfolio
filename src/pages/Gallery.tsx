@@ -249,14 +249,7 @@ async function fetchGallery(query = ''): Promise<GalleryResponse> {
 }
 
 function buildLocalCollections(): GalleryCollection[] {
-  const images = getLocalImages('portfolio-gallery')
-
-  return [{
-    slug: 'portfolio-gallery',
-    name: 'Portfolio Gallery',
-    count: images.length,
-    coverImage: images[0]
-  }]
+  return []
 }
 
 function getLocalImages(slug: string): GalleryImage[] {

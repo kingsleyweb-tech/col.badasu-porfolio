@@ -70,7 +70,7 @@ export default async function handler(request, response) {
 
 async function listFolders(cloudName, apiKey, apiSecret) {
   const data = await cloudinaryFetch(cloudName, apiKey, apiSecret, `/folders/${encodePath(rootFolder)}`)
-  const ignoredFolders = new Set(['portfolio', 'portfolio website', 'portfolio-website', 'website', 'hero', 'career', 'achievements', 'gallery', '__optimized__'])
+  const ignoredFolders = new Set(['portfolio', 'portfolio website', 'portfolio-website', 'website', 'site', 'hero', 'career', 'achievements', 'gallery', '__optimized__'])
   return (data.folders || [])
     .filter((folder) => !ignoredFolders.has(folder.name.toLowerCase().trim()))
     .map((folder) => ({
@@ -117,17 +117,25 @@ async function listResources(cloudName, apiKey, apiSecret, prefix, nextCursor, m
 
 async function cloudinaryFetch(cloudName, apiKey, apiSecret, path) {
   const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
-  const result = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}${path}`, {
-    headers: {
-      Authorization: `Basic ${credentials}`
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+
+  try {
+    const result = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}${path}`, {
+      headers: {
+        Authorization: `Basic ${credentials}`
+      },
+      signal: controller.signal
+    })
+
+    if (!result.ok) {
+      throw new Error(`Cloudinary request failed: ${result.status}`)
     }
-  })
 
-  if (!result.ok) {
-    throw new Error(`Cloudinary request failed: ${result.status}`)
+    return await result.json()
+  } finally {
+    clearTimeout(timeout)
   }
-
-  return await result.json()
 }
 
 function imageFromResource(cloudName, resource, folderName) {

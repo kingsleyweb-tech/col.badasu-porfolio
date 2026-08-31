@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import Lightbox from 'yet-another-react-lightbox'
 import Counter from 'yet-another-react-lightbox/plugins/counter'
 import 'yet-another-react-lightbox/plugins/counter.css'
+import { BackButton } from '../components/BackButton'
 import { SectionHeading } from '../components/SectionHeading'
 import { galleryImages, officer } from '../data/officerData'
 import { PageHero } from './Biography'
@@ -71,6 +72,7 @@ function GalleryCollectionsView() {
       <PageHero eyebrow="Gallery" title="Gallery" description="A visual journey through Colonel Badasu's military career, professional service, international assignments, leadership, training, and distinguished moments." />
       <section className="section">
         <div className="container">
+          <BackButton />
           <SectionHeading eyebrow="Collections" title="Military Career Archive" />
           {status === 'loading' && <GalleryNotice icon="loading" text="Preparing gallery collections..." />}
           {status === 'error' && <GalleryNotice text="Gallery collections are temporarily unavailable." />}
@@ -175,9 +177,9 @@ function GalleryCollectionView({ collectionSlug }: { collectionSlug: string }) {
       />
       <section className="section">
         <div className="container">
-          <button className="back-button" type="button" onClick={() => navigate('/gallery')}>
+          <button className="back-button" type="button" onClick={() => navigate('/')}>
             <ArrowLeft size={18} aria-hidden="true" />
-            <span>Back to Gallery</span>
+            <span>Back to Home</span>
           </button>
 
           <div className="gallery-collection-header">

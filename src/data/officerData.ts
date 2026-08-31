@@ -766,7 +766,6 @@ export const homeCategoryLinks: CategoryLink[] = [
 
 export const biographyCategoryLinks: CategoryLink[] = [
   { label: 'Overview', to: '#overview' },
-  { label: 'Biographic Form', to: '#details' },
   { label: 'Service Profile', to: '#service' },
   { label: 'Languages', to: '#languages' },
   { label: 'Hobbies', to: '#hobbies' }

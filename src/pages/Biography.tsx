@@ -2,7 +2,7 @@ import { BackButton } from '../components/BackButton'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { biographicDetails, biographyCategoryLinks, images, officer, promotionDetails } from '../data/officerData'
+import { biographyCategoryLinks, images, officer, promotionDetails } from '../data/officerData'
 
 export function Biography() {
   return (
@@ -30,17 +30,6 @@ export function Biography() {
               </div>
             </section>
 
-            <section id="details">
-              <SectionHeading eyebrow="Biographic Form" title="Personal and Service Details" />
-              <div className="detail-grid">
-                {biographicDetails.map((item) => (
-                  <div className="detail-card" key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </div>
-                ))}
-              </div>
-            </section>
 
             <section id="service">
               <SectionHeading eyebrow="Service Profile" title="Leadership, Operations, and Administration" />

@@ -6,7 +6,7 @@ import { OptimizedImage } from '../components/OptimizedImage'
 import { brandAssets, welcomeFeatureImages } from '../data/officerData'
 
 export function Welcome() {
-  const [seconds, setSeconds] = useState(9)
+  const [seconds, setSeconds] = useState(15)
   const navigate = useNavigate()
   const timerRef = useRef<number | null>(null)
   const shouldReduceMotion = useReducedMotion()
@@ -19,7 +19,7 @@ export function Welcome() {
   }
 
   useEffect(() => {
-    // 9-second automatic redirect countdown
+    // 15-second automatic redirect countdown
     timerRef.current = window.setInterval(() => {
       setSeconds((prev) => {
         if (prev <= 1) {
@@ -100,14 +100,6 @@ export function Welcome() {
           ★
         </motion.div>
 
-        {/* Center Shield/Crest Logo */}
-        <motion.div variants={fadeUpVariants} className="welcome-page__crest-wrapper">
-          <img 
-            src="/pwa.png" 
-            alt="Colonel Badasu Crest" 
-            className="welcome-page__crest-logo" 
-          />
-        </motion.div>
 
         {/* Decorative Divider */}
         <motion.div variants={fadeInVariants} className="welcome-page__divider">

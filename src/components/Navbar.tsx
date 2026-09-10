@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { brandAssets, officer } from '../data/officerData'
 import { usePortfolio } from '../context/PortfolioContext'
 import { OptimizedImage } from './OptimizedImage'
+import { resolveImageUrl } from '../utils/imageResolver'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -34,7 +35,7 @@ export function Navbar() {
           <span className="brand__crest">
             {customLogoUrl ? (
               <img
-                src={customLogoUrl}
+                src={resolveImageUrl(customLogoUrl)}
                 alt="Ghana Armed Forces crest"
                 style={{ width: '42px', height: '42px', objectFit: 'contain' }}
               />

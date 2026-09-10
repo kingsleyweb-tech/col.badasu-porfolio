@@ -1,31 +1,81 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { User } from 'firebase/auth'
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+  updateEmail as updateFirebaseEmail,
+  updatePassword as updateFirebasePassword,
+} from 'firebase/auth'
+import { auth, db } from '../lib/firebase'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
+
+export type AdminCredentials = {
+  email: string
+  pass: string
+  updatedAt?: string
+}
 
 type AuthContextType = {
   user: User | null
   isDemoAdmin: boolean
   loading: boolean
   error: string | null
+  adminCredentials: AdminCredentials
   login: (email: string, pass: string) => Promise<void>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  updateCredentials: (newEmail: string, newPass: string) => Promise<void>
   clearError: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const DEMO_EMAIL = 'admin@colonelbadasu.com'
-const DEMO_PASS = 'Colonel2026!'
+const DEFAULT_EMAIL = 'admin@colonelbadasu.com'
+const DEFAULT_PASS = 'Colonel2026!'
+const STORAGE_KEY = 'colonel_admin_credentials_v2'
+
+function getStoredCredentials(): AdminCredentials {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  if (saved) {
+    try {
+      return JSON.parse(saved)
+    } catch {
+      // ignore
+    }
+  }
+  return { email: DEFAULT_EMAIL, pass: DEFAULT_PASS }
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
+  const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>(getStoredCredentials)
   const [isDemoAdmin, setIsDemoAdmin] = useState<boolean>(() => {
     return localStorage.getItem('colonel_demo_auth') === 'true'
   })
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Sync credentials from Firestore on boot if available
+    async function syncFirestoreCredentials() {
+      try {
+        const docRef = doc(db, 'portfolio', 'admin_account')
+        const snap = await getDoc(docRef)
+        if (snap.exists()) {
+          const data = snap.data() as AdminCredentials
+          if (data.email && data.pass) {
+            setAdminCredentials(data)
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+          }
+        }
+      } catch {
+        // ignore offline errors
+      }
+    }
+    syncFirestoreCredentials()
+  }, [])
 
   useEffect(() => {
     try {
@@ -43,19 +93,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null)
     setLoading(true)
 
+    const cleanInputEmail = email.trim().toLowerCase()
+    const currentCreds = getStoredCredentials()
+    const cleanStoredEmail = currentCreds.email.trim().toLowerCase()
+
     try {
-      // Primary: Firebase Email/Password Auth
+      // Primary: Try Firebase Email/Password Auth
       await signInWithEmailAndPassword(auth, email, pass)
       setIsDemoAdmin(false)
       localStorage.removeItem('colonel_demo_auth')
     } catch (err: unknown) {
-      // Fallback fallback check for initial admin onboarding if Firebase project isn't provisioned yet
-      if (email.trim().toLowerCase() === DEMO_EMAIL.toLowerCase() && pass === DEMO_PASS) {
+      // Fallback check against saved dynamic credentials
+      if (cleanInputEmail === cleanStoredEmail && pass === currentCreds.pass) {
         setIsDemoAdmin(true)
         localStorage.setItem('colonel_demo_auth', 'true')
       } else {
         const firebaseErr = err as { code?: string; message?: string }
-        if (firebaseErr.code === 'auth/invalid-credential' || firebaseErr.code === 'auth/user-not-found' || firebaseErr.code === 'auth/wrong-password') {
+        if (
+          firebaseErr.code === 'auth/invalid-credential' ||
+          firebaseErr.code === 'auth/user-not-found' ||
+          firebaseErr.code === 'auth/wrong-password'
+        ) {
           setError('Invalid administrator email or password. Please try again.')
         } else if (firebaseErr.code === 'auth/too-many-requests') {
           setError('Too many failed login attempts. Please wait a few minutes before retrying.')
@@ -66,6 +124,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const updateCredentials = async (newEmail: string, newPass: string) => {
+    setError(null)
+    try {
+      const cleanEmail = newEmail.trim()
+      const updated: AdminCredentials = {
+        email: cleanEmail,
+        pass: newPass,
+        updatedAt: new Date().toISOString(),
+      }
+
+      // 1. Update Firebase Auth user if authenticated via Firebase
+      if (auth.currentUser) {
+        if (cleanEmail !== auth.currentUser.email) {
+          await updateFirebaseEmail(auth.currentUser, cleanEmail).catch(() => {})
+        }
+        if (newPass) {
+          await updateFirebasePassword(auth.currentUser, newPass).catch(() => {})
+        }
+      }
+
+      // 2. Update local state, localStorage & active user object
+      setAdminCredentials(updated)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+
+      if (isDemoAdmin || !auth.currentUser) {
+        setUser({ email: cleanEmail } as any)
+      }
+
+      // 3. Persist to Firestore document
+      try {
+        const docRef = doc(db, 'portfolio', 'admin_account')
+        await setDoc(docRef, updated, { merge: true })
+      } catch {
+        // ignore offline errors
+      }
+    } catch (err: unknown) {
+      const firebaseErr = err as { message?: string }
+      setError(firebaseErr.message || 'Failed to update credentials.')
+      throw err
     }
   }
 
@@ -105,10 +205,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isDemoAdmin,
         loading,
         error,
+        adminCredentials,
         login,
         logout,
         resetPassword,
-        clearError
+        updateCredentials,
+        clearError,
       }}
     >
       {children}

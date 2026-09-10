@@ -1,29 +1,36 @@
 import React, { useState, useEffect } from 'react'
-import { UserCheck, Save, Plus, Trash2, Loader2 } from 'lucide-react'
+import { UserCheck, Save, Plus, Trash2, Loader2, UploadCloud, User } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
+import { ImageReplacer } from '../components/ImageReplacer'
+import { resolveImageUrl } from '../../utils/imageResolver'
 
 export const BiographyAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
 
   const [biographyText, setBiographyText] = useState(data.officer.biography.join('\n\n'))
   const [details, setDetails] = useState(data.biographicDetails)
+  const [profileImageUrl, setProfileImageUrl] = useState(data.officer.profileImageUrl || '')
+  const [uploadingProfile, setUploadingProfile] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
 
   useEffect(() => {
     setBiographyText(data.officer.biography.join('\n\n'))
     setDetails(data.biographicDetails)
+    setProfileImageUrl(data.officer.profileImageUrl || '')
   }, [data])
 
   const isDirty =
     biographyText !== data.officer.biography.join('\n\n') ||
+    profileImageUrl !== (data.officer.profileImageUrl || '') ||
     JSON.stringify(details) !== JSON.stringify(data.biographicDetails)
 
   const handleReset = () => {
     setBiographyText(data.officer.biography.join('\n\n'))
     setDetails(data.biographicDetails)
+    setProfileImageUrl(data.officer.profileImageUrl || '')
   }
 
   const handleDetailChange = (index: number, field: 'label' | 'value', val: string) => {
@@ -40,22 +47,68 @@ export const BiographyAdmin: React.FC = () => {
     setDetails(details.filter((_, i) => i !== index))
   }
 
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return
+    const file = e.target.files[0]
+    setUploadingProfile(true)
+    try {
+      // Delete old image if it was previously uploaded
+      const oldPublicId = (data.officer as { profileImagePublicId?: string }).profileImagePublicId
+      if (oldPublicId) {
+        await fetch('/api/delete-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publicId: oldPublicId }),
+        }).catch(() => {})
+      }
+
+      const reader = new FileReader()
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string)
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: base64, folder: 'site/biography', filename: 'colonel-badasu-portrait' }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        const newUrl = `${json.url}?t=${Date.now()}`
+        setProfileImageUrl(newUrl)
+        // Immediately save so it's live on the website
+        await updatePortfolio({
+          officer: {
+            ...data.officer,
+            profileImageUrl: newUrl,
+            profileImagePublicId: json.publicId || '',
+          } as typeof data.officer & { profileImageUrl: string; profileImagePublicId: string },
+        })
+      } else {
+        alert('Failed to upload portrait image.')
+      }
+    } catch {
+      alert('Error uploading profile image.')
+    } finally {
+      setUploadingProfile(false)
+    }
+  }
+
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setSaving(true)
-
     try {
       const bioArray = biographyText
         .split('\n\n')
         .map((p) => p.trim())
         .filter(Boolean)
-
       await updatePortfolio({
         officer: {
           ...data.officer,
-          biography: bioArray
+          biography: bioArray,
+          profileImageUrl,
         },
-        biographicDetails: details
+        biographicDetails: details,
       })
       setShowSuccessModal(true)
     } catch {
@@ -67,36 +120,54 @@ export const BiographyAdmin: React.FC = () => {
 
   return (
     <div className="admin-page">
-      <UnsavedChangesBanner
-        isDirty={isDirty}
-        onSave={() => handleSave()}
-        onReset={handleReset}
-        isSaving={saving}
-      />
+      <UnsavedChangesBanner isDirty={isDirty} onSave={() => handleSave()} onReset={handleReset} isSaving={saving} />
 
       <div className="admin-page-header admin-page-header--action">
         <div className="admin-page-header__title">
-          <div className="admin-header-icon">
-            <UserCheck size={24} />
-          </div>
+          <div className="admin-header-icon"><UserCheck size={24} /></div>
           <div>
             <h1>Biography Management</h1>
-            <p>Edit Colonel Badasu's main biography narrative and official biographic details table.</p>
+            <p>Edit Colonel Badasu's biography narrative, profile portrait, and official biographic details.</p>
           </div>
         </div>
-
         <button type="button" className="btn btn--primary" onClick={() => handleSave()} disabled={saving}>
           {saving ? <Loader2 size={18} className="admin-spinner" /> : <Save size={18} />}
           <span>{saving ? 'Saving...' : 'Save Changes'}</span>
         </button>
       </div>
 
+      {/* Profile Image */}
+      <ImageReplacer
+        label="Biography Profile Portrait"
+        aspectRatioHint="Appears as Col. Badasu's official portrait on the Biography page."
+        currentUrl={profileImageUrl}
+        folder="site/biography"
+        onImageReplaced={async (newUrl) => {
+          setProfileImageUrl(newUrl)
+          await updatePortfolio({
+            officer: {
+              ...data.officer,
+              profileImageUrl: newUrl
+            }
+          })
+        }}
+        onImageDeleted={async () => {
+          setProfileImageUrl('')
+          await updatePortfolio({
+            officer: {
+              ...data.officer,
+              profileImageUrl: ''
+            }
+          })
+        }}
+      />
+
+      {/* Biography Text */}
       <div className="admin-card" style={{ marginBottom: '24px' }}>
         <div className="admin-card__header">
           <h3>Main Biography Narrative</h3>
           <p>Separate paragraphs with a blank line (double enter).</p>
         </div>
-
         <div className="admin-form-group">
           <textarea
             value={biographyText}
@@ -107,6 +178,7 @@ export const BiographyAdmin: React.FC = () => {
         </div>
       </div>
 
+      {/* Biographic Details Table */}
       <div className="admin-card">
         <div className="admin-card__header">
           <div>
@@ -168,9 +240,8 @@ export const BiographyAdmin: React.FC = () => {
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         title="Biography Saved"
-        message="Biography details updated and applied live to your website."
+        message="Biography details and portrait updated and applied live to your website."
       />
     </div>
   )
 }
-

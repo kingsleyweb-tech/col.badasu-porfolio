@@ -1,10 +1,17 @@
 import { AchievementCard } from '../components/AchievementCard'
 import { InfoCard } from '../components/InfoCard'
 import { SectionHeading } from '../components/SectionHeading'
-import { achievementCategoryLinks, achievements, recentAssignments, volunteerExperience } from '../data/officerData'
+import { achievementCategoryLinks } from '../data/officerData'
+import { usePortfolio } from '../context/PortfolioContext'
 import { PageHero } from './Biography'
 
 export function Achievements() {
+  const { data } = usePortfolio()
+
+  const achievements = data.achievements || []
+  const volunteerExperience = data.volunteerExperience || []
+  const recentAssignments = data.recentAssignments || []
+
   return (
     <>
       <PageHero eyebrow="Achievements" title="Professional Achievements" description="A refined presentation of major contributions in peacekeeping, security management, strategic leadership, mentorship, and regional cooperation." />
@@ -20,8 +27,14 @@ export function Achievements() {
         <div className="container">
           <SectionHeading eyebrow="Highlights" title="Selected Areas of Contribution" />
           <div className="achievement-list">
-            {achievements.map((achievement) => (
-              <AchievementCard key={achievement.title} {...achievement} />
+            {achievements.map((achievement, idx) => (
+              <AchievementCard
+                key={achievement.title + idx}
+                title={achievement.title}
+                description={achievement.description}
+                category={achievement.category}
+                to={achievement.to}
+              />
             ))}
           </div>
         </div>
@@ -31,12 +44,12 @@ export function Achievements() {
         <div className="container">
           <SectionHeading eyebrow="Volunteer Experience" title="Community and Volunteer Service" />
           <div className="work-list">
-            {volunteerExperience.map((item) => (
-              <article className="work-card" key={`${item.location}-${item.period}`}>
+            {volunteerExperience.map((item, idx) => (
+              <article className="work-card" key={`${item.location}-${idx}`}>
                 <span>{item.period}</span>
                 <h3>{item.location}</h3>
-                {item.description.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
+                {item.description.map((paragraph, pIdx) => (
+                  <p key={pIdx}>{paragraph}</p>
                 ))}
               </article>
             ))}
@@ -48,8 +61,8 @@ export function Achievements() {
         <div className="container">
           <SectionHeading eyebrow="Regional Service" title="Boundary and Cross-Border Cooperation" />
           <div className="info-grid">
-            {recentAssignments.slice(8).map((assignment) => (
-              <InfoCard key={assignment} title={assignment}>
+            {recentAssignments.slice(8).map((assignment, idx) => (
+              <InfoCard key={idx} title={assignment}>
                 <p>Listed under last assignments during the previous five years.</p>
               </InfoCard>
             ))}

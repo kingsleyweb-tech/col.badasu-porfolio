@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Trash2, UploadCloud, Loader2, CheckCircle2, AlertCircle, ImageIcon, Eye, X } from 'lucide-react'
+import { resolveImageUrl } from '../../utils/imageResolver'
+import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
+import { usePortfolio } from '../../context/PortfolioContext'
 
 export interface CollectionItem {
   slug: string
@@ -28,6 +31,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
   onClose,
   onCollectionUpdated
 }) => {
+  const { data } = usePortfolio()
   const [images, setImages] = useState<CollectionImage[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -122,16 +126,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
     setToastMessage(null)
 
     try {
-      const res = await fetch('/api/delete-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publicId: image.publicId })
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to delete image.')
-      }
-
+      await deleteCloudinaryImageIfUnused(image.publicId, data)
       setImages((prev) => prev.filter((img) => img.id !== image.id))
       setToastMessage({ text: `Photo successfully deleted from "${collection.name}".`, type: 'success' })
       if (onCollectionUpdated) onCollectionUpdated()
@@ -341,7 +336,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
                   >
                     <div style={{ position: 'relative', width: '100%', height: '150px', backgroundColor: '#e2e8f0' }}>
                       <img
-                        src={img.thumbnailUrl}
+                        src={resolveImageUrl(img.thumbnailUrl)}
                         alt={img.alt}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
@@ -474,7 +469,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
             <X size={28} />
           </button>
           <img
-            src={previewImage.largeUrl}
+            src={resolveImageUrl(previewImage.largeUrl)}
             alt={previewImage.title}
             style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px' }}
             onClick={(e) => e.stopPropagation()}

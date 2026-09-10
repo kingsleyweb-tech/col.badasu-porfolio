@@ -1,13 +1,19 @@
 import { CareerTimeline } from '../components/CareerTimeline'
 import { InfoCard } from '../components/InfoCard'
 import { SectionHeading } from '../components/SectionHeading'
-import { careerCategoryLinks, operations, recentAssignments, timeline, workHistory } from '../data/officerData'
+import { careerCategoryLinks, timeline, workHistory as defaultWorkHistory, recentAssignments as defaultRecentAssignments, operations as defaultOperations } from '../data/officerData'
+import { usePortfolio } from '../context/PortfolioContext'
 import { PageHero } from './Biography'
 
 export function Career() {
+  const { data } = usePortfolio()
+  const workHistory = data?.workHistory || defaultWorkHistory
+  const recentAssignments = data?.recentAssignments || defaultRecentAssignments
+  const operations = data?.operations || defaultOperations
+
   return (
     <>
-      <PageHero eyebrow="Career" title="Military Career History" description="A chronological record of appointments, command responsibilities, operational service, and senior staff duties from the supplied PDF content." />
+      <PageHero eyebrow="Career" title="Military Career History" description="A chronological record of appointments, command responsibilities, operational service, and senior staff duties." />
       <nav className="category-links" aria-label="Career categories">
         <div className="container category-links__track">
           {careerCategoryLinks.map((link) => (
@@ -27,13 +33,13 @@ export function Career() {
         <div className="container">
           <SectionHeading eyebrow="Work History" title="Detailed Work History" />
           <div className="work-list">
-            {workHistory.map((item) => (
-              <article className="work-card" key={`${item.title}-${item.period}`}>
+            {workHistory.map((item, idx) => (
+              <article className="work-card" key={`${item.title}-${item.period}-${idx}`}>
                 <span>{item.period}</span>
                 <h3>{item.title}</h3>
                 <strong>{item.location}</strong>
-                {item.description.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
+                {item.description.map((paragraph, pIdx) => (
+                  <p key={pIdx}>{paragraph}</p>
                 ))}
               </article>
             ))}
@@ -45,8 +51,8 @@ export function Career() {
         <div className="container">
           <SectionHeading eyebrow="Recent Assignments" title="Last Assignments During the Previous Five Years" />
           <div className="info-grid">
-            {recentAssignments.map((assignment) => (
-              <InfoCard key={assignment} title={assignment}>
+            {recentAssignments.map((assignment, idx) => (
+              <InfoCard key={idx} title={assignment}>
                 <p>Listed in the supplied biographic form.</p>
               </InfoCard>
             ))}
@@ -58,8 +64,8 @@ export function Career() {
         <div className="container">
           <SectionHeading eyebrow="Operational Experience" title="United Nations Peacekeeping Operations" />
           <div className="info-grid">
-            {operations.map((operation) => (
-              <InfoCard key={operation} title={operation}>
+            {operations.map((operation, idx) => (
+              <InfoCard key={idx} title={operation}>
                 <p>Operational experience listed in the supplied biographic form.</p>
               </InfoCard>
             ))}

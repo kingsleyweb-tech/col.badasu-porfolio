@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { QrModal } from '../../components/QrModal'
 
 export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onToggleSidebar }) => {
-  const { user, isDemoAdmin } = useAuth()
+  const { user, isDemoAdmin, adminCredentials } = useAuth()
   const [timeStr, setTimeStr] = useState('')
   const [showQrModal, setShowQrModal] = useState(false)
 
@@ -27,7 +27,7 @@ export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onTogg
     return () => clearInterval(interval)
   }, [])
 
-  const adminEmail = user?.email || (isDemoAdmin ? 'admin@colonelbadasu.com' : 'Administrator')
+  const adminEmail = user?.email || adminCredentials.email || 'admin@colonelbadasu.com'
   const initial = adminEmail.charAt(0).toUpperCase() || 'C'
 
   return (

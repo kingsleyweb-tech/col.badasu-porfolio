@@ -1,3 +1,5 @@
+import { resolveImageUrl } from '../utils/imageResolver'
+
 const CLOUD_NAME = 'lxjudwn8'
 const ROOT_FOLDER = 'colonel-badasu/site'
 
@@ -802,27 +804,27 @@ export const welcomeFeatureImages = {
 }
 
 function imageAsset(relativePath: string, alt: string, caption: string, version = 'v2'): ImageAsset {
+  const resolved = resolveImageUrl(relativePath)
+
   const cleanPath = relativePath.replace(/^\//, '').replace(/\.[^.]+$/, '')
   const publicPath = cleanPath.includes('/') ? cleanPath : `root/${cleanPath}`
   const baseCloudinary = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload`
   const vPath = version ? `${version}/` : ''
 
-  const src = `${baseCloudinary}/f_auto,q_auto,w_1600/${vPath}${ROOT_FOLDER}/${publicPath}`
-  const fallbackSrc = `${baseCloudinary}/f_auto,q_auto/${vPath}${ROOT_FOLDER}/${publicPath}`
-  const thumbnailSrc = `${baseCloudinary}/f_auto,q_auto,c_fill,g_auto,w_600,h_450/${vPath}${ROOT_FOLDER}/${publicPath}`
-  const placeholderSrc = `${baseCloudinary}/f_auto,q_auto,w_32/${vPath}${ROOT_FOLDER}/${publicPath}`
-  
-  const widths = [480, 768, 1200, 1600]
-  const srcSet = widths
-    .map((w) => `${baseCloudinary}/f_auto,q_auto,w_${w}/${vPath}${ROOT_FOLDER}/${publicPath} ${w}w`)
-    .join(', ')
+  const cSrc = `${baseCloudinary}/f_auto,q_auto,w_1600/${vPath}${ROOT_FOLDER}/${publicPath}`
+  const cFallback = `${baseCloudinary}/f_auto,q_auto/${vPath}${ROOT_FOLDER}/${publicPath}`
+
+  const src = resolved || cSrc
+  const fallbackSrc = resolved || cFallback
+  const thumbnailSrc = resolved || cFallback
+  const placeholderSrc = resolved || cFallback
 
   return {
     src,
     fallbackSrc,
     thumbnailSrc,
     placeholderSrc,
-    srcSet,
+    srcSet: '',
     alt,
     caption,
     width: 1200,

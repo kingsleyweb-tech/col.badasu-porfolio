@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { CollectionDetailModal, type CollectionItem } from '../components/CollectionDetailModal'
+import { resolveImageUrl } from '../../utils/imageResolver'
 
 export const EveryoneSection: React.FC = () => {
   const { updatePortfolio } = usePortfolio()
@@ -287,7 +288,7 @@ export const EveryoneSection: React.FC = () => {
                   >
                     <div className="admin-collection-card__media">
                       {col.coverImage ? (
-                        <img src={col.coverImage.thumbnailUrl} alt={col.coverImage.alt} />
+                        <img src={resolveImageUrl(col.coverImage.thumbnailUrl)} alt={col.coverImage.alt} />
                       ) : (
                         <div style={{ width: '100%', height: '100%', background: 'var(--admin-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <ImageIcon size={32} style={{ opacity: 0.3 }} />
@@ -358,7 +359,7 @@ export const EveryoneSection: React.FC = () => {
                   >
                     <div className="admin-recent-image-card__frame">
                       {col.coverImage ? (
-                        <img src={col.coverImage.thumbnailUrl} alt={col.name} />
+                        <img src={resolveImageUrl(col.coverImage.thumbnailUrl)} alt={col.name} />
                       ) : (
                         <div style={{ width: '100%', height: '100%', background: 'var(--admin-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <ImageIcon size={24} style={{ opacity: 0.3 }} />

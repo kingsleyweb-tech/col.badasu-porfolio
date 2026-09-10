@@ -1,10 +1,12 @@
 import { ArrowRight } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { images as defaultImages, officer as defaultOfficer } from '../data/officerData'
 import { ImageSlideshow } from './ImageSlideshow'
 import { usePortfolio } from '../context/PortfolioContext'
+import type { ImageAsset } from '../data/officerData'
+import { resolveImageUrl } from '../utils/imageResolver'
 
 const quickLinks = [
   { label: 'Home', to: '/' },
@@ -13,7 +15,7 @@ const quickLinks = [
   { label: 'Achievements', to: '/achievements' },
   { label: 'Awards', to: '/awards' },
   { label: 'Education', to: '/education' },
-  { label: 'Gallery', to: '/gallery' }
+  { label: 'Gallery', to: '/gallery' },
 ]
 
 export function Hero() {
@@ -24,55 +26,81 @@ export function Hero() {
   const heroData = data?.hero || {
     title: `${officer.rank} ${officer.name}`,
     personalIntro: officer.shortBio,
-    supportingText: 'Senior Army Officer of the Ghana Armed Forces specializing in UN Peacekeeping, International Security, Crisis Management & Strategic Operations.'
+    supportingText: 'Senior Army Officer of the Ghana Armed Forces specializing in UN Peacekeeping, International Security, Crisis Management & Strategic Operations.',
+    slides: [],
   }
+
+  // Build slide images: use context slides if available, otherwise fall back to hardcoded defaults
+  const [slideImages, setSlideImages] = useState<ImageAsset[]>(defaultImages)
+
+  useEffect(() => {
+    if (heroData.slides && heroData.slides.length > 0) {
+      const dynamicImages: ImageAsset[] = heroData.slides.map((slide, idx) => {
+        const rawUrl = typeof slide === 'string' ? slide : slide.url
+        const url = resolveImageUrl(rawUrl)
+        return {
+          src: url,
+          fallbackSrc: url,
+          thumbnailSrc: url,
+          placeholderSrc: url,
+          srcSet: `${url} 1200w`,
+          alt: `${officer.rank} ${officer.name} - Photo ${idx + 1}`,
+          caption: `Photo ${idx + 1}`,
+          width: 1200,
+          height: 900,
+        }
+      })
+      setSlideImages(dynamicImages)
+    } else {
+      setSlideImages(defaultImages)
+    }
+  }, [heroData.slides, officer.rank, officer.name])
 
   const heroSlides = [
     {
       eyebrow: 'Personal Portfolio',
       title: heroData.title || `${officer.rank} ${officer.name}`,
-      text: heroData.personalIntro || 'A personal professional profile tracing my journey of military service, leadership, and continued dedication.'
+      text: heroData.personalIntro || 'A personal professional profile tracing my journey of military service, leadership, and continued dedication.',
     },
     {
       eyebrow: 'Service Record',
       title: 'A Journey of Service, Leadership and Dedication',
-      text: heroData.supportingText || `${officer.rank} ${officer.name}'s profile brings together supplied notes on his career, peace support service, education, and professional development.`
+      text: heroData.supportingText || `${officer.rank} ${officer.name}'s profile brings together supplied notes on his career, peace support service, education, and professional development.`,
     },
     {
       eyebrow: 'Command and Staff',
       title: `${officer.name} in Command and Staff Service`,
-      text: 'A profile page for his documented command responsibilities, headquarters administration, and multinational peace support experience.'
+      text: 'A profile page for his documented command responsibilities, headquarters administration, and multinational peace support experience.',
     },
     {
       eyebrow: 'Peace Support',
       title: 'His Peace Support Service',
-      text: 'A dedicated record of supplied United Nations and ECOWAS service references across multiple mission environments.'
+      text: 'A dedicated record of supplied United Nations and ECOWAS service references across multiple mission environments.',
     },
     {
       eyebrow: 'Institutional Service',
       title: 'Leadership Beyond the Field',
-      text: `A personal portfolio space for ${officer.rank} ${officer.name}'s professional work in security planning, operational coordination, training, and mentorship.`
+      text: `A personal portfolio space for ${officer.rank} ${officer.name}'s professional work in security planning, operational coordination, training, and mentorship.`,
     },
     {
       eyebrow: 'Professional Development',
       title: 'Prepared for Senior Responsibility',
-      text: 'A focused view of his supplied academic, military, and professional preparation without adding unverified claims.'
+      text: "A focused view of his supplied academic, military, and professional preparation without adding unverified claims.",
     },
     {
       eyebrow: 'Gallery',
       title: `${officer.rank} ${officer.name} in Pictures`,
-      text: 'Selected local images presented as part of his personal professional profile and service story.'
-    }
+      text: 'Selected local images presented as part of his personal professional profile and service story.',
+    },
   ]
 
   const slide = heroSlides[active] ?? heroSlides[0]
 
   return (
     <section className="hero-shell">
-      <ImageSlideshow images={defaultImages} active={active} onActiveChange={setActive} />
+      <ImageSlideshow images={slideImages} active={active} onActiveChange={setActive} />
       <div className="hero-shell__overlay" aria-hidden="true" />
 
-      {/* Full-width scrollable quick links strip at top of hero */}
       <div className="hero-quick-links" aria-label="Quick navigation">
         <span className="hero-quick-links__label">QUICK LINKS</span>
         <nav className="hero-quick-links__track" aria-label="Hero quick links">
@@ -90,7 +118,6 @@ export function Hero() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
       >
-
         <AnimatePresence mode="wait">
           <motion.div
             className="hero-shell__copy"

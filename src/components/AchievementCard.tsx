@@ -17,9 +17,11 @@ export function AchievementCard({ title, description, image, to }: AchievementCa
       <div>
         <h3>{title}</h3>
         <p>{description}</p>
-        <Link className="text-link" to={to}>
-          Read more <ArrowRight size={16} aria-hidden="true" />
-        </Link>
+        {to && (
+          <Link className="text-link" to={to}>
+            Read more <ArrowRight size={16} aria-hidden="true" />
+          </Link>
+        )}
       </div>
     </article>
   )

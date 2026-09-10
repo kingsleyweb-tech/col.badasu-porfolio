@@ -102,7 +102,22 @@ export const EducationAdmin: React.FC = () => {
 
         <div className="admin-grid-2">
           {profCerts.map((item, idx) => (
-            <div key={idx} className="admin-card-inner" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+            <div key={idx} className="admin-item-card">
+              <div className="admin-item-card__header">
+                <div className="admin-item-card__title">
+                  <strong className="admin-badge admin-badge--primary">#{idx + 1}</strong>
+                  <h3>{item.title}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="admin-icon-btn is-danger"
+                  onClick={() => setProfCerts(profCerts.filter((_, i) => i !== idx))}
+                  title="Delete certificate"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
               <div className="admin-form-group">
                 <label>Certificate Title</label>
                 <input
@@ -129,29 +144,17 @@ export const EducationAdmin: React.FC = () => {
                 />
               </div>
 
-              <div className="admin-form-row">
-                <div className="admin-form-group">
-                  <label>Period / Year</label>
-                  <input
-                    type="text"
-                    value={item.period}
-                    onChange={(e) => {
-                      const next = [...profCerts]
-                      next[idx].period = e.target.value
-                      setProfCerts(next)
-                    }}
-                  />
-                </div>
-                <div className="admin-form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm is-danger"
-                    onClick={() => setProfCerts(profCerts.filter((_, i) => i !== idx))}
-                  >
-                    <Trash2 size={16} />
-                    <span>Delete</span>
-                  </button>
-                </div>
+              <div className="admin-form-group">
+                <label>Period / Year</label>
+                <input
+                  type="text"
+                  value={item.period}
+                  onChange={(e) => {
+                    const next = [...profCerts]
+                    next[idx].period = e.target.value
+                    setProfCerts(next)
+                  }}
+                />
               </div>
             </div>
           ))}
@@ -182,7 +185,22 @@ export const EducationAdmin: React.FC = () => {
 
         <div className="admin-grid-2">
           {milDiplomas.map((item, idx) => (
-            <div key={idx} className="admin-card-inner" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+            <div key={idx} className="admin-item-card">
+              <div className="admin-item-card__header">
+                <div className="admin-item-card__title">
+                  <strong className="admin-badge admin-badge--primary">#{idx + 1}</strong>
+                  <h3>{item.title}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="admin-icon-btn is-danger"
+                  onClick={() => setMilDiplomas(milDiplomas.filter((_, i) => i !== idx))}
+                  title="Delete qualification"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
               <div className="admin-form-group">
                 <label>Title</label>
                 <input
@@ -209,29 +227,17 @@ export const EducationAdmin: React.FC = () => {
                 />
               </div>
 
-              <div className="admin-form-row">
-                <div className="admin-form-group">
-                  <label>Period / Year</label>
-                  <input
-                    type="text"
-                    value={item.period}
-                    onChange={(e) => {
-                      const next = [...milDiplomas]
-                      next[idx].period = e.target.value
-                      setMilDiplomas(next)
-                    }}
-                  />
-                </div>
-                <div className="admin-form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm is-danger"
-                    onClick={() => setMilDiplomas(milDiplomas.filter((_, i) => i !== idx))}
-                  >
-                    <Trash2 size={16} />
-                    <span>Delete</span>
-                  </button>
-                </div>
+              <div className="admin-form-group">
+                <label>Period / Year</label>
+                <input
+                  type="text"
+                  value={item.period}
+                  onChange={(e) => {
+                    const next = [...milDiplomas]
+                    next[idx].period = e.target.value
+                    setMilDiplomas(next)
+                  }}
+                />
               </div>
             </div>
           ))}
@@ -262,7 +268,22 @@ export const EducationAdmin: React.FC = () => {
 
         <div className="admin-grid-2">
           {unitarCerts.map((item, idx) => (
-            <div key={idx} className="admin-card-inner" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+            <div key={idx} className="admin-item-card">
+              <div className="admin-item-card__header">
+                <div className="admin-item-card__title">
+                  <strong className="admin-badge admin-badge--primary">#{idx + 1}</strong>
+                  <h3>{item.title}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="admin-icon-btn is-danger"
+                  onClick={() => setUnitarCerts(unitarCerts.filter((_, i) => i !== idx))}
+                  title="Delete UNITAR certificate"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
               <div className="admin-form-group">
                 <label>Course Title</label>
                 <input
@@ -289,29 +310,17 @@ export const EducationAdmin: React.FC = () => {
                 />
               </div>
 
-              <div className="admin-form-row">
-                <div className="admin-form-group">
-                  <label>Period / Year</label>
-                  <input
-                    type="text"
-                    value={item.period}
-                    onChange={(e) => {
-                      const next = [...unitarCerts]
-                      next[idx].period = e.target.value
-                      setUnitarCerts(next)
-                    }}
-                  />
-                </div>
-                <div className="admin-form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm is-danger"
-                    onClick={() => setUnitarCerts(unitarCerts.filter((_, i) => i !== idx))}
-                  >
-                    <Trash2 size={16} />
-                    <span>Delete</span>
-                  </button>
-                </div>
+              <div className="admin-form-group">
+                <label>Period / Year</label>
+                <input
+                  type="text"
+                  value={item.period}
+                  onChange={(e) => {
+                    const next = [...unitarCerts]
+                    next[idx].period = e.target.value
+                    setUnitarCerts(next)
+                  }}
+                />
               </div>
             </div>
           ))}
@@ -342,7 +351,22 @@ export const EducationAdmin: React.FC = () => {
 
         <div className="admin-grid-2">
           {profCourses.map((item, idx) => (
-            <div key={idx} className="admin-card-inner" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+            <div key={idx} className="admin-item-card">
+              <div className="admin-item-card__header">
+                <div className="admin-item-card__title">
+                  <strong className="admin-badge admin-badge--primary">#{idx + 1}</strong>
+                  <h3>{item.title}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="admin-icon-btn is-danger"
+                  onClick={() => setProfCourses(profCourses.filter((_, i) => i !== idx))}
+                  title="Delete course"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
               <div className="admin-form-group">
                 <label>Course Title</label>
                 <input
@@ -369,29 +393,17 @@ export const EducationAdmin: React.FC = () => {
                 />
               </div>
 
-              <div className="admin-form-row">
-                <div className="admin-form-group">
-                  <label>Period / Dates</label>
-                  <input
-                    type="text"
-                    value={item.period}
-                    onChange={(e) => {
-                      const next = [...profCourses]
-                      next[idx].period = e.target.value
-                      setProfCourses(next)
-                    }}
-                  />
-                </div>
-                <div className="admin-form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm is-danger"
-                    onClick={() => setProfCourses(profCourses.filter((_, i) => i !== idx))}
-                  >
-                    <Trash2 size={16} />
-                    <span>Delete</span>
-                  </button>
-                </div>
+              <div className="admin-form-group">
+                <label>Period / Dates</label>
+                <input
+                  type="text"
+                  value={item.period}
+                  onChange={(e) => {
+                    const next = [...profCourses]
+                    next[idx].period = e.target.value
+                    setProfCourses(next)
+                  }}
+                />
               </div>
             </div>
           ))}

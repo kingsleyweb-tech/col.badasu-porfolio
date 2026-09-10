@@ -3,6 +3,8 @@ import { Settings, Save, UploadCloud, Trash2, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
+import { resolveImageUrl } from '../../utils/imageResolver'
+import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
 
 export const SiteSettingsAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -70,7 +72,11 @@ export const SiteSettingsAdmin: React.FC = () => {
       if (res.ok) {
         const result = await res.json()
         const newLogo = result.url || result.thumbnailUrl
+        const oldLogo = logoUrl
         setLogoUrl(newLogo)
+        if (oldLogo && oldLogo !== newLogo) {
+          await deleteCloudinaryImageIfUnused(oldLogo, data)
+        }
       } else {
         alert('Failed to upload logo.')
       }
@@ -142,7 +148,7 @@ export const SiteSettingsAdmin: React.FC = () => {
 
             <div className="admin-logo-preview-row">
               <div className="admin-logo-preview-box">
-                <img src={logoUrl} alt="Header Logo Preview" />
+                <img src={resolveImageUrl(logoUrl)} alt="Header Logo Preview" />
               </div>
 
               <div className="admin-logo-preview-info">

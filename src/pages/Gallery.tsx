@@ -8,6 +8,7 @@ import { BackButton } from '../components/BackButton'
 import { SectionHeading } from '../components/SectionHeading'
 import { galleryImages, officer } from '../data/officerData'
 import { PageHero } from './Biography'
+import { resolveImageUrl } from '../utils/imageResolver'
 
 type GalleryCollection = {
   slug: string
@@ -82,7 +83,7 @@ function GalleryCollectionsView() {
                 <span className="gallery-collection-card__media">
                   {collection.coverImage ? (
                     <img
-                      src={collection.coverImage.thumbnailUrl}
+                      src={resolveImageUrl(collection.coverImage.thumbnailUrl)}
                       alt={collection.coverImage.alt}
                       loading="lazy"
                       decoding="async"
@@ -144,7 +145,7 @@ function GalleryCollectionView({ collectionSlug }: { collectionSlug: string }) {
   }, [collectionSlug, fallbackCollection])
 
   const slides = useMemo(() => images.map((image) => ({
-    src: image.largeUrl,
+    src: resolveImageUrl(image.largeUrl),
     alt: image.alt,
     title: image.title,
     width: image.width,
@@ -281,7 +282,7 @@ function GalleryPhoto({ image, onClick }: { image: GalleryImage; onClick: () => 
     >
       <span className={`gallery-photo-frame ${loaded ? 'is-loaded' : 'is-loading'}`}>
         <img
-          src={image.thumbnailUrl}
+          src={resolveImageUrl(image.thumbnailUrl)}
           alt={image.alt}
           loading="lazy"
           decoding="async"

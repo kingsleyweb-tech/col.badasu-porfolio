@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { UploadCloud, CheckCircle2, Loader2, RefreshCw, ImageIcon, AlertCircle, FolderOpen } from 'lucide-react'
 import { CollectionDetailModal, type CollectionItem } from '../components/CollectionDetailModal'
+import { resolveImageUrl } from '../../utils/imageResolver'
 
 export const GalleryAdmin: React.FC = () => {
   const [collectionName, setCollectionName] = useState('')
@@ -242,7 +243,7 @@ export const GalleryAdmin: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                       {col.coverImage ? (
                         <img
-                          src={col.coverImage.thumbnailUrl}
+                          src={resolveImageUrl(col.coverImage.thumbnailUrl)}
                           alt={col.coverImage.alt}
                           style={{
                             width: '52px',

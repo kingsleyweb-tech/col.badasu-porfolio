@@ -1,10 +1,15 @@
 import { useState } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import { PortfolioProvider } from './context/PortfolioContext'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import { Footer } from './components/Footer'
 import { Navbar } from './components/Navbar'
 import { RouteScrollToTop } from './components/RouteScrollToTop'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { QrModal } from './components/QrModal'
+
+// Public Pages
 import { Achievements } from './pages/Achievements'
 import { Awards } from './pages/Awards'
 import { Biography } from './pages/Biography'
@@ -14,30 +19,54 @@ import { Gallery } from './pages/Gallery'
 import { Home } from './pages/Home'
 import { Welcome } from './pages/Welcome'
 
+// Admin Shell & Pages
+import { AdminLayout } from './admin/AdminLayout'
+import { AdminLogin } from './admin/pages/AdminLogin'
+import { MainDashboard } from './admin/pages/MainDashboard'
+import { EveryoneSection } from './admin/pages/EveryoneSection'
+import { HeroAdmin } from './admin/pages/HeroAdmin'
+import { BiographyAdmin } from './admin/pages/BiographyAdmin'
+import { CareerAdmin } from './admin/pages/CareerAdmin'
+import { AwardsAdmin } from './admin/pages/AwardsAdmin'
+import { EducationAdmin } from './admin/pages/EducationAdmin'
+import { CoursesAdmin } from './admin/pages/CoursesAdmin'
+import { LanguagesAdmin } from './admin/pages/LanguagesAdmin'
+import { LeadershipAdmin } from './admin/pages/LeadershipAdmin'
+import { GalleryAdmin } from './admin/pages/GalleryAdmin'
+import { WelcomeAdmin } from './admin/pages/WelcomeAdmin'
+import { SiteSettingsAdmin } from './admin/pages/SiteSettingsAdmin'
+import { UsersAdmin } from './admin/pages/UsersAdmin'
+
 const footerHiddenRoutes = new Set(['/awards', '/career', '/biography', '/welcome'])
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppShell />
-    </BrowserRouter>
+    <AuthProvider>
+      <PortfolioProvider>
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
+      </PortfolioProvider>
+    </AuthProvider>
   )
 }
 
 function AppShell() {
   const { pathname } = useLocation()
   const [qrModalOpen, setQrModalOpen] = useState(false)
-  
-  const showFooter = !footerHiddenRoutes.has(pathname)
-  const showNavbar = pathname !== '/welcome'
-  const showScrollTop = pathname !== '/welcome'
+
+  const isAdminRoute = pathname.startsWith('/admin')
+  const showFooter = !isAdminRoute && !footerHiddenRoutes.has(pathname)
+  const showNavbar = !isAdminRoute && pathname !== '/welcome'
+  const showScrollTop = !isAdminRoute && pathname !== '/welcome'
 
   return (
     <>
       <RouteScrollToTop />
       {showNavbar && <Navbar />}
-      <main>
+      <main className={isAdminRoute ? 'is-admin-view' : ''}>
         <Routes>
+          {/* Public Portfolio Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/biography" element={<Biography />} />
@@ -47,11 +76,39 @@ function AppShell() {
           <Route path="/education" element={<Education />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/gallery/:collectionSlug" element={<Gallery />} />
+
+          {/* Admin Unprotected Route */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+
+          {/* Admin Protected Routes Shell */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<MainDashboard />} />
+            <Route path="everyone" element={<EveryoneSection />} />
+            <Route path="hero" element={<HeroAdmin />} />
+            <Route path="biography" element={<BiographyAdmin />} />
+            <Route path="career" element={<CareerAdmin />} />
+            <Route path="awards" element={<AwardsAdmin />} />
+            <Route path="education" element={<EducationAdmin />} />
+            <Route path="courses" element={<CoursesAdmin />} />
+            <Route path="languages" element={<LanguagesAdmin />} />
+            <Route path="leadership" element={<LeadershipAdmin />} />
+            <Route path="gallery" element={<GalleryAdmin />} />
+            <Route path="welcome" element={<WelcomeAdmin />} />
+            <Route path="settings" element={<SiteSettingsAdmin />} />
+            <Route path="users" element={<UsersAdmin />} />
+          </Route>
         </Routes>
       </main>
       {showFooter && <Footer onQrModalOpen={() => setQrModalOpen(true)} />}
       {showScrollTop && <ScrollToTopButton />}
-      
+
       <QrModal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} />
     </>
   )

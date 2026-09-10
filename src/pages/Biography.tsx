@@ -2,9 +2,13 @@ import { BackButton } from '../components/BackButton'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { biographyCategoryLinks, images, officer, promotionDetails } from '../data/officerData'
+import { biographyCategoryLinks, images, officer as defaultOfficer, promotionDetails } from '../data/officerData'
+import { usePortfolio } from '../context/PortfolioContext'
 
 export function Biography() {
+  const { data } = usePortfolio()
+  const officer = data?.officer || defaultOfficer
+
   return (
     <>
       <PageHero eyebrow="Biography" title={`${officer.rank} ${officer.name}`} description="Biographic form details and summary of experience from the supplied PDF content." />
@@ -23,7 +27,7 @@ export function Biography() {
                   <OptimizedImage asset={images[1]} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 360px" />
                 </div>
                 <div>
-                  {officer.biography.map((paragraph) => (
+                  {(officer.biography || defaultOfficer.biography).map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
                 </div>

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { Search, ExternalLink, Menu, Circle } from 'lucide-react'
+import { Search, ExternalLink, Menu, Circle, QrCode } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { QrModal } from '../../components/QrModal'
 
 export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onToggleSidebar }) => {
   const { user, isDemoAdmin } = useAuth()
   const [timeStr, setTimeStr] = useState('')
+  const [showQrModal, setShowQrModal] = useState(false)
 
   useEffect(() => {
     const update = () => {
@@ -56,6 +58,18 @@ export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onTogg
           <span>Website Live</span>
         </div>
 
+        {/* QR Code Quick Action */}
+        <button
+          type="button"
+          onClick={() => setShowQrModal(true)}
+          className="admin-header__view-site"
+          title="View Scannable QR Code"
+          style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', cursor: 'pointer' }}
+        >
+          <QrCode size={15} />
+          <span>QR Code</span>
+        </button>
+
         {/* View Live Portfolio Shortcut */}
         <a
           href="/"
@@ -76,6 +90,11 @@ export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onTogg
           </div>
         </div>
       </div>
+
+      {showQrModal && (
+        <QrModal isOpen={showQrModal} onClose={() => setShowQrModal(false)} />
+      )}
     </header>
   )
 }
+

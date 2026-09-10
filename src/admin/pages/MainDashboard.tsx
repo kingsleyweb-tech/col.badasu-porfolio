@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FileText,
@@ -20,13 +20,41 @@ import {
   ShieldCheck,
   Clock
 } from 'lucide-react'
+import { usePortfolio } from '../../context/PortfolioContext'
 
 export const MainDashboard: React.FC = () => {
+  const { data } = usePortfolio()
+  const [collectionCount, setCollectionCount] = useState<number>(0)
+  const [totalImages, setTotalImages] = useState<number>(0)
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/gallery')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (active && data && Array.isArray(data.folders)) {
+          setCollectionCount(data.folders.length)
+          const total = data.folders.reduce((acc: number, folder: { totalResources?: number }) => acc + (folder.totalResources || 0), 0)
+          setTotalImages(total)
+        }
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
+
+  const totalEntries =
+    (data.workHistory?.length || 0) +
+    (data.awards?.length || 0) +
+    (data.militaryDiplomas?.length || 0) +
+    (data.professionalCertificates?.length || 0) +
+    (data.unitarPociCertificates?.length || 0) +
+    totalImages
+
   const statCards = [
-    { title: 'Total Sections', value: '14', meta: 'Manage all portfolio sections', icon: FileText, color: 'blue' },
-    { title: 'Gallery Collections', value: '8', meta: 'Photos & videos in Cloudinary', icon: ImageIcon, color: 'green' },
-    { title: 'Content Items', value: '120+', meta: 'Total data entries', icon: Users, color: 'purple' },
-    { title: 'Last Updated', value: 'Today, 10:24 AM', meta: 'Changes are live on your site', icon: CloudCheck, color: 'teal' }
+    { title: 'Total Sections', value: '11', meta: 'Active portfolio sections', icon: FileText, color: 'blue' },
+    { title: 'Gallery Collections', value: collectionCount ? `${collectionCount}` : 'Live', meta: totalImages ? `${totalImages} media files in Cloudinary` : 'Synced with Cloudinary', icon: ImageIcon, color: 'green' },
+    { title: 'Content Items', value: `${totalEntries}`, meta: 'Total live data entries', icon: Users, color: 'purple' },
+    { title: 'System Status', value: 'Live & Active', meta: 'Connected to Firebase & Cloudinary', icon: CloudCheck, color: 'teal' }
   ]
 
   const quickAccessSections = [

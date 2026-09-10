@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
-import { UserCheck, Save, Plus, Trash2, CheckCircle2, Loader2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { UserCheck, Save, Plus, Trash2, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
+import { SaveSuccessModal } from '../components/SaveSuccessModal'
 
 export const BiographyAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -8,7 +10,21 @@ export const BiographyAdmin: React.FC = () => {
   const [biographyText, setBiographyText] = useState(data.officer.biography.join('\n\n'))
   const [details, setDetails] = useState(data.biographicDetails)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+
+  useEffect(() => {
+    setBiographyText(data.officer.biography.join('\n\n'))
+    setDetails(data.biographicDetails)
+  }, [data])
+
+  const isDirty =
+    biographyText !== data.officer.biography.join('\n\n') ||
+    JSON.stringify(details) !== JSON.stringify(data.biographicDetails)
+
+  const handleReset = () => {
+    setBiographyText(data.officer.biography.join('\n\n'))
+    setDetails(data.biographicDetails)
+  }
 
   const handleDetailChange = (index: number, field: 'label' | 'value', val: string) => {
     const next = [...details]
@@ -24,10 +40,9 @@ export const BiographyAdmin: React.FC = () => {
     setDetails(details.filter((_, i) => i !== index))
   }
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     setSaving(true)
-    setMessage(null)
 
     try {
       const bioArray = biographyText
@@ -42,9 +57,9 @@ export const BiographyAdmin: React.FC = () => {
         },
         biographicDetails: details
       })
-      setMessage('Biography and biographic details saved successfully!')
+      setShowSuccessModal(true)
     } catch {
-      setMessage('Failed to save biography data.')
+      alert('Failed to save biography data.')
     } finally {
       setSaving(false)
     }
@@ -52,6 +67,13 @@ export const BiographyAdmin: React.FC = () => {
 
   return (
     <div className="admin-page">
+      <UnsavedChangesBanner
+        isDirty={isDirty}
+        onSave={() => handleSave()}
+        onReset={handleReset}
+        isSaving={saving}
+      />
+
       <div className="admin-page-header admin-page-header--action">
         <div className="admin-page-header__title">
           <div className="admin-header-icon">
@@ -63,19 +85,11 @@ export const BiographyAdmin: React.FC = () => {
           </div>
         </div>
 
-        <button type="button" className="btn btn--primary" onClick={handleSave} disabled={saving}>
+        <button type="button" className="btn btn--primary" onClick={() => handleSave()} disabled={saving}>
           {saving ? <Loader2 size={18} className="admin-spinner" /> : <Save size={18} />}
           <span>{saving ? 'Saving...' : 'Save Changes'}</span>
         </button>
       </div>
-
-      {message && (
-        <div className="admin-alert is-success">
-          <CheckCircle2 size={18} />
-          <span>{message}</span>
-          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>×</button>
-        </div>
-      )}
 
       <div className="admin-card" style={{ marginBottom: '24px' }}>
         <div className="admin-card__header">
@@ -149,6 +163,14 @@ export const BiographyAdmin: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <SaveSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Biography Saved"
+        message="Biography details updated and applied live to your website."
+      />
     </div>
   )
 }
+

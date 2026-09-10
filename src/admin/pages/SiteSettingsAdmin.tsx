@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
-import { Settings, Save, UploadCloud, Trash2, CheckCircle2, Loader2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Settings, Save, UploadCloud, Trash2, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
+import { SaveSuccessModal } from '../components/SaveSuccessModal'
 
 export const SiteSettingsAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -14,14 +16,39 @@ export const SiteSettingsAdmin: React.FC = () => {
 
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+
+  useEffect(() => {
+    setSiteTitle(data.siteSettings.siteTitle)
+    setSiteDescription(data.siteSettings.siteDescription)
+    setLogoUrl(data.siteSettings.logoUrl)
+    setContactEmail(data.siteSettings.contactEmail)
+    setContactPhone(data.siteSettings.contactPhone)
+    setContactAddress(data.siteSettings.contactAddress)
+  }, [data])
+
+  const isDirty =
+    siteTitle !== data.siteSettings.siteTitle ||
+    siteDescription !== data.siteSettings.siteDescription ||
+    logoUrl !== data.siteSettings.logoUrl ||
+    contactEmail !== data.siteSettings.contactEmail ||
+    contactPhone !== data.siteSettings.contactPhone ||
+    contactAddress !== data.siteSettings.contactAddress
+
+  const handleReset = () => {
+    setSiteTitle(data.siteSettings.siteTitle)
+    setSiteDescription(data.siteSettings.siteDescription)
+    setLogoUrl(data.siteSettings.logoUrl)
+    setContactEmail(data.siteSettings.contactEmail)
+    setContactPhone(data.siteSettings.contactPhone)
+    setContactAddress(data.siteSettings.contactAddress)
+  }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return
     const file = e.target.files[0]
 
     setUploadingLogo(true)
-    setMessage(null)
 
     try {
       const reader = new FileReader()
@@ -44,21 +71,19 @@ export const SiteSettingsAdmin: React.FC = () => {
         const result = await res.json()
         const newLogo = result.url || result.thumbnailUrl
         setLogoUrl(newLogo)
-        setMessage('New header logo uploaded to Cloudinary successfully! Click Save Changes to publish.')
       } else {
-        setMessage('Failed to upload logo.')
+        alert('Failed to upload logo.')
       }
     } catch {
-      setMessage('Error uploading logo image.')
+      alert('Error uploading logo image.')
     } finally {
       setUploadingLogo(false)
     }
   }
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     setSaving(true)
-    setMessage(null)
 
     try {
       await updatePortfolio({
@@ -72,9 +97,9 @@ export const SiteSettingsAdmin: React.FC = () => {
           contactAddress
         }
       })
-      setMessage('Site settings and header logo saved successfully!')
+      setShowSuccessModal(true)
     } catch {
-      setMessage('Failed to save settings.')
+      alert('Failed to save settings.')
     } finally {
       setSaving(false)
     }
@@ -82,6 +107,13 @@ export const SiteSettingsAdmin: React.FC = () => {
 
   return (
     <div className="admin-page">
+      <UnsavedChangesBanner
+        isDirty={isDirty}
+        onSave={() => handleSave()}
+        onReset={handleReset}
+        isSaving={saving}
+      />
+
       <div className="admin-page-header admin-page-header--action">
         <div className="admin-page-header__title">
           <div className="admin-header-icon">
@@ -93,19 +125,11 @@ export const SiteSettingsAdmin: React.FC = () => {
           </div>
         </div>
 
-        <button type="button" className="btn btn--primary" onClick={handleSave} disabled={saving}>
+        <button type="button" className="btn btn--primary" onClick={() => handleSave()} disabled={saving}>
           {saving ? <Loader2 size={18} className="admin-spinner" /> : <Save size={18} />}
           <span>{saving ? 'Saving...' : 'Save Changes'}</span>
         </button>
       </div>
-
-      {message && (
-        <div className="admin-alert is-success">
-          <CheckCircle2 size={18} />
-          <span>{message}</span>
-          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>×</button>
-        </div>
-      )}
 
       <div className="admin-dashboard-grid">
         <div className="admin-dashboard-main">
@@ -179,6 +203,14 @@ export const SiteSettingsAdmin: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <SaveSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Site Settings Saved"
+        message="Site settings and logo updated live on your site."
+      />
     </div>
   )
 }
+

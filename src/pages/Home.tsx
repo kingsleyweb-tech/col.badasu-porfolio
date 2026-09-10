@@ -6,9 +6,13 @@ import { HoverRevealCard } from '../components/HoverRevealCard'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { achievements, careerHighlights, education, homeCategoryLinks, officer, operations, profileHomeImage } from '../data/officerData'
+import { achievements, careerHighlights, education, homeCategoryLinks, officer as defaultOfficer, operations, profileHomeImage } from '../data/officerData'
+import { usePortfolio } from '../context/PortfolioContext'
 
 export function Home() {
+  const { data } = usePortfolio()
+  const officer = data?.officer || defaultOfficer
+
   return (
     <>
       <Hero />
@@ -33,7 +37,7 @@ export function Home() {
             <span className="kicker">Profile</span>
             <h2>Meet {officer.rank} {officer.name}</h2>
             <div className="profile-section__copy">
-              {officer.biography.slice(0, 2).map((paragraph) => (
+              {(officer.biography || defaultOfficer.biography).slice(0, 2).map((paragraph) => (
                 <p key={paragraph}>{paragraph}</p>
               ))}
             </div>

@@ -1,12 +1,24 @@
-import React, { useState } from 'react'
-import { Award, Save, Plus, Trash2, CheckCircle2, Loader2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Award, Save, Plus, Trash2, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
+import { SaveSuccessModal } from '../components/SaveSuccessModal'
 
 export const AwardsAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
   const [awards, setAwards] = useState(data.awards)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+
+  useEffect(() => {
+    setAwards(data.awards)
+  }, [data])
+
+  const isDirty = JSON.stringify(awards) !== JSON.stringify(data.awards)
+
+  const handleReset = () => {
+    setAwards(data.awards)
+  }
 
   const handleFieldChange = (index: number, field: string, val: string) => {
     const next = [...awards]
@@ -26,12 +38,11 @@ export const AwardsAdmin: React.FC = () => {
 
   const handleSave = async () => {
     setSaving(true)
-    setMessage(null)
     try {
       await updatePortfolio({ awards })
-      setMessage('Awards & decorations saved successfully!')
+      setShowSuccessModal(true)
     } catch {
-      setMessage('Failed to save awards.')
+      alert('Failed to save awards.')
     } finally {
       setSaving(false)
     }
@@ -39,6 +50,13 @@ export const AwardsAdmin: React.FC = () => {
 
   return (
     <div className="admin-page">
+      <UnsavedChangesBanner
+        isDirty={isDirty}
+        onSave={handleSave}
+        onReset={handleReset}
+        isSaving={saving}
+      />
+
       <div className="admin-page-header admin-page-header--action">
         <div className="admin-page-header__title">
           <div className="admin-header-icon">
@@ -62,14 +80,6 @@ export const AwardsAdmin: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {message && (
-        <div className="admin-alert is-success">
-          <CheckCircle2 size={18} />
-          <span>{message}</span>
-          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>×</button>
-        </div>
-      )}
 
       <div className="admin-grid-2">
         {awards.map((award, idx) => (
@@ -120,6 +130,14 @@ export const AwardsAdmin: React.FC = () => {
           </div>
         ))}
       </div>
+
+      <SaveSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Awards Saved"
+        message="Medals, decorations, and honors updated live on your site."
+      />
     </div>
   )
 }
+

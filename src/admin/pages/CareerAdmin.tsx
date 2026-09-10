@@ -1,13 +1,26 @@
-import React, { useState } from 'react'
-import { Briefcase, Save, Plus, Trash2, Edit3, CheckCircle2, Loader2, MoveUp, MoveDown } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Briefcase, Save, Plus, Trash2, Edit3, Loader2, MoveUp, MoveDown } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
+import { SaveSuccessModal } from '../components/SaveSuccessModal'
 
 export const CareerAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
   const [positions, setPositions] = useState(data.workHistory)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
+
+  useEffect(() => {
+    setPositions(data.workHistory)
+  }, [data])
+
+  const isDirty = JSON.stringify(positions) !== JSON.stringify(data.workHistory)
+
+  const handleReset = () => {
+    setPositions(data.workHistory)
+    setEditingIdx(null)
+  }
 
   const handleFieldChange = (index: number, field: string, value: string | string[]) => {
     const next = [...positions]
@@ -48,12 +61,11 @@ export const CareerAdmin: React.FC = () => {
 
   const handleSave = async () => {
     setSaving(true)
-    setMessage(null)
     try {
       await updatePortfolio({ workHistory: positions })
-      setMessage('Career positions saved successfully!')
+      setShowSuccessModal(true)
     } catch {
-      setMessage('Failed to save career positions.')
+      alert('Failed to save career positions.')
     } finally {
       setSaving(false)
     }
@@ -61,6 +73,13 @@ export const CareerAdmin: React.FC = () => {
 
   return (
     <div className="admin-page">
+      <UnsavedChangesBanner
+        isDirty={isDirty}
+        onSave={handleSave}
+        onReset={handleReset}
+        isSaving={saving}
+      />
+
       <div className="admin-page-header admin-page-header--action">
         <div className="admin-page-header__title">
           <div className="admin-header-icon">
@@ -84,14 +103,6 @@ export const CareerAdmin: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {message && (
-        <div className="admin-alert is-success">
-          <CheckCircle2 size={18} />
-          <span>{message}</span>
-          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>×</button>
-        </div>
-      )}
 
       <div className="admin-career-list">
         {positions.map((pos, idx) => {
@@ -199,6 +210,14 @@ export const CareerAdmin: React.FC = () => {
           )
         })}
       </div>
+
+      <SaveSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Career Records Saved"
+        message="Career positions and service history updated successfully."
+      />
     </div>
   )
 }
+

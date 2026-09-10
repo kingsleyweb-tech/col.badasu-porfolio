@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
-import { Sliders, Save, CheckCircle2, Loader2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Sliders, Save, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
+import { SaveSuccessModal } from '../components/SaveSuccessModal'
 
 export const HeroAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -9,12 +11,28 @@ export const HeroAdmin: React.FC = () => {
   const [personalIntro, setPersonalIntro] = useState(data.hero.personalIntro)
   const [supportingText, setSupportingText] = useState(data.hero.supportingText)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    setTitle(data.hero.title)
+    setPersonalIntro(data.hero.personalIntro)
+    setSupportingText(data.hero.supportingText)
+  }, [data])
+
+  const isDirty =
+    title !== data.hero.title ||
+    personalIntro !== data.hero.personalIntro ||
+    supportingText !== data.hero.supportingText
+
+  const handleReset = () => {
+    setTitle(data.hero.title)
+    setPersonalIntro(data.hero.personalIntro)
+    setSupportingText(data.hero.supportingText)
+  }
+
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     setSaving(true)
-    setMessage(null)
 
     try {
       await updatePortfolio({
@@ -25,9 +43,9 @@ export const HeroAdmin: React.FC = () => {
           supportingText
         }
       })
-      setMessage('Hero section successfully updated!')
-    } catch {
-      setMessage('Failed to save Hero section.')
+      setShowSuccessModal(true)
+    } catch (err) {
+      alert('Failed to save Hero section.')
     } finally {
       setSaving(false)
     }
@@ -35,6 +53,13 @@ export const HeroAdmin: React.FC = () => {
 
   return (
     <div className="admin-page">
+      <UnsavedChangesBanner
+        isDirty={isDirty}
+        onSave={() => handleSave()}
+        onReset={handleReset}
+        isSaving={saving}
+      />
+
       <div className="admin-page-header admin-page-header--action">
         <div className="admin-page-header__title">
           <div className="admin-header-icon">
@@ -46,19 +71,11 @@ export const HeroAdmin: React.FC = () => {
           </div>
         </div>
 
-        <button type="button" className="btn btn--primary" onClick={handleSave} disabled={saving}>
+        <button type="button" className="btn btn--primary" onClick={() => handleSave()} disabled={saving}>
           {saving ? <Loader2 size={18} className="admin-spinner" /> : <Save size={18} />}
           <span>{saving ? 'Saving...' : 'Save Changes'}</span>
         </button>
       </div>
-
-      {message && (
-        <div className="admin-alert is-success">
-          <CheckCircle2 size={18} />
-          <span>{message}</span>
-          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>×</button>
-        </div>
-      )}
 
       <div className="admin-card">
         <form onSubmit={handleSave} className="admin-form">
@@ -100,6 +117,14 @@ export const HeroAdmin: React.FC = () => {
           </div>
         </form>
       </div>
+
+      <SaveSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Hero Section Saved"
+        message="Your Hero section edits have been updated and are live on the website."
+      />
     </div>
   )
 }
+

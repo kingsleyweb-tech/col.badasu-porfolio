@@ -2,46 +2,9 @@ import { ArrowRight } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { images, officer } from '../data/officerData'
+import { images as defaultImages, officer as defaultOfficer } from '../data/officerData'
 import { ImageSlideshow } from './ImageSlideshow'
-
-const heroSlides = [
-  {
-    eyebrow: 'Personal Portfolio',
-    title: `${officer.rank} ${officer.name}`,
-    text: 'A personal professional profile tracing my journey of military service, leadership, and continued dedication.'
-  },
-  {
-    eyebrow: 'Service Record',
-    title: 'A Journey of Service, Leadership and Dedication',
-    text: `${officer.rank} ${officer.name}'s profile brings together supplied notes on his career, peace support service, education, and professional development.`
-  },
-  {
-    eyebrow: 'Command and Staff',
-    title: 'Colonel Badasu in Command and Staff Service',
-    text: 'A profile page for his documented command responsibilities, headquarters administration, and multinational peace support experience.'
-  },
-  {
-    eyebrow: 'Peace Support',
-    title: 'His Peace Support Service',
-    text: 'A dedicated record of supplied United Nations and ECOWAS service references across multiple mission environments.'
-  },
-  {
-    eyebrow: 'Institutional Service',
-    title: 'Leadership Beyond the Field',
-    text: 'A personal portfolio space for Colonel Badasu\'s professional work in security planning, operational coordination, training, and mentorship.'
-  },
-  {
-    eyebrow: 'Professional Development',
-    title: 'Prepared for Senior Responsibility',
-    text: 'A focused view of his supplied academic, military, and professional preparation without adding unverified claims.'
-  },
-  {
-    eyebrow: 'Gallery',
-    title: 'Colonel Badasu in Pictures',
-    text: 'Selected local images presented as part of his personal professional profile and service story.'
-  }
-]
+import { usePortfolio } from '../context/PortfolioContext'
 
 const quickLinks = [
   { label: 'Home', to: '/' },
@@ -55,11 +18,58 @@ const quickLinks = [
 
 export function Hero() {
   const [active, setActive] = useState(0)
+  const { data } = usePortfolio()
+
+  const officer = data?.officer || defaultOfficer
+  const heroData = data?.hero || {
+    title: `${officer.rank} ${officer.name}`,
+    personalIntro: officer.shortBio,
+    supportingText: 'Senior Army Officer of the Ghana Armed Forces specializing in UN Peacekeeping, International Security, Crisis Management & Strategic Operations.'
+  }
+
+  const heroSlides = [
+    {
+      eyebrow: 'Personal Portfolio',
+      title: heroData.title || `${officer.rank} ${officer.name}`,
+      text: heroData.personalIntro || 'A personal professional profile tracing my journey of military service, leadership, and continued dedication.'
+    },
+    {
+      eyebrow: 'Service Record',
+      title: 'A Journey of Service, Leadership and Dedication',
+      text: heroData.supportingText || `${officer.rank} ${officer.name}'s profile brings together supplied notes on his career, peace support service, education, and professional development.`
+    },
+    {
+      eyebrow: 'Command and Staff',
+      title: `${officer.name} in Command and Staff Service`,
+      text: 'A profile page for his documented command responsibilities, headquarters administration, and multinational peace support experience.'
+    },
+    {
+      eyebrow: 'Peace Support',
+      title: 'His Peace Support Service',
+      text: 'A dedicated record of supplied United Nations and ECOWAS service references across multiple mission environments.'
+    },
+    {
+      eyebrow: 'Institutional Service',
+      title: 'Leadership Beyond the Field',
+      text: `A personal portfolio space for ${officer.rank} ${officer.name}'s professional work in security planning, operational coordination, training, and mentorship.`
+    },
+    {
+      eyebrow: 'Professional Development',
+      title: 'Prepared for Senior Responsibility',
+      text: 'A focused view of his supplied academic, military, and professional preparation without adding unverified claims.'
+    },
+    {
+      eyebrow: 'Gallery',
+      title: `${officer.rank} ${officer.name} in Pictures`,
+      text: 'Selected local images presented as part of his personal professional profile and service story.'
+    }
+  ]
+
   const slide = heroSlides[active] ?? heroSlides[0]
 
   return (
     <section className="hero-shell">
-      <ImageSlideshow images={images} active={active} onActiveChange={setActive} />
+      <ImageSlideshow images={defaultImages} active={active} onActiveChange={setActive} />
       <div className="hero-shell__overlay" aria-hidden="true" />
 
       {/* Full-width scrollable quick links strip at top of hero */}

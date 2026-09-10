@@ -1,11 +1,19 @@
 import { SectionHeading } from '../components/SectionHeading'
-import { educationCategoryLinks, militaryDiplomas, professionalCertificates, professionalCourses, unitarPociCertificates } from '../data/officerData'
+import { educationCategoryLinks } from '../data/officerData'
 import { PageHero } from './Biography'
+import { usePortfolio } from '../context/PortfolioContext'
 
 export function Education() {
+  const { data } = usePortfolio()
+
+  const profCerts = data?.professionalCertificates || []
+  const milDiplomas = data?.militaryDiplomas || []
+  const unitarCerts = data?.unitarPociCertificates || []
+  const profCourses = data?.professionalCourses || []
+
   return (
     <>
-      <PageHero eyebrow="Education" title="Education and Military Training" description="Professional development certificates, military diplomas, and courses attended in Ghana and foreign countries from the supplied PDF content." />
+      <PageHero eyebrow="Education" title="Education and Military Training" description="Professional development certificates, military diplomas, and courses attended in Ghana and foreign countries." />
       <nav className="category-links" aria-label="Education categories">
         <div className="container category-links__track">
           {educationCategoryLinks.map((link) => (
@@ -18,8 +26,8 @@ export function Education() {
         <div className="container">
           <SectionHeading eyebrow="Professional Development" title="Professional Development Certificates" />
           <div className="education-list">
-            {professionalCertificates.map((item) => (
-              <article className="education-row" key={`${item.category}-${item.title}`}>
+            {profCerts.map((item, idx) => (
+              <article className="education-row" key={idx}>
                 <span>{item.category}</span>
                 <div>
                   <h3>{item.title}</h3>
@@ -37,8 +45,8 @@ export function Education() {
         <div className="container">
           <SectionHeading eyebrow="Military Diplomas" title="Military Diplomas and Certificates" />
           <div className="education-list">
-            {militaryDiplomas.map((item) => (
-              <article className="education-row" key={`${item.category}-${item.title}`}>
+            {milDiplomas.map((item, idx) => (
+              <article className="education-row" key={idx}>
                 <span>{item.category}</span>
                 <div>
                   <h3>{item.title}</h3>
@@ -56,8 +64,8 @@ export function Education() {
         <div className="container">
           <SectionHeading eyebrow="UNITAR-POCI" title="Certificates of Completion" description="Individual UNITAR-POCI certificates obtained at UNOCI FHQ, Abidjan, Cote d'Ivoire, from June 2004 to July 2005." />
           <div className="education-list">
-            {unitarPociCertificates.map((item) => (
-              <article className="education-row" key={`${item.category}-${item.title}`}>
+            {unitarCerts.map((item, idx) => (
+              <article className="education-row" key={idx}>
                 <span>{item.category}</span>
                 <div>
                   <h3>{item.title}</h3>
@@ -75,8 +83,8 @@ export function Education() {
         <div className="container">
           <SectionHeading eyebrow="Professional Courses" title="Courses Attended in Ghana and Foreign Countries" />
           <div className="education-list">
-            {professionalCourses.map((item) => (
-              <article className="education-row" key={`${item.category}-${item.title}`}>
+            {profCourses.map((item, idx) => (
+              <article className="education-row" key={idx}>
                 <span>{item.period}</span>
                 <div>
                   <h3>{item.title}</h3>
@@ -91,3 +99,4 @@ export function Education() {
     </>
   )
 }
+

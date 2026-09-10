@@ -1,27 +1,52 @@
-import React, { useState } from 'react'
-import { GraduationCap, Save, Plus, Trash2, CheckCircle2, Loader2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { GraduationCap, Save, Plus, Trash2, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
+import { SaveSuccessModal } from '../components/SaveSuccessModal'
 
 export const EducationAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
-  const [diplomas, setDiplomas] = useState(data.militaryDiplomas)
-  const [certificates] = useState(data.professionalCertificates)
-  const [unitars] = useState(data.unitarPociCertificates)
+
+  const [profCerts, setProfCerts] = useState(data.professionalCertificates || [])
+  const [milDiplomas, setMilDiplomas] = useState(data.militaryDiplomas || [])
+  const [unitarCerts, setUnitarCerts] = useState(data.unitarPociCertificates || [])
+  const [profCourses, setProfCourses] = useState(data.professionalCourses || [])
+
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+
+  useEffect(() => {
+    setProfCerts(data.professionalCertificates || [])
+    setMilDiplomas(data.militaryDiplomas || [])
+    setUnitarCerts(data.unitarPociCertificates || [])
+    setProfCourses(data.professionalCourses || [])
+  }, [data])
+
+  const isDirty =
+    JSON.stringify(profCerts) !== JSON.stringify(data.professionalCertificates || []) ||
+    JSON.stringify(milDiplomas) !== JSON.stringify(data.militaryDiplomas || []) ||
+    JSON.stringify(unitarCerts) !== JSON.stringify(data.unitarPociCertificates || []) ||
+    JSON.stringify(profCourses) !== JSON.stringify(data.professionalCourses || [])
+
+  const handleReset = () => {
+    setProfCerts(data.professionalCertificates || [])
+    setMilDiplomas(data.militaryDiplomas || [])
+    setUnitarCerts(data.unitarPociCertificates || [])
+    setProfCourses(data.professionalCourses || [])
+  }
 
   const handleSave = async () => {
     setSaving(true)
-    setMessage(null)
     try {
       await updatePortfolio({
-        militaryDiplomas: diplomas,
-        professionalCertificates: certificates,
-        unitarPociCertificates: unitars
+        professionalCertificates: profCerts,
+        militaryDiplomas: milDiplomas,
+        unitarPociCertificates: unitarCerts,
+        professionalCourses: profCourses
       })
-      setMessage('Academic & military qualifications saved successfully!')
+      setShowSuccessModal(true)
     } catch {
-      setMessage('Failed to save qualifications.')
+      alert('Failed to save education qualifications.')
     } finally {
       setSaving(false)
     }
@@ -29,6 +54,13 @@ export const EducationAdmin: React.FC = () => {
 
   return (
     <div className="admin-page">
+      <UnsavedChangesBanner
+        isDirty={isDirty}
+        onSave={handleSave}
+        onReset={handleReset}
+        isSaving={saving}
+      />
+
       <div className="admin-page-header admin-page-header--action">
         <div className="admin-page-header__title">
           <div className="admin-header-icon">
@@ -36,7 +68,7 @@ export const EducationAdmin: React.FC = () => {
           </div>
           <div>
             <h1>Education & Qualifications Management</h1>
-            <p>Manage university degrees, military diplomas, post-graduate certificates, and academic institutions.</p>
+            <p>Manage all 4 sections of education: Professional Development, Military Diplomas, UNITAR-POCI, and Professional Courses.</p>
           </div>
         </div>
 
@@ -46,61 +78,53 @@ export const EducationAdmin: React.FC = () => {
         </button>
       </div>
 
-      {message && (
-        <div className="admin-alert is-success">
-          <CheckCircle2 size={18} />
-          <span>{message}</span>
-          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>×</button>
-        </div>
-      )}
-
-      {/* Military Diplomas Section */}
+      {/* 1. Professional Development Certificates */}
       <div className="admin-card" style={{ marginBottom: '24px' }}>
         <div className="admin-card__header">
           <div>
-            <h3>Military Diplomas & Strategic Certificates</h3>
-            <p>Diplomas from Cranfield University, War College, Wales University, etc.</p>
+            <h3>1. Professional Development Certificates</h3>
+            <p>Certificates from GIMPA, Oxford Brookes, etc.</p>
           </div>
           <button
             type="button"
             className="btn btn--secondary btn--sm"
             onClick={() =>
-              setDiplomas([
-                ...diplomas,
-                { category: 'Military Diploma', title: 'New Military Diploma', institution: 'University', period: '2026', description: 'Description' }
+              setProfCerts([
+                ...profCerts,
+                { category: 'Professional Development Certificate', title: 'New Certificate', institution: 'Institution Name', period: '2026', description: 'Description' }
               ])
             }
           >
             <Plus size={16} />
-            <span>Add Qualification</span>
+            <span>Add Certificate</span>
           </button>
         </div>
 
         <div className="admin-grid-2">
-          {diplomas.map((item, idx) => (
-            <div key={idx} className="admin-card-inner">
+          {profCerts.map((item, idx) => (
+            <div key={idx} className="admin-card-inner" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
               <div className="admin-form-group">
-                <label>Title</label>
+                <label>Certificate Title</label>
                 <input
                   type="text"
                   value={item.title}
                   onChange={(e) => {
-                    const next = [...diplomas]
+                    const next = [...profCerts]
                     next[idx].title = e.target.value
-                    setDiplomas(next)
+                    setProfCerts(next)
                   }}
                 />
               </div>
 
               <div className="admin-form-group">
-                <label>Institution</label>
+                <label>Institution / Provider</label>
                 <input
                   type="text"
                   value={item.institution}
                   onChange={(e) => {
-                    const next = [...diplomas]
+                    const next = [...profCerts]
                     next[idx].institution = e.target.value
-                    setDiplomas(next)
+                    setProfCerts(next)
                   }}
                 />
               </div>
@@ -112,9 +136,9 @@ export const EducationAdmin: React.FC = () => {
                     type="text"
                     value={item.period}
                     onChange={(e) => {
-                      const next = [...diplomas]
+                      const next = [...profCerts]
                       next[idx].period = e.target.value
-                      setDiplomas(next)
+                      setProfCerts(next)
                     }}
                   />
                 </div>
@@ -122,7 +146,7 @@ export const EducationAdmin: React.FC = () => {
                   <button
                     type="button"
                     className="btn btn--secondary btn--sm is-danger"
-                    onClick={() => setDiplomas(diplomas.filter((_, i) => i !== idx))}
+                    onClick={() => setProfCerts(profCerts.filter((_, i) => i !== idx))}
                   >
                     <Trash2 size={16} />
                     <span>Delete</span>
@@ -133,6 +157,253 @@ export const EducationAdmin: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* 2. Military Diplomas Section */}
+      <div className="admin-card" style={{ marginBottom: '24px' }}>
+        <div className="admin-card__header">
+          <div>
+            <h3>2. Military Diplomas & Strategic Certificates</h3>
+            <p>Diplomas from Cranfield University, War College, Wales University, etc.</p>
+          </div>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={() =>
+              setMilDiplomas([
+                ...milDiplomas,
+                { category: 'Military Diploma', title: 'New Military Diploma', institution: 'University', period: '2026', description: 'Description' }
+              ])
+            }
+          >
+            <Plus size={16} />
+            <span>Add Qualification</span>
+          </button>
+        </div>
+
+        <div className="admin-grid-2">
+          {milDiplomas.map((item, idx) => (
+            <div key={idx} className="admin-card-inner" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+              <div className="admin-form-group">
+                <label>Title</label>
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => {
+                    const next = [...milDiplomas]
+                    next[idx].title = e.target.value
+                    setMilDiplomas(next)
+                  }}
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Institution</label>
+                <input
+                  type="text"
+                  value={item.institution}
+                  onChange={(e) => {
+                    const next = [...milDiplomas]
+                    next[idx].institution = e.target.value
+                    setMilDiplomas(next)
+                  }}
+                />
+              </div>
+
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label>Period / Year</label>
+                  <input
+                    type="text"
+                    value={item.period}
+                    onChange={(e) => {
+                      const next = [...milDiplomas]
+                      next[idx].period = e.target.value
+                      setMilDiplomas(next)
+                    }}
+                  />
+                </div>
+                <div className="admin-form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn--secondary btn--sm is-danger"
+                    onClick={() => setMilDiplomas(milDiplomas.filter((_, i) => i !== idx))}
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. UNITAR-POCI Certificates */}
+      <div className="admin-card" style={{ marginBottom: '24px' }}>
+        <div className="admin-card__header">
+          <div>
+            <h3>3. UNITAR-POCI Certificates of Completion</h3>
+            <p>Certificates obtained at UNOCI FHQ, Abidjan, Cote d'Ivoire.</p>
+          </div>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={() =>
+              setUnitarCerts([
+                ...unitarCerts,
+                { category: 'UNITAR-POCI Certificates', title: 'New UNITAR Course', institution: 'UNOCI FHQ Abidjan, Cote d\'Ivoire', period: 'June 2004 - July 2005', description: 'UNITAR-POCI certificate of completion.' }
+              ])
+            }
+          >
+            <Plus size={16} />
+            <span>Add UNITAR Certificate</span>
+          </button>
+        </div>
+
+        <div className="admin-grid-2">
+          {unitarCerts.map((item, idx) => (
+            <div key={idx} className="admin-card-inner" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+              <div className="admin-form-group">
+                <label>Course Title</label>
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => {
+                    const next = [...unitarCerts]
+                    next[idx].title = e.target.value
+                    setUnitarCerts(next)
+                  }}
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Institution / Location</label>
+                <input
+                  type="text"
+                  value={item.institution}
+                  onChange={(e) => {
+                    const next = [...unitarCerts]
+                    next[idx].institution = e.target.value
+                    setUnitarCerts(next)
+                  }}
+                />
+              </div>
+
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label>Period / Year</label>
+                  <input
+                    type="text"
+                    value={item.period}
+                    onChange={(e) => {
+                      const next = [...unitarCerts]
+                      next[idx].period = e.target.value
+                      setUnitarCerts(next)
+                    }}
+                  />
+                </div>
+                <div className="admin-form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn--secondary btn--sm is-danger"
+                    onClick={() => setUnitarCerts(unitarCerts.filter((_, i) => i !== idx))}
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. Professional Courses */}
+      <div className="admin-card">
+        <div className="admin-card__header">
+          <div>
+            <h3>4. Courses Attended in Ghana & Foreign Countries</h3>
+            <p>Military & executive courses attended in Ghana and international institutions.</p>
+          </div>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={() =>
+              setProfCourses([
+                ...profCourses,
+                { category: 'Professional Course', title: 'New Course Name', institution: 'Location / Institution', period: '2026', description: 'Course details' }
+              ])
+            }
+          >
+            <Plus size={16} />
+            <span>Add Professional Course</span>
+          </button>
+        </div>
+
+        <div className="admin-grid-2">
+          {profCourses.map((item, idx) => (
+            <div key={idx} className="admin-card-inner" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+              <div className="admin-form-group">
+                <label>Course Title</label>
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => {
+                    const next = [...profCourses]
+                    next[idx].title = e.target.value
+                    setProfCourses(next)
+                  }}
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Institution / Location</label>
+                <input
+                  type="text"
+                  value={item.institution}
+                  onChange={(e) => {
+                    const next = [...profCourses]
+                    next[idx].institution = e.target.value
+                    setProfCourses(next)
+                  }}
+                />
+              </div>
+
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label>Period / Dates</label>
+                  <input
+                    type="text"
+                    value={item.period}
+                    onChange={(e) => {
+                      const next = [...profCourses]
+                      next[idx].period = e.target.value
+                      setProfCourses(next)
+                    }}
+                  />
+                </div>
+                <div className="admin-form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn--secondary btn--sm is-danger"
+                    onClick={() => setProfCourses(profCourses.filter((_, i) => i !== idx))}
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <SaveSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Education & Qualifications Saved"
+        message="All 4 sections of Education & Qualifications have been updated live."
+      />
     </div>
   )
 }

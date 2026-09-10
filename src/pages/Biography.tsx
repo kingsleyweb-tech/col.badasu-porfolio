@@ -2,7 +2,7 @@ import { BackButton } from '../components/BackButton'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { biographyCategoryLinks, images, officer as defaultOfficer, promotionDetails } from '../data/officerData'
+import { biographyCategoryLinks, images, officer as defaultOfficer } from '../data/officerData'
 import { usePortfolio } from '../context/PortfolioContext'
 
 export function Biography() {
@@ -51,13 +51,17 @@ export function Biography() {
                   <p>Date provided in the supplied content.</p>
                 </InfoCard>
               </div>
-              <div className="detail-grid detail-grid--compact">
-                {promotionDetails.map((item) => (
-                  <div className="detail-card" key={item.label}>
-                    <span>Date of Promotion</span>
-                    <strong>{item.label}: {item.value}</strong>
-                  </div>
-                ))}
+
+              <div style={{ marginTop: '2rem' }}>
+                <SectionHeading eyebrow="Official Record" title="Official Biographic Details" />
+                <div className="detail-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+                  {(data?.biographicDetails || []).map((item, idx) => (
+                    <div className="detail-card" key={idx} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>{item.label}</span>
+                      <strong style={{ fontSize: '0.9375rem', color: '#0f172a' }}>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
 

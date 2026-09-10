@@ -8,6 +8,7 @@ import {
   professionalCertificates as defaultProfessionalCertificates,
   militaryDiplomas as defaultMilitaryDiplomas,
   unitarPociCertificates as defaultUnitarCertificates,
+  professionalCourses as defaultProfessionalCourses,
   brandAssets as defaultBrandAssets
 } from '../data/officerData'
 
@@ -19,6 +20,7 @@ export type PortfolioData = {
   professionalCertificates: typeof defaultProfessionalCertificates
   militaryDiplomas: typeof defaultMilitaryDiplomas
   unitarPociCertificates: typeof defaultUnitarCertificates
+  professionalCourses: typeof defaultProfessionalCourses
   awards: Array<{ title: string; year: string; description: string }>
   languages: {
     spoken: string[]
@@ -67,6 +69,7 @@ export const defaultPortfolioData: PortfolioData = {
   professionalCertificates: defaultProfessionalCertificates,
   militaryDiplomas: defaultMilitaryDiplomas,
   unitarPociCertificates: defaultUnitarCertificates,
+  professionalCourses: defaultProfessionalCourses,
   awards: defaultAwards,
   languages: {
     spoken: defaultOfficer.spokenLanguages,

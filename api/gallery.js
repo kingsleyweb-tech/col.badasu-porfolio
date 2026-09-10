@@ -193,7 +193,8 @@ const nameMapping = {
   'tv3': 'National Television Appearances & Media Features',
   'university of london graduation': 'Academic Convocation & University of London Milestones',
   'military': 'Military Honors, Strategy & Ceremonial Engagements',
-  'adventure': 'Tactical Expeditions & Field Adventures'
+  'adventure': 'Tactical Expeditions & Field Adventures',
+  'recce': 'Field Reconnaissance & Tactical Surveys'
 };
 
 function getCollectionDisplayName(folderName) {

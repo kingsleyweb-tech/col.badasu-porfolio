@@ -15,8 +15,7 @@ if (!cloudName || !apiKey || !apiSecret) {
 const sourceRoot = path.join(process.cwd(), 'src', 'assets', 'images');
 
 const targetFolders = [
-  'adventure',
-  'military'
+  'recce'
 ];
 
 const supportedExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp']);

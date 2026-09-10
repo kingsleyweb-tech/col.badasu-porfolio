@@ -6,15 +6,17 @@ import { OptimizedImage } from './OptimizedImage'
 type AchievementCardProps = {
   title: string
   description: string
-  image: ImageAsset
-  to: string
+  image?: ImageAsset
+  category?: string
+  to?: string
 }
 
-export function AchievementCard({ title, description, image, to }: AchievementCardProps) {
+export function AchievementCard({ title, description, image, category, to }: AchievementCardProps) {
   return (
     <article className="achievement-card">
-      <OptimizedImage asset={image} alt="" variant="thumbnail" sizes="(max-width: 760px) 100vw, 230px" />
+      {image && <OptimizedImage asset={image} alt="" variant="thumbnail" sizes="(max-width: 760px) 100vw, 230px" />}
       <div>
+        {category && <span className="badge badge--gold" style={{ display: 'inline-block', marginBottom: '6px' }}>{category}</span>}
         <h3>{title}</h3>
         <p>{description}</p>
         {to && (

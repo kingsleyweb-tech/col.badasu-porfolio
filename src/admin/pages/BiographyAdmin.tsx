@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { UserCheck, Save, Plus, Trash2, Loader2, UploadCloud, User } from 'lucide-react'
+import { UserCheck, Save, Plus, Trash2, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
 import { ImageReplacer } from '../components/ImageReplacer'
-import { resolveImageUrl } from '../../utils/imageResolver'
 
 export const BiographyAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -12,7 +11,6 @@ export const BiographyAdmin: React.FC = () => {
   const [biographyText, setBiographyText] = useState(data.officer.biography.join('\n\n'))
   const [details, setDetails] = useState(data.biographicDetails)
   const [profileImageUrl, setProfileImageUrl] = useState(data.officer.profileImageUrl || '')
-  const [uploadingProfile, setUploadingProfile] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
 
@@ -47,52 +45,7 @@ export const BiographyAdmin: React.FC = () => {
     setDetails(details.filter((_, i) => i !== index))
   }
 
-  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0]) return
-    const file = e.target.files[0]
-    setUploadingProfile(true)
-    try {
-      // Delete old image if it was previously uploaded
-      const oldPublicId = (data.officer as { profileImagePublicId?: string }).profileImagePublicId
-      if (oldPublicId) {
-        await fetch('/api/delete-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ publicId: oldPublicId }),
-        }).catch(() => {})
-      }
 
-      const reader = new FileReader()
-      const base64 = await new Promise<string>((resolve) => {
-        reader.onload = () => resolve(reader.result as string)
-        reader.readAsDataURL(file)
-      })
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: base64, folder: 'site/biography', filename: 'colonel-badasu-portrait' }),
-      })
-      if (res.ok) {
-        const json = await res.json()
-        const newUrl = `${json.url}?t=${Date.now()}`
-        setProfileImageUrl(newUrl)
-        // Immediately save so it's live on the website
-        await updatePortfolio({
-          officer: {
-            ...data.officer,
-            profileImageUrl: newUrl,
-            profileImagePublicId: json.publicId || '',
-          } as typeof data.officer & { profileImageUrl: string; profileImagePublicId: string },
-        })
-      } else {
-        alert('Failed to upload portrait image.')
-      }
-    } catch {
-      alert('Error uploading profile image.')
-    } finally {
-      setUploadingProfile(false)
-    }
-  }
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()

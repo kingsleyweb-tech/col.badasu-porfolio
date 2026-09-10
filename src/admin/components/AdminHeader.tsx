@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { QrModal } from '../../components/QrModal'
 
 export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onToggleSidebar }) => {
-  const { user, isDemoAdmin, adminCredentials } = useAuth()
+  const { user, adminCredentials } = useAuth()
   const [timeStr, setTimeStr] = useState('')
   const [showQrModal, setShowQrModal] = useState(false)
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Sliders, Save, Loader2, UploadCloud, Trash2, Plus, GripVertical } from 'lucide-react'
+import { Sliders, Save, Loader2, UploadCloud, Trash2, Plus } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
@@ -67,15 +67,6 @@ export const HeroAdmin: React.FC = () => {
     if (!res.ok) return null
     const json = await res.json()
     return { url: json.url || json.thumbnailUrl, publicId: json.publicId || '' }
-  }
-
-  const deleteFromCloudinary = async (publicId: string) => {
-    if (!publicId) return
-    await fetch('/api/delete-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ publicId }),
-    }).catch(() => {})
   }
 
   const handleAddSlides = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -161,8 +161,8 @@ export const ImageReplacer: React.FC<ImageReplacerProps> = ({
             background: '#f8fafc',
             border: previewUrl ? '2px solid #0e5c3e' : '1px solid #e2e8f0',
             display: 'flex',
-            align-items: 'center',
-            justify-content: 'center'
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
         >
           {activeDisplayUrl ? (
@@ -253,8 +253,8 @@ export const ImageReplacer: React.FC<ImageReplacerProps> = ({
             border: '1px solid #feb2b2',
             borderRadius: '8px',
             display: 'flex',
-            align-items: 'center',
-            justify-content: 'space-between',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             gap: '16px'
           }}
         >

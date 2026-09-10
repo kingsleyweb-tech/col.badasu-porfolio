@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Star, Save, CheckCircle2, Loader2 } from 'lucide-react'
+import { Star, Save, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'

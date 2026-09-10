@@ -8,7 +8,6 @@ import {
   Clock,
   Circle,
   Plus,
-  MoreVertical,
   UploadCloud,
   ChevronRight,
   ExternalLink,
@@ -17,16 +16,11 @@ import {
   CheckCircle2,
   Loader2,
   AlertCircle,
+  FolderOpen,
   Image as ImageFileIcon
 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
-
-interface CloudinaryCollection {
-  slug: string
-  name: string
-  count: number
-  coverImage?: { thumbnailUrl: string; alt: string }
-}
+import { CollectionDetailModal, type CollectionItem } from '../components/CollectionDetailModal'
 
 export const EveryoneSection: React.FC = () => {
   const { updatePortfolio } = usePortfolio()
@@ -42,9 +36,11 @@ export const EveryoneSection: React.FC = () => {
   const [savingGlobal, setSavingGlobal] = useState(false)
 
   // Live collections from Cloudinary
-  const [collections, setCollections] = useState<CloudinaryCollection[]>([])
+  const [collections, setCollections] = useState<CollectionItem[]>([])
   const [loadingCollections, setLoadingCollections] = useState(true)
   const [collectionsError, setCollectionsError] = useState<string | null>(null)
+  const [selectedCollection, setSelectedCollection] = useState<CollectionItem | null>(null)
+
   const totalImages = collections.reduce((sum, c) => sum + c.count, 0)
 
   const fetchCollections = useCallback(async () => {
@@ -146,7 +142,7 @@ export const EveryoneSection: React.FC = () => {
           </div>
           <div>
             <h1>Everyone Section</h1>
-            <p>Manage all the content that appears on the website. Update information, images and settings from here. Changes will reflect on the live site immediately.</p>
+            <p>Manage all the content that appears on the website. Update information, images and settings from here. Click any collection to inspect, add or remove photos.</p>
           </div>
         </div>
 
@@ -230,8 +226,8 @@ export const EveryoneSection: React.FC = () => {
               <div className="admin-card__title-wrap">
                 <ImageIcon size={20} className="text-emerald-600" />
                 <div>
-                  <h3>Gallery Management</h3>
-                  <p>Upload, organize and manage your photo collections.</p>
+                  <h3>Gallery Collections</h3>
+                  <p>Click any collection to view all photos, add new photos, or delete photos.</p>
                 </div>
               </div>
               <button
@@ -283,7 +279,12 @@ export const EveryoneSection: React.FC = () => {
             ) : (
               <div className="admin-collection-grid">
                 {collections.map((col) => (
-                  <div key={col.slug} className="admin-collection-card">
+                  <div
+                    key={col.slug}
+                    className="admin-collection-card"
+                    onClick={() => setSelectedCollection(col)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="admin-collection-card__media">
                       {col.coverImage ? (
                         <img src={col.coverImage.thumbnailUrl} alt={col.coverImage.alt} />
@@ -292,13 +293,21 @@ export const EveryoneSection: React.FC = () => {
                           <ImageIcon size={32} style={{ opacity: 0.3 }} />
                         </div>
                       )}
-                      <button type="button" className="admin-collection-card__menu" aria-label="Collection menu">
-                        <MoreVertical size={16} />
+                      <button
+                        type="button"
+                        className="admin-collection-card__menu"
+                        aria-label="Manage collection"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedCollection(col)
+                        }}
+                      >
+                        <FolderOpen size={16} />
                       </button>
                     </div>
                     <div className="admin-collection-card__body">
                       <strong>{col.name}</strong>
-                      <span>{col.count} images</span>
+                      <span>{col.count} images • Click to open</span>
                     </div>
                   </div>
                 ))}
@@ -323,8 +332,8 @@ export const EveryoneSection: React.FC = () => {
               <div className="admin-card__title-wrap">
                 <ImageIcon size={20} />
                 <div>
-                  <h3>Recent Images</h3>
-                  <p>Cover images from your Cloudinary collections.</p>
+                  <h3>Recent Collections & Images</h3>
+                  <p>Click any collection preview to manage photos.</p>
                 </div>
               </div>
               <Link to="/admin/gallery" className="admin-link">
@@ -341,7 +350,12 @@ export const EveryoneSection: React.FC = () => {
                 </div>
               ) : (
                 collections.slice(0, 5).map((col) => (
-                  <div key={col.slug} className="admin-recent-image-card">
+                  <div
+                    key={col.slug}
+                    className="admin-recent-image-card"
+                    onClick={() => setSelectedCollection(col)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="admin-recent-image-card__frame">
                       {col.coverImage ? (
                         <img src={col.coverImage.thumbnailUrl} alt={col.name} />
@@ -351,7 +365,7 @@ export const EveryoneSection: React.FC = () => {
                         </div>
                       )}
                       <button type="button" className="admin-recent-image-card__menu">
-                        <MoreVertical size={14} />
+                        <FolderOpen size={14} />
                       </button>
                     </div>
                     <div className="admin-recent-image-card__body">
@@ -525,6 +539,14 @@ export const EveryoneSection: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {selectedCollection && (
+        <CollectionDetailModal
+          collection={selectedCollection}
+          onClose={() => setSelectedCollection(null)}
+          onCollectionUpdated={fetchCollections}
+        />
+      )}
     </div>
   )
 }

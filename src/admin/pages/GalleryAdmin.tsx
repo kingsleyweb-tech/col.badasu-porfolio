@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { UploadCloud, CheckCircle2, Loader2, RefreshCw, ImageIcon, AlertCircle } from 'lucide-react'
-
-interface Collection {
-  slug: string
-  name: string
-  count: number
-  coverImage?: {
-    thumbnailUrl: string
-    alt: string
-  }
-}
+import { UploadCloud, CheckCircle2, Loader2, RefreshCw, ImageIcon, AlertCircle, FolderOpen } from 'lucide-react'
+import { CollectionDetailModal, type CollectionItem } from '../components/CollectionDetailModal'
 
 export const GalleryAdmin: React.FC = () => {
   const [collectionName, setCollectionName] = useState('')
@@ -20,9 +11,10 @@ export const GalleryAdmin: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null)
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
 
-  const [collections, setCollections] = useState<Collection[]>([])
+  const [collections, setCollections] = useState<CollectionItem[]>([])
   const [loadingCollections, setLoadingCollections] = useState(true)
   const [collectionsError, setCollectionsError] = useState<string | null>(null)
+  const [selectedCollection, setSelectedCollection] = useState<CollectionItem | null>(null)
 
   const fetchCollections = useCallback(async () => {
     setLoadingCollections(true)
@@ -106,7 +98,7 @@ export const GalleryAdmin: React.FC = () => {
       <div className="admin-page-header">
         <div>
           <h1>Gallery Management</h1>
-          <p>Upload, organize and manage your photo collections from Cloudinary.</p>
+          <p>Upload, organize and manage your photo collections from Cloudinary. Click any collection to view, add or delete photos.</p>
         </div>
         <button
           type="button"
@@ -218,7 +210,7 @@ export const GalleryAdmin: React.FC = () => {
               <h3>Gallery Collections</h3>
               {!loadingCollections && (
                 <span style={{ fontSize: '13px', color: 'var(--admin-text-muted)' }}>
-                  {collections.length} collection{collections.length !== 1 ? 's' : ''} on Cloudinary
+                  {collections.length} collection{collections.length !== 1 ? 's' : ''} (Click to manage)
                 </span>
               )}
             </div>
@@ -241,7 +233,12 @@ export const GalleryAdmin: React.FC = () => {
             ) : (
               <div className="admin-collection-list-vertical">
                 {collections.map((col) => (
-                  <div key={col.slug} className="admin-collection-row">
+                  <div
+                    key={col.slug}
+                    className="admin-collection-row"
+                    onClick={() => setSelectedCollection(col)}
+                    style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                       {col.coverImage ? (
                         <img
@@ -267,26 +264,25 @@ export const GalleryAdmin: React.FC = () => {
                         </div>
                       )}
                       <div style={{ minWidth: 0 }}>
-                        <strong style={{ display: 'block', fontSize: '13px', lineHeight: '1.3', whiteSpace: 'normal' }}>
+                        <strong style={{ display: 'block', fontSize: '13px', lineHeight: '1.3', whiteSpace: 'normal', color: '#0f172a' }}>
                           {col.name}
                         </strong>
-                        <small style={{ color: 'var(--admin-text-muted)' }}>{col.count} images</small>
+                        <small style={{ color: 'var(--admin-text-muted)' }}>{col.count} images • Click to edit</small>
                       </div>
                     </div>
-                    <a
-                      href={`/gallery/${col.slug}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="admin-icon-btn"
-                      title="View on site"
-                      style={{ flexShrink: 0, textDecoration: 'none' }}
+
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedCollection(col)
+                      }}
+                      style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', fontSize: '12px' }}
                     >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/>
-                        <line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
-                    </a>
+                      <FolderOpen size={14} />
+                      <span>Manage</span>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -294,6 +290,15 @@ export const GalleryAdmin: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {selectedCollection && (
+        <CollectionDetailModal
+          collection={selectedCollection}
+          onClose={() => setSelectedCollection(null)}
+          onCollectionUpdated={fetchCollections}
+        />
+      )}
     </div>
   )
 }
+

@@ -144,6 +144,7 @@ function imageFromResource(cloudName, resource, folderName) {
 
   return {
     id: resource.asset_id || resource.public_id,
+    publicId: resource.public_id,
     title: toTitle(resource.public_id.split('/').at(-1) || 'Photograph'),
     alt: `Colonel Henry Kwaku Badasu ${getCollectionDisplayName(folderName)} photograph`,
     thumbnailUrl: `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto,c_fill,g_auto,w_900,h_680/${publicId}${extension}`,

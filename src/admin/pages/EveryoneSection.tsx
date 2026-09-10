@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Users,
@@ -16,9 +16,17 @@ import {
   Settings,
   CheckCircle2,
   Loader2,
+  AlertCircle,
   Image as ImageFileIcon
 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
+
+interface CloudinaryCollection {
+  slug: string
+  name: string
+  count: number
+  coverImage?: { thumbnailUrl: string; alt: string }
+}
 
 export const EveryoneSection: React.FC = () => {
   const { updatePortfolio } = usePortfolio()
@@ -33,60 +41,28 @@ export const EveryoneSection: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [savingGlobal, setSavingGlobal] = useState(false)
 
-  // Default demo collections matching Reference Image 1
-  const [collections, setCollections] = useState([
-    {
-      slug: 'military-journey',
-      name: 'Military Journey',
-      count: 45,
-      cover: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_600/colonel-badasu/site/hero/a1'
-    },
-    {
-      slug: 'leadership',
-      name: 'Leadership',
-      count: 32,
-      cover: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_600/colonel-badasu/site/hero/a4'
-    },
-    {
-      slug: 'awards-decorations',
-      name: 'Awards & Decorations',
-      count: 28,
-      cover: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_600/colonel-badasu/site/hero/a5'
-    },
-    {
-      slug: 'official-events',
-      name: 'Official Events',
-      count: 41,
-      cover: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_600/colonel-badasu/site/hero/graduation'
-    },
-    {
-      slug: 'training-education',
-      name: 'Training & Education',
-      count: 36,
-      cover: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_600/colonel-badasu/site/hero/ecowas'
-    },
-    {
-      slug: 'personal-gallery',
-      name: 'Personal Gallery',
-      count: 22,
-      cover: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_600/colonel-badasu/site/hero/tv3'
-    },
-    {
-      slug: 'recce',
-      name: 'Field Reconnaissance & Tactical Surveys',
-      count: 14,
-      cover: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_600/colonel-badasu/site/hero/boundary'
-    }
-  ])
+  // Live collections from Cloudinary
+  const [collections, setCollections] = useState<CloudinaryCollection[]>([])
+  const [loadingCollections, setLoadingCollections] = useState(true)
+  const [collectionsError, setCollectionsError] = useState<string | null>(null)
+  const totalImages = collections.reduce((sum, c) => sum + c.count, 0)
 
-  // Recent Images matching Reference Image 1
-  const recentImages = [
-    { name: 'IMG_20250815_1423.jpg', date: 'Aug 15, 2025', url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_400/colonel-badasu/site/hero/a1' },
-    { name: 'IMG_20250814_1110.jpg', date: 'Aug 14, 2025', url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_400/colonel-badasu/site/hero/a4' },
-    { name: 'IMG_20250810_0945.jpg', date: 'Aug 10, 2025', url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_400/colonel-badasu/site/hero/a5' },
-    { name: 'IMG_20250802_1732.jpg', date: 'Aug 2, 2025', url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_400/colonel-badasu/site/hero/graduation' },
-    { name: 'IMG_20250728_1201.jpg', date: 'Jul 28, 2025', url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_400/colonel-badasu/site/hero/ecowas' }
-  ]
+  const fetchCollections = useCallback(async () => {
+    setLoadingCollections(true)
+    setCollectionsError(null)
+    try {
+      const res = await fetch('/api/gallery')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setCollections(data.collections || [])
+    } catch {
+      setCollectionsError('Could not load collections from Cloudinary.')
+    } finally {
+      setLoadingCollections(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchCollections() }, [fetchCollections])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -115,19 +91,14 @@ export const EveryoneSection: React.FC = () => {
     setUploadProgress(10)
 
     try {
-      let uploadedCount = selectedFiles.length || 1
-      let uploadedCover = 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_600/colonel-badasu/site/hero/a1'
-
-      // Upload files via /api/upload
+      let uploadedCount = 0
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i]
         const reader = new FileReader()
-
-        const base64Promise = new Promise<string>((resolve) => {
+        const base64Data = await new Promise<string>((resolve) => {
           reader.onload = () => resolve(reader.result as string)
           reader.readAsDataURL(file)
         })
-        const base64Data = await base64Promise
 
         const res = await fetch('/api/upload', {
           method: 'POST',
@@ -138,32 +109,17 @@ export const EveryoneSection: React.FC = () => {
             filename: file.name
           })
         })
-
-        if (res.ok) {
-          const resData = await res.json()
-          if (i === 0 && resData.url) {
-            uploadedCover = resData.thumbnailUrl || resData.url
-          }
-        }
-        setUploadProgress(Math.round(((i + 1) / selectedFiles.length) * 90))
+        if (res.ok) uploadedCount++
+        setUploadProgress(Math.round(((i + 1) / selectedFiles.length) * 95))
       }
 
       setUploadProgress(100)
-
-      // Add to collections list
-      const newSlug = collectionName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-      const newCol = {
-        slug: newSlug,
-        name: collectionName,
-        count: uploadedCount,
-        cover: uploadedCover
-      }
-
-      setCollections((prev) => [newCol, ...prev])
-      setStatusMessage(`Collection "${collectionName}" successfully created with ${uploadedCount} photos!`)
+      setStatusMessage(`Collection "${collectionName}" created with ${uploadedCount} photos!`)
       setCollectionName('')
       setDescription('')
       setSelectedFiles([])
+      // Refresh live data
+      setTimeout(() => fetchCollections(), 1500)
     } catch {
       setStatusMessage('Failed to upload images. Please check connection.')
     } finally {
@@ -232,8 +188,12 @@ export const EveryoneSection: React.FC = () => {
           </div>
           <div className="admin-stat-card__content">
             <span className="admin-stat-card__title">Images in Gallery</span>
-            <strong className="admin-stat-card__value">238</strong>
-            <small className="admin-stat-card__meta">Across 8 collections</small>
+            <strong className="admin-stat-card__value">
+              {loadingCollections ? '…' : totalImages}
+            </strong>
+            <small className="admin-stat-card__meta">
+              Across {loadingCollections ? '…' : collections.length} collections
+            </small>
           </div>
         </div>
 
@@ -310,43 +270,61 @@ export const EveryoneSection: React.FC = () => {
             </div>
 
             {/* Collection Grid */}
-            <div className="admin-collection-grid">
-              {collections.map((col) => (
-                <div key={col.slug} className="admin-collection-card">
-                  <div className="admin-collection-card__media">
-                    <img src={col.cover} alt={col.name} />
-                    <button type="button" className="admin-collection-card__menu" aria-label="Collection menu">
-                      <MoreVertical size={16} />
-                    </button>
-                  </div>
-                  <div className="admin-collection-card__body">
-                    <strong>{col.name}</strong>
-                    <span>{col.count} images</span>
-                  </div>
-                </div>
-              ))}
-
-              {/* Create New Collection Empty Card */}
-              <div
-                className="admin-collection-card is-create"
-                onClick={() => document.getElementById('collection-form-scroll')?.scrollIntoView({ behavior: 'smooth' })}
-              >
-                <div className="admin-collection-card__create-icon">
-                  <Plus size={24} />
-                </div>
-                <strong>Create New Collection</strong>
+            {loadingCollections ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '32px 0', color: 'var(--admin-text-muted)' }}>
+                <Loader2 size={20} className="admin-spinner" />
+                <span>Loading collections from Cloudinary...</span>
               </div>
-            </div>
+            ) : collectionsError ? (
+              <div style={{ padding: '16px', background: 'rgba(220,38,38,0.08)', borderRadius: '8px', color: '#ef4444', fontSize: '14px', marginBottom: '16px' }}>
+                <AlertCircle size={16} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                {collectionsError}
+              </div>
+            ) : (
+              <div className="admin-collection-grid">
+                {collections.map((col) => (
+                  <div key={col.slug} className="admin-collection-card">
+                    <div className="admin-collection-card__media">
+                      {col.coverImage ? (
+                        <img src={col.coverImage.thumbnailUrl} alt={col.coverImage.alt} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', background: 'var(--admin-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <ImageIcon size={32} style={{ opacity: 0.3 }} />
+                        </div>
+                      )}
+                      <button type="button" className="admin-collection-card__menu" aria-label="Collection menu">
+                        <MoreVertical size={16} />
+                      </button>
+                    </div>
+                    <div className="admin-collection-card__body">
+                      <strong>{col.name}</strong>
+                      <span>{col.count} images</span>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Create New Collection Empty Card */}
+                <div
+                  className="admin-collection-card is-create"
+                  onClick={() => document.getElementById('collection-form-scroll')?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  <div className="admin-collection-card__create-icon">
+                    <Plus size={24} />
+                  </div>
+                  <strong>Create New Collection</strong>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Recent Images Card */}
+          {/* Recent Images Card — covers from live collections */}
           <div className="admin-card" style={{ marginTop: '24px' }}>
             <div className="admin-card__header">
               <div className="admin-card__title-wrap">
                 <ImageIcon size={20} />
                 <div>
                   <h3>Recent Images</h3>
-                  <p>Latest images uploaded to your gallery.</p>
+                  <p>Cover images from your Cloudinary collections.</p>
                 </div>
               </div>
               <Link to="/admin/gallery" className="admin-link">
@@ -356,20 +334,33 @@ export const EveryoneSection: React.FC = () => {
             </div>
 
             <div className="admin-recent-images-grid">
-              {recentImages.map((img, idx) => (
-                <div key={idx} className="admin-recent-image-card">
-                  <div className="admin-recent-image-card__frame">
-                    <img src={img.url} alt={img.name} />
-                    <button type="button" className="admin-recent-image-card__menu">
-                      <MoreVertical size={14} />
-                    </button>
-                  </div>
-                  <div className="admin-recent-image-card__body">
-                    <strong>{img.name}</strong>
-                    <small>{img.date}</small>
-                  </div>
+              {loadingCollections ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--admin-text-muted)', padding: '12px 0' }}>
+                  <Loader2 size={16} className="admin-spinner" />
+                  <span>Loading...</span>
                 </div>
-              ))}
+              ) : (
+                collections.slice(0, 5).map((col) => (
+                  <div key={col.slug} className="admin-recent-image-card">
+                    <div className="admin-recent-image-card__frame">
+                      {col.coverImage ? (
+                        <img src={col.coverImage.thumbnailUrl} alt={col.name} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', background: 'var(--admin-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <ImageIcon size={24} style={{ opacity: 0.3 }} />
+                        </div>
+                      )}
+                      <button type="button" className="admin-recent-image-card__menu">
+                        <MoreVertical size={14} />
+                      </button>
+                    </div>
+                    <div className="admin-recent-image-card__body">
+                      <strong>{col.name}</strong>
+                      <small>{col.count} images</small>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

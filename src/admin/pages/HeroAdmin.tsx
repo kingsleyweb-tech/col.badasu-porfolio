@@ -78,7 +78,9 @@ export const HeroAdmin: React.FC = () => {
       const result = await uploadFile(file)
       if (result) newSlides.push(result)
     }
-    setSlides((prev) => [...prev, ...newSlides])
+    const updated = [...slides, ...newSlides]
+    setSlides(updated)
+    await updatePortfolio({ hero: { ...data.hero, slides: updated } })
     setUploadingNew(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -94,6 +96,7 @@ export const HeroAdmin: React.FC = () => {
       const next = [...slides]
       next[idx] = result
       setSlides(next)
+      await updatePortfolio({ hero: { ...data.hero, slides: next } })
     }
     setUploadingIdx(null)
   }
@@ -103,7 +106,9 @@ export const HeroAdmin: React.FC = () => {
     const old = slides[idx]
     const oldUrl = typeof old === 'string' ? old : old?.url || old?.publicId
     if (oldUrl) await deleteCloudinaryImageIfUnused(oldUrl, data)
-    setSlides(slides.filter((_, i) => i !== idx))
+    const next = slides.filter((_, i) => i !== idx)
+    setSlides(next)
+    await updatePortfolio({ hero: { ...data.hero, slides: next } })
   }
 
   return (

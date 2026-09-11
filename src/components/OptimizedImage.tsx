@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ImageAsset } from '../data/officerData'
 
 type OptimizedImageProps = {
@@ -24,9 +24,16 @@ export function OptimizedImage({
   sizes = '100vw',
   variant = 'full'
 }: OptimizedImageProps) {
-  const [src, setSrc] = useState(variant === 'thumbnail' ? asset.thumbnailSrc : asset.src)
+  const targetSrc = variant === 'thumbnail' ? asset.thumbnailSrc : asset.src
+  const [currentSrc, setCurrentSrc] = useState(targetSrc)
   const [loaded, setLoaded] = useState(false)
-  const canUseSrcSet = src !== asset.fallbackSrc && asset.srcSet.length > 0
+
+  useEffect(() => {
+    setCurrentSrc(targetSrc)
+    setLoaded(false)
+  }, [targetSrc])
+
+  const canUseSrcSet = currentSrc !== asset.fallbackSrc && asset.srcSet && asset.srcSet.length > 0
 
   return (
     <span
@@ -35,7 +42,7 @@ export function OptimizedImage({
     >
       <img
         className={imageClassName}
-        src={src}
+        src={currentSrc}
         srcSet={canUseSrcSet ? asset.srcSet : undefined}
         sizes={canUseSrcSet ? sizes : undefined}
         alt={alt ?? asset.alt}
@@ -46,8 +53,8 @@ export function OptimizedImage({
         fetchPriority={fetchPriority}
         onLoad={() => setLoaded(true)}
         onError={() => {
-          if (src !== asset.fallbackSrc) {
-            setSrc(asset.fallbackSrc)
+          if (currentSrc !== asset.fallbackSrc) {
+            setCurrentSrc(asset.fallbackSrc)
           }
         }}
       />

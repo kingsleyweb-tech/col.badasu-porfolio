@@ -1407,14 +1407,32 @@ section[id],
   background: var(--green-50);
 }
 
+/* Error variant — red tones for actual failures */
+.gallery-notice--error {
+  border-color: rgba(220, 38, 38, 0.25);
+  background: rgba(254, 242, 242, 0.9);
+  color: #b91c1c;
+  flex-wrap: wrap;
+  display: flex;
+}
+
 .gallery-notice svg,
 .gallery-load-more svg {
   flex: 0 0 auto;
 }
 
-.gallery-notice svg,
+/* Only spin the Loader2 icon inside a loading notice, not static icons */
+.gallery-notice:not(.gallery-notice--error) svg:first-child,
 .gallery-load-more button:disabled svg {
   animation: gallery-spin 0.9s linear infinite;
+}
+
+/* Photo-grid fallback placeholder (fills the entire aspect-ratio frame) */
+.gallery-image-fallback--photo {
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: rgba(234, 242, 236, 0.6);
+  opacity: 0.7;
 }
 
 .gallery-load-more {

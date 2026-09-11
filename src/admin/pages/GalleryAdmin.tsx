@@ -68,6 +68,15 @@ export const GalleryAdmin: React.FC = () => {
   const fetchCollections = useCallback(async () => {
     setLoadingCollections(true)
     setCollectionsError(null)
+
+    // Capture whether we already had data BEFORE this fetch attempt.
+    // This must be read synchronously before any await.
+    let hadDataBeforeFetch = false
+    setCollections((prev) => {
+      hadDataBeforeFetch = prev.length > 0
+      return prev // no change — just reading
+    })
+
     try {
       // Fetch Firestore data immediately (fast), and deleted collection slugs set
       const [fsCols, deletedSlugs] = await Promise.all([
@@ -90,6 +99,7 @@ export const GalleryAdmin: React.FC = () => {
       })
       if (colMap.size > 0) {
         setCollections(Array.from(colMap.values()))
+        hadDataBeforeFetch = true
       }
 
       // Retry Cloudinary API up to 3 times for live collections
@@ -134,7 +144,9 @@ export const GalleryAdmin: React.FC = () => {
       setCollectionsError(null)
     } catch (err) {
       console.warn('[GalleryAdmin] Error fetching collections:', err)
-      if (collections.length === 0) {
+      // Only show the error if we genuinely have no data to show.
+      // If we already loaded collections before this refresh attempt, keep them visible.
+      if (!hadDataBeforeFetch) {
         setCollectionsError('Could not load collections. Check your network or API credentials.')
       }
     } finally {

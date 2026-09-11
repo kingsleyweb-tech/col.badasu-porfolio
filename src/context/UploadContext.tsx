@@ -273,19 +273,32 @@ export const UploadProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const speedText = `${speedKBps} KB/s`
 
           // Step 2: REQUIREMENT 5 & 6 & 16: IMMEDIATELY save reference to Firestore right after success!
-          await saveGalleryImageRecord({
-            id: result.publicId.replace(/[^a-zA-Z0-9_-]/g, '_'),
-            publicId: result.publicId,
-            collectionSlug: item.folder,
-            collectionName: item.batchCollectionName,
-            title: item.filename.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '),
-            alt: `${item.batchCollectionName} - ${item.filename}`,
-            url: result.url,
-            thumbnailUrl: result.thumbnailUrl || result.url,
-            largeUrl: result.largeUrl || result.url,
-            order: i,
-            uploadedAt: Date.now()
-          })
+          // NOTE: This requires real Firebase Auth (not demo mode). If permission denied,
+          //       the image IS uploaded to Cloudinary and will appear via the gallery API.
+          try {
+            await saveGalleryImageRecord({
+              id: result.publicId.replace(/[^a-zA-Z0-9_-]/g, '_'),
+              publicId: result.publicId,
+              collectionSlug: item.folder,
+              collectionName: item.batchCollectionName,
+              title: item.filename.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '),
+              alt: `${item.batchCollectionName} - ${item.filename}`,
+              url: result.url,
+              thumbnailUrl: result.thumbnailUrl || result.url,
+              largeUrl: result.largeUrl || result.url,
+              order: i,
+              uploadedAt: Date.now()
+            })
+          } catch (fsErr: any) {
+            // Don't block the upload — the image is safe in Cloudinary.
+            // Firestore save failure is usually a permissions issue (demo mode).
+            console.warn(
+              '[Upload] Firestore save failed for', item.filename,
+              '— Image uploaded to Cloudinary successfully but metadata not saved to Firestore.',
+              'If you see "Missing or insufficient permissions", ensure you are logged in with a real Firebase account.',
+              fsErr
+            )
+          }
 
           uploadedCount++
           await updateFileInQueue(item.id, { status: 'done', progress: 100 })

@@ -35,6 +35,7 @@ const DELETED_COLLECTIONS_TABLE = 'deleted_collections'
 
 /**
  * Saves a single uploaded image record immediately to Firestore.
+ * Requires the user to be authenticated with Firebase Auth (not demo mode).
  */
 export async function saveGalleryImageRecord(img: FirestoreGalleryImage): Promise<void> {
   try {
@@ -45,13 +46,25 @@ export async function saveGalleryImageRecord(img: FirestoreGalleryImage): Promis
     try {
       await deleteDoc(doc(db, DELETED_COLLECTIONS_TABLE, img.collectionSlug))
     } catch {
-      // ignore
+      // ignore — best-effort cleanup
     }
 
     // Also update/touch collection document metadata
     await updateCollectionMetadata(img.collectionSlug, img.collectionName, img.thumbnailUrl, img.alt)
-  } catch (err) {
-    console.warn('[FirestoreGallery] Error saving image record to Firestore:', err)
+  } catch (err: any) {
+    // Surface permission errors clearly so they are diagnosable
+    if (err?.code === 'permission-denied' || err?.message?.includes('Missing or insufficient permissions')) {
+      console.error(
+        '[FirestoreGallery] PERMISSION DENIED saving image record.',
+        'The admin must be signed in with a real Firebase account (not demo mode).',
+        'Image public ID:', img.publicId,
+        'Error:', err
+      )
+    } else {
+      console.warn('[FirestoreGallery] Error saving image record to Firestore:', err)
+    }
+    // Re-throw so callers can handle / surface the error
+    throw err
   }
 }
 
@@ -91,15 +104,11 @@ export async function updateCollectionMetadata(
 
 /**
  * Fetches all Firestore gallery collection records.
+ * Throws on error so callers can distinguish an empty collection from a Firestore failure.
  */
 export async function fetchFirestoreCollections(): Promise<FirestoreGalleryCollection[]> {
-  try {
-    const colSnap = await getDocs(collection(db, COLLECTIONS_TABLE))
-    return colSnap.docs.map((d) => d.data() as FirestoreGalleryCollection)
-  } catch (err) {
-    console.warn('[FirestoreGallery] Error fetching collections:', err)
-    return []
-  }
+  const colSnap = await getDocs(collection(db, COLLECTIONS_TABLE))
+  return colSnap.docs.map((d) => d.data() as FirestoreGalleryCollection)
 }
 
 /**

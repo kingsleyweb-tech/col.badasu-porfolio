@@ -28,7 +28,7 @@ export default async function handler(request, response) {
     const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
     const targetSlug = slug || slugify(folderName)
 
-    // 1. List folders under rootFolder
+    // 1. Find matching folders under rootFolder
     const listRes = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/folders/${encodePath(rootFolder)}`,
       { headers: { Authorization: `Basic ${credentials}` } }
@@ -54,36 +54,55 @@ export default async function handler(request, response) {
     for (const name of matchingFolderNames) {
       const folderPath = `${rootFolder}/${name}`
 
-      // Delete resources by prefix
-      try {
-        await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/resources/image/upload?prefix=${encodePath(folderPath)}&all=true`,
-          {
-            method: 'DELETE',
-            headers: { Authorization: `Basic ${credentials}` }
+      // Delete all image resources under this folder prefix (with trailing slash)
+      let partial = false
+      do {
+        try {
+          const deleteRes = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudName}/resources/image/upload?prefix=${encodePath(folderPath + '/')}`,
+            {
+              method: 'DELETE',
+              headers: { Authorization: `Basic ${credentials}` }
+            }
+          )
+          if (deleteRes.ok) {
+            const data = await deleteRes.json()
+            partial = Boolean(data.partial)
+          } else {
+            console.warn(`Resource delete failed for ${folderPath}: ${deleteRes.status}`)
+            partial = false
           }
-        )
-      } catch (err) {
-        console.warn(`Resource delete warning for ${folderPath}:`, err)
-      }
+        } catch (err) {
+          console.warn(`Resource delete warning for ${folderPath}:`, err)
+          partial = false
+        }
+      } while (partial)
 
-      // Delete folder itself
-      try {
-        await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/folders/${encodePath(folderPath)}`,
-          {
-            method: 'DELETE',
-            headers: { Authorization: `Basic ${credentials}` }
+      // Delete folder itself from Cloudinary (retry up to 3 times with delay for Cloudinary indexing)
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const folderRes = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudName}/folders/${encodePath(folderPath)}`,
+            {
+              method: 'DELETE',
+              headers: { Authorization: `Basic ${credentials}` }
+            }
+          )
+          if (folderRes.ok) {
+            console.log(`Successfully deleted folder ${folderPath} from Cloudinary.`)
+            break
+          } else if (attempt < 3) {
+            await new Promise((r) => setTimeout(r, 400 * attempt))
           }
-        )
-      } catch (err) {
-        console.warn(`Folder delete warning for ${folderPath}:`, err)
+        } catch (err) {
+          console.warn(`Folder delete warning for ${folderPath} (attempt ${attempt}):`, err)
+        }
       }
     }
 
     response.status(200).json({
       success: true,
-      message: `Collection "${folderName || targetSlug}" permanently deleted.`
+      message: `Collection "${folderName || targetSlug}" permanently deleted from Cloudinary.`
     })
   } catch (error) {
     console.error('Server collection delete error:', error)

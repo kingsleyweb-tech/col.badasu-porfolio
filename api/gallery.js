@@ -20,8 +20,8 @@ export default async function handler(request, response) {
 
     const collectionSlug = typeof request.query.collection === 'string' ? request.query.collection : ''
 
-    // Allow short CDN cache (60s) but revalidate in background — prevents hammering Cloudinary on every refresh
-    response.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+    // Disable caching so creation & deletion reflect instantly everywhere
+    response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
 
     if (collectionSlug) {
       const folders = await listFolders(cloudName, apiKey, apiSecret)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { ImageAsset } from '../data/officerData'
 
 type OptimizedImageProps = {
@@ -27,11 +27,24 @@ export function OptimizedImage({
   const targetSrc = variant === 'thumbnail' ? asset.thumbnailSrc : asset.src
   const [currentSrc, setCurrentSrc] = useState(targetSrc)
   const [loaded, setLoaded] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const prevSrc = useRef(targetSrc)
 
+  // Only reset when src actually changes (not on initial mount)
   useEffect(() => {
-    setCurrentSrc(targetSrc)
-    setLoaded(false)
+    if (prevSrc.current !== targetSrc) {
+      prevSrc.current = targetSrc
+      setCurrentSrc(targetSrc)
+      setLoaded(false)
+    }
   }, [targetSrc])
+
+  // Check if image already loaded (e.g. from browser cache)
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setLoaded(true)
+    }
+  }, [currentSrc])
 
   const canUseSrcSet = currentSrc !== asset.fallbackSrc && asset.srcSet && asset.srcSet.length > 0
 
@@ -41,6 +54,7 @@ export function OptimizedImage({
       style={{ backgroundImage: `url(${asset.placeholderSrc})` }}
     >
       <img
+        ref={imgRef}
         className={imageClassName}
         src={currentSrc}
         srcSet={canUseSrcSet ? asset.srcSet : undefined}

@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { QrCode, Save, CheckCircle2, Loader2, Download, Printer } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { QrCode, Save, CheckCircle2, Loader2, Download, Printer, UploadCloud, Trash2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
+import { uploadImageToCloudinary, deleteCloudinaryImageIfUnused } from '../../services/imageManager'
+import { resolveImageUrl } from '../../utils/imageResolver'
+import { welcomeFeatureImages } from '../../data/officerData'
 
 export const WelcomeAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -16,13 +19,26 @@ export const WelcomeAdmin: React.FC = () => {
   // Feature card texts
   const [leadershipTitle, setLeadershipTitle] = useState(data.welcome.leadershipTitle || 'LEADERSHIP')
   const [leadershipText, setLeadershipText] = useState(data.welcome.leadershipText || 'Leading with vision, integrity and purpose.')
+  const [leadershipImage, setLeadershipImage] = useState(data.welcome.leadershipImage || '')
+  const [leadershipImagePublicId, setLeadershipImagePublicId] = useState(data.welcome.leadershipImagePublicId || '')
+
   const [serviceTitle, setServiceTitle] = useState(data.welcome.serviceTitle || 'SERVICE')
   const [serviceText, setServiceText] = useState(data.welcome.serviceText || 'Dedicated to duty, country and people.')
+  const [serviceImage, setServiceImage] = useState(data.welcome.serviceImage || '')
+  const [serviceImagePublicId, setServiceImagePublicId] = useState(data.welcome.serviceImagePublicId || '')
+
   const [excellenceTitle, setExcellenceTitle] = useState(data.welcome.excellenceTitle || 'EXCELLENCE')
   const [excellenceText, setExcellenceText] = useState(data.welcome.excellenceText || 'Striving for the highest standards in all I do.')
+  const [excellenceImage, setExcellenceImage] = useState(data.welcome.excellenceImage || '')
+  const [excellenceImagePublicId, setExcellenceImagePublicId] = useState(data.welcome.excellenceImagePublicId || '')
 
+  const [uploadingCard, setUploadingCard] = useState<'leadership' | 'service' | 'excellence' | null>(null)
   const [saving, setSaving] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+
+  const leadershipFileRef = useRef<HTMLInputElement>(null)
+  const serviceFileRef = useRef<HTMLInputElement>(null)
+  const excellenceFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setTitle(data.welcome.title)
@@ -31,10 +47,16 @@ export const WelcomeAdmin: React.FC = () => {
     setQrUrl(data.welcome.qrRedirectUrl)
     setLeadershipTitle(data.welcome.leadershipTitle || 'LEADERSHIP')
     setLeadershipText(data.welcome.leadershipText || 'Leading with vision, integrity and purpose.')
+    setLeadershipImage(data.welcome.leadershipImage || '')
+    setLeadershipImagePublicId(data.welcome.leadershipImagePublicId || '')
     setServiceTitle(data.welcome.serviceTitle || 'SERVICE')
     setServiceText(data.welcome.serviceText || 'Dedicated to duty, country and people.')
+    setServiceImage(data.welcome.serviceImage || '')
+    setServiceImagePublicId(data.welcome.serviceImagePublicId || '')
     setExcellenceTitle(data.welcome.excellenceTitle || 'EXCELLENCE')
     setExcellenceText(data.welcome.excellenceText || 'Striving for the highest standards in all I do.')
+    setExcellenceImage(data.welcome.excellenceImage || '')
+    setExcellenceImagePublicId(data.welcome.excellenceImagePublicId || '')
   }, [data])
 
   const isDirty =
@@ -44,10 +66,13 @@ export const WelcomeAdmin: React.FC = () => {
     qrUrl !== data.welcome.qrRedirectUrl ||
     leadershipTitle !== (data.welcome.leadershipTitle || 'LEADERSHIP') ||
     leadershipText !== (data.welcome.leadershipText || 'Leading with vision, integrity and purpose.') ||
+    leadershipImage !== (data.welcome.leadershipImage || '') ||
     serviceTitle !== (data.welcome.serviceTitle || 'SERVICE') ||
     serviceText !== (data.welcome.serviceText || 'Dedicated to duty, country and people.') ||
+    serviceImage !== (data.welcome.serviceImage || '') ||
     excellenceTitle !== (data.welcome.excellenceTitle || 'EXCELLENCE') ||
-    excellenceText !== (data.welcome.excellenceText || 'Striving for the highest standards in all I do.')
+    excellenceText !== (data.welcome.excellenceText || 'Striving for the highest standards in all I do.') ||
+    excellenceImage !== (data.welcome.excellenceImage || '')
 
   const handleReset = () => {
     setTitle(data.welcome.title)
@@ -56,10 +81,64 @@ export const WelcomeAdmin: React.FC = () => {
     setQrUrl(data.welcome.qrRedirectUrl)
     setLeadershipTitle(data.welcome.leadershipTitle || 'LEADERSHIP')
     setLeadershipText(data.welcome.leadershipText || 'Leading with vision, integrity and purpose.')
+    setLeadershipImage(data.welcome.leadershipImage || '')
+    setLeadershipImagePublicId(data.welcome.leadershipImagePublicId || '')
     setServiceTitle(data.welcome.serviceTitle || 'SERVICE')
     setServiceText(data.welcome.serviceText || 'Dedicated to duty, country and people.')
+    setServiceImage(data.welcome.serviceImage || '')
+    setServiceImagePublicId(data.welcome.serviceImagePublicId || '')
     setExcellenceTitle(data.welcome.excellenceTitle || 'EXCELLENCE')
     setExcellenceText(data.welcome.excellenceText || 'Striving for the highest standards in all I do.')
+    setExcellenceImage(data.welcome.excellenceImage || '')
+    setExcellenceImagePublicId(data.welcome.excellenceImagePublicId || '')
+  }
+
+  const handleUploadCardImage = async (cardKey: 'leadership' | 'service' | 'excellence', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingCard(cardKey)
+
+    try {
+      const res = await uploadImageToCloudinary(file, 'colonel-badasu/welcome')
+      if (res.success && res.url) {
+        if (cardKey === 'leadership') {
+          if (leadershipImage) await deleteCloudinaryImageIfUnused(leadershipImage, data)
+          setLeadershipImage(res.url)
+          setLeadershipImagePublicId(res.publicId)
+        } else if (cardKey === 'service') {
+          if (serviceImage) await deleteCloudinaryImageIfUnused(serviceImage, data)
+          setServiceImage(res.url)
+          setServiceImagePublicId(res.publicId)
+        } else if (cardKey === 'excellence') {
+          if (excellenceImage) await deleteCloudinaryImageIfUnused(excellenceImage, data)
+          setExcellenceImage(res.url)
+          setExcellenceImagePublicId(res.publicId)
+        }
+      } else {
+        alert(res.error || 'Failed to upload image to Cloudinary.')
+      }
+    } catch {
+      alert('Error uploading image to Cloudinary.')
+    } finally {
+      setUploadingCard(null)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveCardImage = async (cardKey: 'leadership' | 'service' | 'excellence') => {
+    if (cardKey === 'leadership' && leadershipImage) {
+      await deleteCloudinaryImageIfUnused(leadershipImage, data)
+      setLeadershipImage('')
+      setLeadershipImagePublicId('')
+    } else if (cardKey === 'service' && serviceImage) {
+      await deleteCloudinaryImageIfUnused(serviceImage, data)
+      setServiceImage('')
+      setServiceImagePublicId('')
+    } else if (cardKey === 'excellence' && excellenceImage) {
+      await deleteCloudinaryImageIfUnused(excellenceImage, data)
+      setExcellenceImage('')
+      setExcellenceImagePublicId('')
+    }
   }
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -75,10 +154,16 @@ export const WelcomeAdmin: React.FC = () => {
           qrRedirectUrl: qrUrl,
           leadershipTitle,
           leadershipText,
+          leadershipImage,
+          leadershipImagePublicId,
           serviceTitle,
           serviceText,
+          serviceImage,
+          serviceImagePublicId,
           excellenceTitle,
           excellenceText,
+          excellenceImage,
+          excellenceImagePublicId,
         },
       })
       setShowSuccessModal(true)
@@ -119,7 +204,7 @@ export const WelcomeAdmin: React.FC = () => {
           <div className="admin-header-icon"><QrCode size={24} /></div>
           <div>
             <h1>QR Landing Page & Welcome Settings</h1>
-            <p>Manage the welcome landing page content, feature card texts, and the permanent portfolio QR code.</p>
+            <p>Manage the welcome landing page content, card title images, feature texts, and permanent portfolio QR code.</p>
           </div>
         </div>
         <button type="button" className="btn btn--primary" onClick={() => handleSave()} disabled={saving}>
@@ -154,43 +239,182 @@ export const WelcomeAdmin: React.FC = () => {
             </form>
           </div>
 
-          {/* Feature Cards */}
+          {/* Feature Cards with Image Upload */}
           <div className="admin-card">
             <div className="admin-card__header">
-              <h3>Feature Card Texts</h3>
-              <span style={{ fontSize: '13px', color: 'var(--admin-text-muted)' }}>Shown on the welcome page under the main heading</span>
+              <div>
+                <h3>Feature Card Texts & Icons</h3>
+                <p style={{ fontSize: '13px', color: 'var(--admin-text-muted)', margin: 0 }}>
+                  Upload/change custom icons for each card. Saved directly to Cloudinary.
+                </p>
+              </div>
             </div>
+
             <div className="admin-grid-3" style={{ gap: '16px' }}>
-              {/* Leadership */}
-              <div style={{ background: 'var(--admin-bg-secondary)', borderRadius: '8px', padding: '16px' }}>
-                <div className="admin-form-group">
-                  <label>Card 1 Title</label>
+              {/* Leadership Card */}
+              <div style={{ background: 'var(--admin-bg-secondary)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px' }}>
+                  <span style={{ fontWeight: 600, fontSize: '14px' }}>Card 1 (Leadership)</span>
+                  {uploadingCard === 'leadership' && <Loader2 size={16} className="admin-spin" style={{ color: 'var(--admin-primary)' }} />}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                    <img
+                      src={resolveImageUrl(leadershipImage || welcomeFeatureImages.leadership.src)}
+                      alt="Leadership Icon"
+                      style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <input
+                      type="file"
+                      ref={leadershipFileRef}
+                      style={{ display: 'none' }}
+                      accept="image/*"
+                      onChange={(e) => handleUploadCardImage('leadership', e)}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--xs"
+                      onClick={() => leadershipFileRef.current?.click()}
+                      disabled={uploadingCard === 'leadership'}
+                    >
+                      <UploadCloud size={13} />
+                      <span>{leadershipImage ? 'Change' : 'Upload'}</span>
+                    </button>
+                    {leadershipImage && (
+                      <button
+                        type="button"
+                        className="btn btn--danger btn--xs"
+                        onClick={() => handleRemoveCardImage('leadership')}
+                        disabled={uploadingCard === 'leadership'}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                  <label>Title</label>
                   <input type="text" value={leadershipTitle} onChange={(e) => setLeadershipTitle(e.target.value)} />
                 </div>
-                <div className="admin-form-group">
-                  <label>Card 1 Text</label>
+                <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                  <label>Description</label>
                   <textarea value={leadershipText} onChange={(e) => setLeadershipText(e.target.value)} rows={3} />
                 </div>
               </div>
-              {/* Service */}
-              <div style={{ background: 'var(--admin-bg-secondary)', borderRadius: '8px', padding: '16px' }}>
-                <div className="admin-form-group">
-                  <label>Card 2 Title</label>
+
+              {/* Service Card */}
+              <div style={{ background: 'var(--admin-bg-secondary)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px' }}>
+                  <span style={{ fontWeight: 600, fontSize: '14px' }}>Card 2 (Service)</span>
+                  {uploadingCard === 'service' && <Loader2 size={16} className="admin-spin" style={{ color: 'var(--admin-primary)' }} />}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                    <img
+                      src={resolveImageUrl(serviceImage || welcomeFeatureImages.service.src)}
+                      alt="Service Icon"
+                      style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <input
+                      type="file"
+                      ref={serviceFileRef}
+                      style={{ display: 'none' }}
+                      accept="image/*"
+                      onChange={(e) => handleUploadCardImage('service', e)}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--xs"
+                      onClick={() => serviceFileRef.current?.click()}
+                      disabled={uploadingCard === 'service'}
+                    >
+                      <UploadCloud size={13} />
+                      <span>{serviceImage ? 'Change' : 'Upload'}</span>
+                    </button>
+                    {serviceImage && (
+                      <button
+                        type="button"
+                        className="btn btn--danger btn--xs"
+                        onClick={() => handleRemoveCardImage('service')}
+                        disabled={uploadingCard === 'service'}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                  <label>Title</label>
                   <input type="text" value={serviceTitle} onChange={(e) => setServiceTitle(e.target.value)} />
                 </div>
-                <div className="admin-form-group">
-                  <label>Card 2 Text</label>
+                <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                  <label>Description</label>
                   <textarea value={serviceText} onChange={(e) => setServiceText(e.target.value)} rows={3} />
                 </div>
               </div>
-              {/* Excellence */}
-              <div style={{ background: 'var(--admin-bg-secondary)', borderRadius: '8px', padding: '16px' }}>
-                <div className="admin-form-group">
-                  <label>Card 3 Title</label>
+
+              {/* Excellence Card */}
+              <div style={{ background: 'var(--admin-bg-secondary)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px' }}>
+                  <span style={{ fontWeight: 600, fontSize: '14px' }}>Card 3 (Excellence)</span>
+                  {uploadingCard === 'excellence' && <Loader2 size={16} className="admin-spin" style={{ color: 'var(--admin-primary)' }} />}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                    <img
+                      src={resolveImageUrl(excellenceImage || welcomeFeatureImages.excellence.src)}
+                      alt="Excellence Icon"
+                      style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <input
+                      type="file"
+                      ref={excellenceFileRef}
+                      style={{ display: 'none' }}
+                      accept="image/*"
+                      onChange={(e) => handleUploadCardImage('excellence', e)}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--xs"
+                      onClick={() => excellenceFileRef.current?.click()}
+                      disabled={uploadingCard === 'excellence'}
+                    >
+                      <UploadCloud size={13} />
+                      <span>{excellenceImage ? 'Change' : 'Upload'}</span>
+                    </button>
+                    {excellenceImage && (
+                      <button
+                        type="button"
+                        className="btn btn--danger btn--xs"
+                        onClick={() => handleRemoveCardImage('excellence')}
+                        disabled={uploadingCard === 'excellence'}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                  <label>Title</label>
                   <input type="text" value={excellenceTitle} onChange={(e) => setExcellenceTitle(e.target.value)} />
                 </div>
-                <div className="admin-form-group">
-                  <label>Card 3 Text</label>
+                <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                  <label>Description</label>
                   <textarea value={excellenceText} onChange={(e) => setExcellenceText(e.target.value)} rows={3} />
                 </div>
               </div>
@@ -198,7 +422,7 @@ export const WelcomeAdmin: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: Real QR Code */}
+        {/* Right Column: QR Code & Live Preview */}
         <div className="admin-dashboard-sidebar">
           <div className="admin-card">
             <div className="admin-card__header"><h3>Permanent QR Code</h3></div>
@@ -233,18 +457,25 @@ export const WelcomeAdmin: React.FC = () => {
             </div>
           </div>
 
-          {/* Live Preview */}
+          {/* Live Preview Card */}
           <div className="admin-card" style={{ marginTop: '24px' }}>
-            <div className="admin-card__header"><h3>Feature Cards Preview</h3></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="admin-card__header"><h3>Live Cards Preview</h3></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
-                { t: leadershipTitle, d: leadershipText },
-                { t: serviceTitle, d: serviceText },
-                { t: excellenceTitle, d: excellenceText },
+                { t: leadershipTitle, d: leadershipText, img: leadershipImage || welcomeFeatureImages.leadership.src },
+                { t: serviceTitle, d: serviceText, img: serviceImage || welcomeFeatureImages.service.src },
+                { t: excellenceTitle, d: excellenceText, img: excellenceImage || welcomeFeatureImages.excellence.src },
               ].map((card, i) => (
-                <div key={i} style={{ background: 'var(--admin-bg-secondary)', borderRadius: '8px', padding: '12px 16px', borderLeft: '3px solid var(--admin-primary)' }}>
-                  <strong style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>{card.t}</strong>
-                  <p style={{ fontSize: '12px', color: 'var(--admin-text-muted)', margin: 0 }}>{card.d}</p>
+                <div key={i} style={{ background: 'var(--admin-bg-secondary)', borderRadius: '8px', padding: '12px 16px', borderLeft: '3px solid var(--admin-primary)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <img
+                    src={resolveImageUrl(card.img)}
+                    alt={card.t}
+                    style={{ width: '28px', height: '28px', objectFit: 'contain', flexShrink: 0 }}
+                  />
+                  <div>
+                    <strong style={{ fontSize: '13px', display: 'block', marginBottom: '2px' }}>{card.t}</strong>
+                    <p style={{ fontSize: '12px', color: 'var(--admin-text-muted)', margin: 0 }}>{card.d}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -256,8 +487,9 @@ export const WelcomeAdmin: React.FC = () => {
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         title="Welcome Page Saved"
-        message="QR code settings and welcome page content have been updated and are live."
+        message="QR code settings, card icons, and welcome page content have been updated and saved to Cloudinary."
       />
     </div>
   )
 }
+

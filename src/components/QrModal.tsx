@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { X, Download, Printer } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { QR_PORTFOLIO_URL } from '../config/qrConfig'
-import { officer } from '../data/officerData'
+import { officer as defaultOfficer } from '../data/officerData'
+import { usePortfolio } from '../context/PortfolioContext'
 
 type QrModalProps = {
   isOpen: boolean
@@ -12,6 +13,8 @@ type QrModalProps = {
 
 export function QrModal({ isOpen, onClose }: QrModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const { data } = usePortfolio()
+  const officer = data?.officer || defaultOfficer
 
   // Close on Escape key press
   useEffect(() => {

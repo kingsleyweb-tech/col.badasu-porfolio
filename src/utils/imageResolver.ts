@@ -3,12 +3,29 @@ const localImages = import.meta.glob('/src/assets/images/**/*.{png,jpg,jpeg,webp
   import: 'default'
 }) as Record<string, string>
 
+export function optimizeCloudinaryUrl(url: string, width?: number): string {
+  if (!url || !url.includes('res.cloudinary.com')) return url
+  try {
+    if (url.includes('/upload/')) {
+      const parts = url.split('/upload/')
+      const secondHalf = parts[1]
+      if (!secondHalf.startsWith('f_auto') && !secondHalf.startsWith('q_auto') && !secondHalf.startsWith('w_')) {
+        const transform = width ? `f_auto,q_auto,w_${width}/` : 'f_auto,q_auto/'
+        return `${parts[0]}/upload/${transform}${secondHalf}`
+      }
+    }
+  } catch {
+    // fallback to original
+  }
+  return url
+}
+
 export function resolveImageUrl(pathOrUrl?: string | null): string {
   if (!pathOrUrl) return ''
 
   // 1. Full HTTP/HTTPS URLs (Cloudinary, external uploads, etc.) or Data/Blob URLs
   if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://') || pathOrUrl.startsWith('data:') || pathOrUrl.startsWith('blob:')) {
-    return pathOrUrl
+    return pathOrUrl.includes('res.cloudinary.com') ? optimizeCloudinaryUrl(pathOrUrl) : pathOrUrl
   }
 
   const clean = pathOrUrl.replace(/^\//, '')

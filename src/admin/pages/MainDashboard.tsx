@@ -58,6 +58,7 @@ export const MainDashboard: React.FC = () => {
   ]
 
   const quickAccessSections = [
+    { title: 'Rank & Military Title', desc: 'Change military rank title (e.g. Brig. General) across site.', icon: ShieldCheck, to: '/admin/rank' },
     { title: 'Hero Section', desc: 'Update the main banner, title and intro text.', icon: Sliders, to: '/admin/hero' },
     { title: 'Biography', desc: 'Edit personal information and summary.', icon: UserCheck, to: '/admin/biography' },
     { title: 'Career', desc: 'Add, edit or remove career positions and responsibilities.', icon: Briefcase, to: '/admin/career' },

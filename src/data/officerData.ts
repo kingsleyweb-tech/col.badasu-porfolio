@@ -68,6 +68,7 @@ export const brandAssets = {
 
 export const officer = {
   rank: 'Colonel',
+  shortRank: 'Col.',
   name: 'Henry Kwaku Badasu',
   formalName: 'BADASU KWAKU HENRY',
   force: 'Ghana Armed Forces',

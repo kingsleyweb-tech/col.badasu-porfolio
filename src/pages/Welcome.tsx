@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Clock, ArrowRight } from 'lucide-react'
 import { OptimizedImage } from '../components/OptimizedImage'
-import { brandAssets, welcomeFeatureImages } from '../data/officerData'
+import { welcomeFeatureImages, officer as defaultOfficer } from '../data/officerData'
+import type { ImageAsset } from '../data/officerData'
 import { usePortfolio } from '../context/PortfolioContext'
+import { resolveImageUrl } from '../utils/imageResolver'
 
 export function Welcome() {
   const [seconds, setSeconds] = useState(15)
@@ -12,6 +14,11 @@ export function Welcome() {
   const timerRef = useRef<number | null>(null)
   const shouldReduceMotion = useReducedMotion()
   const { data } = usePortfolio()
+
+  const officer = data?.officer || defaultOfficer
+  const rank = officer.rank || 'Colonel'
+  const name = officer.name || 'Henry Kwaku Badasu'
+  const lastName = name.split(' ').pop() || 'BADASU'
 
   const welcome = data?.welcome
   const leadershipTitle = welcome?.leadershipTitle || 'LEADERSHIP'
@@ -60,25 +67,33 @@ export function Welcome() {
     visible: { opacity: 1, transition: { duration: 0.6 } },
   }
 
+  const resolveCardAsset = (customUrl?: string, defaultAsset?: ImageAsset): ImageAsset => {
+    if (customUrl) {
+      const resolved = resolveImageUrl(customUrl)
+      return {
+        src: resolved,
+        fallbackSrc: resolved,
+        thumbnailSrc: resolved,
+        placeholderSrc: resolved,
+        srcSet: `${resolved} 100w`,
+        alt: 'Feature Icon',
+        caption: 'Feature Icon',
+        width: 48,
+        height: 48,
+      }
+    }
+    return defaultAsset!
+  }
+
   const featureCards = [
-    { image: welcomeFeatureImages.leadership, title: leadershipTitle, desc: leadershipText },
-    { image: welcomeFeatureImages.service, title: serviceTitle, desc: serviceText },
-    { image: welcomeFeatureImages.excellence, title: excellenceTitle, desc: excellenceText },
+    { image: resolveCardAsset(welcome?.leadershipImage, welcomeFeatureImages.leadership), title: leadershipTitle, desc: leadershipText },
+    { image: resolveCardAsset(welcome?.serviceImage, welcomeFeatureImages.service), title: serviceTitle, desc: serviceText },
+    { image: resolveCardAsset(welcome?.excellenceImage, welcomeFeatureImages.excellence), title: excellenceTitle, desc: excellenceText },
   ]
 
   return (
     <div className="welcome-page-container">
       <div className="welcome-page__bottom-arc" aria-hidden="true" />
-
-      <div className="welcome-page__top-bar">
-        <OptimizedImage
-          asset={brandAssets.gafLogo}
-          className="welcome-page__gaf-logo-wrap"
-          imageClassName="welcome-page__gaf-logo"
-          loading="eager"
-          sizes="72px"
-        />
-      </div>
 
       <motion.main
         className="welcome-page__content"
@@ -98,7 +113,7 @@ export function Welcome() {
           <span className="welcome-page__pre-title">Welcome to the</span>
           <h1 className="welcome-page__title">OFFICIAL PORTFOLIO</h1>
           <span className="welcome-page__of-title">OF</span>
-          <h2 className="welcome-page__name">COLONEL BADASU</h2>
+          <h2 className="welcome-page__name">{rank.toUpperCase()} {lastName.toUpperCase()}</h2>
         </motion.div>
 
         <motion.p variants={fadeUpVariants} className="welcome-page__intro-text">
@@ -109,7 +124,7 @@ export function Welcome() {
           {featureCards.map((card, idx) => (
             <div key={idx} className="welcome-feature-card">
               <div className="welcome-feature-card__img-container">
-                <OptimizedImage asset={card.image} sizes="32px" />
+                <OptimizedImage asset={card.image} sizes="48px" />
               </div>
               <h3>{card.title}</h3>
               <p>{card.desc}</p>
@@ -121,7 +136,7 @@ export function Welcome() {
           <button onClick={navigateToHome} className="welcome-cta-btn" type="button">
             <div className="welcome-cta-btn__content">
               <span className="welcome-cta-btn__sub">READ EVERYTHING ABOUT</span>
-              <span className="welcome-cta-btn__main">COLONEL BADASU</span>
+              <span className="welcome-cta-btn__main">{rank.toUpperCase()} {lastName.toUpperCase()}</span>
             </div>
             <ArrowRight size={20} className="welcome-cta-btn__icon" />
           </button>

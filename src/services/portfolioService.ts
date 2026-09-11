@@ -90,10 +90,16 @@ export type PortfolioData = {
     heroImageSrc: string
     leadershipTitle: string
     leadershipText: string
+    leadershipImage?: string
+    leadershipImagePublicId?: string
     serviceTitle: string
     serviceText: string
+    serviceImage?: string
+    serviceImagePublicId?: string
     excellenceTitle: string
     excellenceText: string
+    excellenceImage?: string
+    excellenceImagePublicId?: string
   }
   homeCareerCards: HomeCard[]
   homeAchievementCards: HomeCard[]
@@ -182,10 +188,16 @@ export const defaultPortfolioData: PortfolioData = {
     heroImageSrc: defaultOfficer.biography[0],
     leadershipTitle: 'LEADERSHIP',
     leadershipText: 'Leading with vision, integrity and purpose.',
+    leadershipImage: '',
+    leadershipImagePublicId: '',
     serviceTitle: 'SERVICE',
     serviceText: 'Dedicated to duty, country and people.',
+    serviceImage: '',
+    serviceImagePublicId: '',
     excellenceTitle: 'EXCELLENCE',
     excellenceText: 'Striving for the highest standards in all I do.',
+    excellenceImage: '',
+    excellenceImagePublicId: '',
   },
   homeCareerCards: [
     { title: 'Chief Operations Officer, ECOMIG Force Headquarters', description: 'Planning, force generation, rotation, repatriation, doctrine review, and peacekeeping threat assessment.', category: 'Command', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },

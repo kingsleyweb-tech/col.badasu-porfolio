@@ -42,6 +42,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'PORTFOLIO',
     items: [
+      { to: '/admin/rank', label: 'Rank & Military Title', icon: ShieldCheck },
       { to: '/admin/biography', label: 'Biography', icon: UserCheck },
       { to: '/admin/career', label: 'Career', icon: Briefcase },
     ],

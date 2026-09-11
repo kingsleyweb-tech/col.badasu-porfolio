@@ -39,6 +39,7 @@ import { UsersAdmin } from './admin/pages/UsersAdmin'
 import { AchievementsAdmin } from './admin/pages/AchievementsAdmin'
 import { HomeCardsAdmin } from './admin/pages/HomeCardsAdmin'
 import { FooterAdmin } from './admin/pages/FooterAdmin'
+import { RankAdmin } from './admin/pages/RankAdmin'
 
 const footerHiddenRoutes = new Set(['/awards', '/career', '/biography', '/welcome'])
 
@@ -104,6 +105,7 @@ function AppShell() {
             <Route path="leadership" element={<LeadershipAdmin />} />
             <Route path="gallery" element={<GalleryAdmin />} />
             <Route path="welcome" element={<WelcomeAdmin />} />
+            <Route path="rank" element={<RankAdmin />} />
             <Route path="settings" element={<SiteSettingsAdmin />} />
             <Route path="achievements" element={<AchievementsAdmin />} />
             <Route path="home-cards" element={<HomeCardsAdmin />} />

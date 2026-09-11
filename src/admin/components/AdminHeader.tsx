@@ -1,30 +1,22 @@
 import React, { useEffect, useState } from 'react'
-import { Search, ExternalLink, Menu, Circle, QrCode } from 'lucide-react'
+import { Search, ExternalLink, Menu, Circle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { QrModal } from '../../components/QrModal'
+import { AdminSearchModal } from './AdminSearchModal'
 
 export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onToggleSidebar }) => {
   const { user, adminCredentials } = useAuth()
-  const [timeStr, setTimeStr] = useState('')
-  const [showQrModal, setShowQrModal] = useState(false)
+  const [showSearchModal, setShowSearchModal] = useState(false)
 
+  // Listen for Ctrl+K / Cmd+K shortcut
   useEffect(() => {
-    const update = () => {
-      const now = new Date()
-      const options: Intl.DateTimeFormatOptions = {
-        weekday: 'short',
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearchModal((prev) => !prev)
       }
-      setTimeStr(now.toLocaleDateString('en-GB', options).replace(',', ' |'))
     }
-    update()
-    const interval = setInterval(update, 60000)
-    return () => clearInterval(interval)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   const adminEmail = user?.email || adminCredentials.email || 'admin@colonelbadasu.com'
@@ -32,6 +24,7 @@ export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onTogg
 
   return (
     <header className="admin-header">
+      {/* Left: Menu toggle + Search */}
       <div className="admin-header__left">
         <button
           type="button"
@@ -42,33 +35,31 @@ export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onTogg
           <Menu size={20} />
         </button>
 
-        <div className="admin-header__search">
+        <div
+          className="admin-header__search"
+          onClick={() => setShowSearchModal(true)}
+          style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center' }}
+        >
           <Search size={16} />
-          <input type="text" placeholder="Search sections, pages or settings..." />
+          <input
+            type="text"
+            placeholder="Search content... (Ctrl+K)"
+            readOnly
+            style={{ cursor: 'pointer' }}
+          />
+          <span className="admin-header__search-kbd">
+            Ctrl K
+          </span>
         </div>
       </div>
 
+      {/* Right: Status + View Site + Avatar */}
       <div className="admin-header__right">
-        {/* Live Date/Time */}
-        <div className="admin-header__date">{timeStr}</div>
-
         {/* Website Status Badge */}
         <div className="admin-status-badge">
           <Circle size={8} className="admin-status-badge__dot" />
           <span>Website Live</span>
         </div>
-
-        {/* QR Code Quick Action */}
-        <button
-          type="button"
-          onClick={() => setShowQrModal(true)}
-          className="admin-header__view-site"
-          title="View Scannable QR Code"
-          style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', cursor: 'pointer' }}
-        >
-          <QrCode size={15} />
-          <span>QR Code</span>
-        </button>
 
         {/* View Live Portfolio Shortcut */}
         <a
@@ -77,24 +68,21 @@ export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onTogg
           rel="noopener noreferrer"
           className="admin-header__view-site"
         >
-          <span>View Portfolio</span>
+          <span>View Site</span>
           <ExternalLink size={14} />
         </a>
 
         {/* Admin Profile User Badge */}
         <div className="admin-user-pill">
           <div className="admin-user-pill__avatar">{initial}B</div>
-          <div className="admin-user-pill__info">
+          <div className="admin-user-pill__info admin-user-pill__info--hidden-mobile">
             <strong>Col. Henry K. Badasu</strong>
             <small>Administrator</small>
           </div>
         </div>
       </div>
 
-      {showQrModal && (
-        <QrModal isOpen={showQrModal} onClose={() => setShowQrModal(false)} />
-      )}
+      <AdminSearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
     </header>
   )
 }
-

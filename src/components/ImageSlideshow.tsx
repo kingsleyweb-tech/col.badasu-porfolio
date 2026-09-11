@@ -34,8 +34,10 @@ export function ImageSlideshow({ images, active, onActiveChange }: ImageSlidesho
     return () => window.clearTimeout(timer)
   }, [active, goTo])
 
-  const current = images[active]
-  const next = images[(active + 1) % images.length]
+  const count = images.length || 1
+  const safeActive = active % count
+  const current = images[safeActive] || images[0]
+  const next = images[(safeActive + 1) % count] || images[0]
 
   useEffect(() => {
     const first = images[0]
@@ -125,9 +127,9 @@ export function ImageSlideshow({ images, active, onActiveChange }: ImageSlidesho
             <button
               type="button"
               aria-label={`Show slide ${index + 1}`}
-              aria-current={index === active}
-              className={index === active ? 'is-active' : ''}
-              key={image.src}
+              aria-current={index === safeActive}
+              className={index === safeActive ? 'is-active' : ''}
+              key={image.src + index}
               onClick={() => goTo(index)}
             />
           ))}

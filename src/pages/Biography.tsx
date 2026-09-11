@@ -2,12 +2,27 @@ import { BackButton } from '../components/BackButton'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { biographyCategoryLinks, images, officer as defaultOfficer } from '../data/officerData'
+import { biographyCategoryLinks, officer as defaultOfficer } from '../data/officerData'
+import type { ImageAsset } from '../data/officerData'
+import { resolveImageUrl } from '../utils/imageResolver'
 import { usePortfolio } from '../context/PortfolioContext'
 
 export function Biography() {
   const { data } = usePortfolio()
   const officer = data?.officer || defaultOfficer
+
+  const portraitUrl = resolveImageUrl(officer.profileImageUrl || 'hero/profile-home.jpeg')
+  const portraitAsset: ImageAsset = {
+    src: portraitUrl,
+    fallbackSrc: portraitUrl,
+    thumbnailSrc: portraitUrl,
+    placeholderSrc: portraitUrl,
+    srcSet: `${portraitUrl} 800w`,
+    alt: `${officer.rank} ${officer.name}`,
+    caption: officer.name,
+    width: 600,
+    height: 800,
+  }
 
   return (
     <>
@@ -24,7 +39,7 @@ export function Biography() {
               <SectionHeading eyebrow="Overview" title="Summary of Experience" />
               <div className="biography-overview">
                 <div className="biography-overview__image">
-                  <OptimizedImage asset={images[1]} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 360px" />
+                  <OptimizedImage asset={portraitAsset} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 360px" />
                 </div>
                 <div>
                   {(officer.biography || defaultOfficer.biography).map((paragraph) => (

@@ -72,9 +72,29 @@ export function Home() {
         <div className="container">
           <SectionHeading eyebrow="Career" title="A Structured Record of Command, Staff, and Operational Service" description="Summary cards introduce the major professional chapters. Detailed chronology lives on the career page." />
           <div className="card-grid feature-news-grid">
-            {careerHighlights.map((item) => (
-              <HoverRevealCard key={item.title} {...item} />
-            ))}
+            {(data?.homeCareerCards?.length ? data.homeCareerCards : careerHighlights).map((item, i) => {
+              const card = 'imageUrl' in item
+                ? {
+                    title: item.title,
+                    description: item.description,
+                    to: item.to,
+                    category: item.category,
+                    meta: item.meta,
+                    image: {
+                      src: resolveImageUrl(item.imageUrl) || careerHighlights[i]?.image?.src || '',
+                      fallbackSrc: resolveImageUrl(item.imageUrl) || careerHighlights[i]?.image?.fallbackSrc || '',
+                      thumbnailSrc: resolveImageUrl(item.imageUrl) || careerHighlights[i]?.image?.thumbnailSrc || '',
+                      placeholderSrc: resolveImageUrl(item.imageUrl) || careerHighlights[i]?.image?.placeholderSrc || '',
+                      srcSet: '',
+                      alt: item.title,
+                      caption: item.title,
+                      width: 800,
+                      height: 600,
+                    },
+                  }
+                : item
+              return <HoverRevealCard key={card.title} {...card} />
+            })}
           </div>
         </div>
       </section>
@@ -94,9 +114,29 @@ export function Home() {
         <div className="container">
           <SectionHeading eyebrow="Achievements" title="Professional Contributions and Institutional Service" description="Selected areas of work drawn from the supplied material." />
           <div className="card-grid feature-news-grid contributions-list">
-            {achievements.map((item) => (
-              <HoverRevealCard key={item.title} {...item} />
-            ))}
+            {(data?.homeAchievementCards?.length ? data.homeAchievementCards : achievements).map((item, i) => {
+              const card = 'imageUrl' in item
+                ? {
+                    title: item.title,
+                    description: item.description,
+                    to: item.to,
+                    category: item.category,
+                    meta: item.meta,
+                    image: {
+                      src: resolveImageUrl(item.imageUrl) || achievements[i]?.image?.src || '',
+                      fallbackSrc: resolveImageUrl(item.imageUrl) || achievements[i]?.image?.fallbackSrc || '',
+                      thumbnailSrc: resolveImageUrl(item.imageUrl) || achievements[i]?.image?.thumbnailSrc || '',
+                      placeholderSrc: resolveImageUrl(item.imageUrl) || achievements[i]?.image?.placeholderSrc || '',
+                      srcSet: '',
+                      alt: item.title,
+                      caption: item.title,
+                      width: 800,
+                      height: 600,
+                    },
+                  }
+                : item
+              return <HoverRevealCard key={card.title} {...card} />
+            })}
           </div>
         </div>
       </section>

@@ -19,7 +19,9 @@ import {
   ShieldCheck,
   Sliders,
   Layers,
-  Trophy
+  Trophy,
+  Home,
+  Footprints
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { resolveImageUrl } from '../../utils/imageResolver'
@@ -31,9 +33,15 @@ type NavGroup = {
 
 const navGroups: NavGroup[] = [
   {
-    label: 'PORTFOLIO',
+    label: 'HOME PAGE',
     items: [
       { to: '/admin/hero', label: 'Hero Section', icon: Sliders },
+      { to: '/admin/home-cards', label: 'Career & Achievement Cards', icon: Home },
+    ],
+  },
+  {
+    label: 'PORTFOLIO',
+    items: [
       { to: '/admin/biography', label: 'Biography', icon: UserCheck },
       { to: '/admin/career', label: 'Career', icon: Briefcase },
     ],
@@ -69,6 +77,7 @@ const navGroups: NavGroup[] = [
     label: 'WEBSITE',
     items: [
       { to: '/admin/welcome', label: 'QR & Welcome Page', icon: QrCode },
+      { to: '/admin/footer', label: 'Footer Settings', icon: Footprints },
       { to: '/admin/settings', label: 'Site Settings', icon: Settings },
     ],
   },
@@ -78,6 +87,7 @@ export const AdminSidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> 
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    'HOME PAGE': true,
     PORTFOLIO: true,
     'ACHIEVEMENTS & EXPERIENCE': true,
     'EDUCATION & TRAINING': true,

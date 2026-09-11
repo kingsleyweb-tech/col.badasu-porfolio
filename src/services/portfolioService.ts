@@ -24,6 +24,16 @@ export type AchievementCardItem = {
   to: string
 }
 
+export type HomeCard = {
+  title: string
+  description: string
+  category: string
+  meta: string
+  to: string
+  imageUrl: string     // resolved URL (local or Cloudinary)
+  imagePublicId: string
+}
+
 export type VolunteerItem = {
   location: string
   period: string
@@ -84,6 +94,15 @@ export type PortfolioData = {
     serviceText: string
     excellenceTitle: string
     excellenceText: string
+  }
+  homeCareerCards: HomeCard[]
+  homeAchievementCards: HomeCard[]
+  footer: {
+    displayName: string
+    displayRank: string
+    tagline: string
+    imageUrl: string
+    imagePublicId: string
   }
   siteSettings: {
     siteTitle: string
@@ -167,6 +186,25 @@ export const defaultPortfolioData: PortfolioData = {
     serviceText: 'Dedicated to duty, country and people.',
     excellenceTitle: 'EXCELLENCE',
     excellenceText: 'Striving for the highest standards in all I do.',
+  },
+  homeCareerCards: [
+    { title: 'Chief Operations Officer, ECOMIG Force Headquarters', description: 'Planning, force generation, rotation, repatriation, doctrine review, and peacekeeping threat assessment.', category: 'Command', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },
+    { title: 'Deputy Director Army Peacekeeping Operations', description: 'Nomination, screening, pre-deployment training, rotation planning, and peacekeeping reporting.', category: 'Operations', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },
+    { title: 'Deputy Director Army Administration', description: 'Headquarters administration, operational coordination, training activities, and stakeholder liaison.', category: 'Staff', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },
+    { title: 'UN and ECOWAS Operational Service', description: "Assignments across Sierra Leone, Liberia, Cote d'Ivoire, DR Congo, Lebanon, South Sudan, and The Gambia.", category: 'Service', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },
+  ],
+  homeAchievementCards: [
+    { title: 'UN Peacekeeping Operations in Africa', description: 'Extensive operational experience in United Nations peacekeeping operations across Africa.', category: 'Peacekeeping', meta: 'Institutional Service', to: '/career#operational-experience', imageUrl: '', imagePublicId: '' },
+    { title: 'Risk, Crisis, and Security Management', description: 'Demonstrated understanding of risk, crisis, and security management in military operational contexts.', category: 'Security', meta: 'Institutional Service', to: '/career#work-history', imageUrl: '', imagePublicId: '' },
+    { title: 'Strategic Leadership Preparation', description: 'War College Strategic Level Leadership and Management preparation for senior military responsibilities.', category: 'Leadership', meta: 'Institutional Service', to: '/education#professional-courses', imageUrl: '', imagePublicId: '' },
+    { title: 'Professional Mentorship and Service', description: 'Mentorship for ASIS International Certifications and guidance for professional development.', category: 'Mentorship', meta: 'Institutional Service', to: '/career#work-history', imageUrl: '', imagePublicId: '' },
+  ],
+  footer: {
+    displayName: 'Henry Kwaku Badasu',
+    displayRank: 'Colonel',
+    tagline: 'A concise professional profile of his service, leadership, education, and documented achievements.',
+    imageUrl: '',
+    imagePublicId: '',
   },
   siteSettings: {
     siteTitle: 'Col. Henry Kwaku Badasu Portfolio',

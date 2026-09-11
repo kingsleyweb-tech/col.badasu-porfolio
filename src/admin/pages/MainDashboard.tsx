@@ -1,24 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
-  FileText,
-  ImageIcon,
-  Users,
-  CloudCheck,
-  Sliders,
-  UserCheck,
-  Briefcase,
-  Award,
-  GraduationCap,
-  BookOpen,
-  Globe,
-  Star,
-  QrCode,
-  Settings,
-  ChevronRight,
   ExternalLink,
   ShieldCheck,
-  Clock
+  Clock,
+  Settings,
+  ImageIcon,
+  Briefcase,
+  Award,
+  UserCheck
 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 
@@ -60,29 +49,6 @@ export const MainDashboard: React.FC = () => {
     (data.unitarPociCertificates?.length || 0) +
     totalImages
 
-  const statCards = [
-    { title: 'Total Sections', value: '11', meta: 'Active portfolio sections', icon: FileText, color: 'blue' },
-    { title: 'Gallery Collections', value: collectionCount ? `${collectionCount}` : 'Live', meta: totalImages ? `${totalImages} media files in Cloudinary` : 'Synced with Cloudinary', icon: ImageIcon, color: 'green' },
-    { title: 'Content Items', value: `${totalEntries}`, meta: 'Total live data entries', icon: Users, color: 'purple' },
-    { title: 'System Status', value: 'Live & Active', meta: 'Connected to Firebase & Cloudinary', icon: CloudCheck, color: 'teal' }
-  ]
-
-  const quickAccessSections = [
-    { title: 'Rank & Military Title', desc: 'Change military rank title (e.g. Brig. General) across site.', icon: ShieldCheck, to: '/admin/rank' },
-    { title: 'Hero Section', desc: 'Update the main banner, title and intro text.', icon: Sliders, to: '/admin/hero' },
-    { title: 'Biography', desc: 'Edit personal information and summary.', icon: UserCheck, to: '/admin/biography' },
-    { title: 'Career', desc: 'Add, edit or remove career positions and responsibilities.', icon: Briefcase, to: '/admin/career' },
-    { title: 'Awards & Decorations', desc: 'Manage awards, medals and honors.', icon: Award, to: '/admin/awards' },
-    { title: 'Education & Qualifications', desc: 'Update academic background and degrees.', icon: GraduationCap, to: '/admin/education' },
-    { title: 'Professional Courses', desc: 'Manage training and certification records.', icon: BookOpen, to: '/admin/courses' },
-    { title: 'Languages', desc: 'Edit spoken and written languages.', icon: Globe, to: '/admin/languages' },
-    { title: 'Leadership / Service / Excellence', desc: 'Update key sections and messages.', icon: Star, to: '/admin/leadership' },
-    { title: 'Military Journey / Gallery', desc: 'Manage photos, collections and media.', icon: ImageIcon, to: '/admin/gallery' },
-    { title: 'QR Landing Page', desc: 'Edit QR page content and redirect settings.', icon: QrCode, to: '/admin/welcome' },
-    { title: 'Site Settings', desc: 'Update logo, site title and general settings.', icon: Settings, to: '/admin/settings' },
-    { title: 'Users & Access', desc: 'Manage admin accounts and permissions.', icon: Users, to: '/admin/users' }
-  ]
-
   const recentActivity = [
     { title: 'Updated site settings', desc: 'Site title and logo changed', time: '2 hours ago', icon: Settings },
     { title: 'New gallery collection added', desc: '"UN Peacekeeping" collection uploaded', time: '4 hours ago', icon: ImageIcon },
@@ -101,62 +67,53 @@ export const MainDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Stat Cards Row */}
-      <div className="admin-stats-grid">
-        {statCards.map((stat, idx) => {
-          const Icon = stat.icon
-          return (
-            <div key={idx} className="admin-stat-card">
-              <div className={`admin-stat-card__icon is-${stat.color}`}>
-                <Icon size={20} />
-              </div>
-              <div className="admin-stat-card__content">
-                <span className="admin-stat-card__title">{stat.title}</span>
-                <strong className="admin-stat-card__value">{stat.value}</strong>
-                <small className="admin-stat-card__meta">{stat.meta}</small>
-              </div>
-            </div>
-          )
-        })}
+      {/* Stat Cards — 1 primary hero + 3 secondary */}
+      <div className="admin-stats-hero-grid">
+        {/* Primary Big Card */}
+        <div className="admin-stat-card admin-stat-card--primary">
+          <span className="admin-stat-card__title">Gallery Collections</span>
+          <strong className="admin-stat-card__value">
+            {collectionCount ? collectionCount : '—'}
+          </strong>
+          <small className="admin-stat-card__meta">
+            {totalImages ? `${totalImages} total media files in Cloudinary` : 'Synced with Cloudinary CDN'}
+          </small>
+        </div>
+
+        {/* Secondary Small Cards */}
+        <div className="admin-stats-secondary-group">
+          <div className="admin-stat-card admin-stat-card--secondary">
+            <span className="admin-stat-card__title">Total Sections</span>
+            <strong className="admin-stat-card__value">11</strong>
+            <small className="admin-stat-card__meta">Active portfolio sections</small>
+          </div>
+
+          <div className="admin-stat-card admin-stat-card--secondary">
+            <span className="admin-stat-card__title">Content Items</span>
+            <strong className="admin-stat-card__value">{totalEntries}</strong>
+            <small className="admin-stat-card__meta">Total live data entries</small>
+          </div>
+
+          <div className="admin-stat-card admin-stat-card--secondary">
+            <span className="admin-stat-card__title">System Status</span>
+            <strong className="admin-stat-card__value">Live</strong>
+            <small className="admin-stat-card__meta">Firebase &amp; Cloudinary connected</small>
+          </div>
+        </div>
       </div>
 
       {/* Main Grid Layout */}
       <div className="admin-dashboard-grid">
-        {/* Left Column: Quick Access Sections */}
-        <div className="admin-dashboard-main">
-          <div className="admin-section-header">
-            <div>
-              <h2>Quick Access</h2>
-              <p>Jump directly to the section you want to manage.</p>
-            </div>
-          </div>
+        {/* Left: empty main — sidebar takes full width now */}
+        <div className="admin-dashboard-main" style={{ display: 'none' }} />
 
-          <div className="admin-quick-grid">
-            {quickAccessSections.map((sec, idx) => {
-              const Icon = sec.icon
-              return (
-                <Link key={idx} to={sec.to} className="admin-quick-card">
-                  <div className="admin-quick-card__icon">
-                    <Icon size={20} />
-                  </div>
-                  <div className="admin-quick-card__body">
-                    <strong>{sec.title}</strong>
-                    <p>{sec.desc}</p>
-                  </div>
-                  <ChevronRight size={18} className="admin-quick-card__arrow" />
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Right Column: Ghana Flag Banner + Recent Activity */}
-        <div className="admin-dashboard-sidebar">
+        {/* Sidebar: Flag Banner + Recent Activity + Security */}
+        <div className="admin-dashboard-sidebar" style={{ gridColumn: '1 / -1' }}>
           {/* Ghana Flag Card */}
           <div className="admin-flag-card">
             <div className="admin-flag-card__overlay">
               <span className="admin-flag-card__tag">Your Portfolio</span>
-              <h3>Live & Updated</h3>
+              <h3>Live &amp; Updated</h3>
               <p>Every change you make here will be reflected on your public website instantly.</p>
               <a
                 href="/"

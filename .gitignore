@@ -26,5 +26,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local image assets (all served from Cloudinary)
-src/assets/images/
+# Local image assets (raw gallery uploads excluded, essential site assets allowed)
+src/assets/images/*
+!src/assets/images/*.png
+!src/assets/images/*.jpg
+!src/assets/images/hero/
+!src/assets/images/ecowas/

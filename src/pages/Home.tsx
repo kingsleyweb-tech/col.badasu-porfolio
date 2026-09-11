@@ -6,12 +6,27 @@ import { HoverRevealCard } from '../components/HoverRevealCard'
 import { InfoCard } from '../components/InfoCard'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { SectionHeading } from '../components/SectionHeading'
-import { achievements, careerHighlights, education, homeCategoryLinks, officer as defaultOfficer, operations, profileHomeImage } from '../data/officerData'
+import { achievements, careerHighlights, education, homeCategoryLinks, officer as defaultOfficer, operations } from '../data/officerData'
+import type { ImageAsset } from '../data/officerData'
+import { resolveImageUrl } from '../utils/imageResolver'
 import { usePortfolio } from '../context/PortfolioContext'
 
 export function Home() {
   const { data } = usePortfolio()
   const officer = data?.officer || defaultOfficer
+
+  const portraitUrl = resolveImageUrl(officer.profileImageUrl || 'hero/profile-home.jpeg')
+  const portraitAsset: ImageAsset = {
+    src: portraitUrl,
+    fallbackSrc: portraitUrl,
+    thumbnailSrc: portraitUrl,
+    placeholderSrc: portraitUrl,
+    srcSet: `${portraitUrl} 800w`,
+    alt: `${officer.rank} ${officer.name}`,
+    caption: officer.name,
+    width: 600,
+    height: 800,
+  }
 
   return (
     <>
@@ -26,7 +41,7 @@ export function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.55, ease: 'easeOut' }}
           >
-            <OptimizedImage asset={profileHomeImage} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 520px" />
+            <OptimizedImage asset={portraitAsset} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 520px" />
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 24 }}

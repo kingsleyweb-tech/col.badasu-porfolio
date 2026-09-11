@@ -77,7 +77,7 @@ export const AdminLogin: React.FC = () => {
           <div className="admin-login-info-overlay">
             <div className="admin-login-info-top">
               <div className="admin-login-info-badge">
-                <Shield size={14} />
+                <Shield size={13} />
                 <span>ECOWAS MISSION & LEADERSHIP</span>
               </div>
               <h2 className="admin-login-info-title">Colonel Badasu</h2>
@@ -93,7 +93,7 @@ export const AdminLogin: React.FC = () => {
             <div className="admin-login-info-features">
               <div className="admin-info-feature-item">
                 <div className="admin-info-feature-icon">
-                  <ShieldCheck size={20} />
+                  <ShieldCheck size={18} />
                 </div>
                 <div>
                   <h4>Secure Command Portal</h4>
@@ -103,7 +103,7 @@ export const AdminLogin: React.FC = () => {
 
               <div className="admin-info-feature-item">
                 <div className="admin-info-feature-icon">
-                  <Award size={20} />
+                  <Award size={18} />
                 </div>
                 <div>
                   <h4>Leadership & Career Management</h4>
@@ -113,7 +113,7 @@ export const AdminLogin: React.FC = () => {
 
               <div className="admin-info-feature-item">
                 <div className="admin-info-feature-icon">
-                  <Globe size={20} />
+                  <Globe size={18} />
                 </div>
                 <div>
                   <h4>ECOWAS Mission Gallery</h4>
@@ -128,28 +128,29 @@ export const AdminLogin: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Form Card (Login Form) */}
+        {/* Right Form Card (Clean Sign In Form) */}
         <div className="admin-login-card">
-          {/* Crest & Header */}
+          {/* Header */}
           <div className="admin-login-card__header">
-            <div className="admin-login-card__crest">
+            <div className="admin-login-card__crest-wrapper">
               <img
                 src="https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_120/colonel-badasu/site/root/image"
                 alt="GAF Crest"
+                className="admin-login-card__crest-img"
               />
             </div>
-            <h1>Colonel Badasu</h1>
-            <p>Portfolio Content Management System</p>
+            <h1 className="admin-login-card__title">Administrator Sign In</h1>
+            <p className="admin-login-card__sub">Enter your credentials to access the command dashboard</p>
             <div className="admin-login-card__badge">
-              <ShieldCheck size={14} />
-              <span>Authorized Personnel Access Only</span>
+              <ShieldCheck size={13} />
+              <span>Authorized Personnel Only</span>
             </div>
           </div>
 
           {/* Errors */}
           {(localError || error) && (
             <div className="admin-login-alert is-error">
-              <AlertCircle size={18} />
+              <AlertCircle size={16} />
               <span>{localError || error}</span>
             </div>
           )}
@@ -157,7 +158,7 @@ export const AdminLogin: React.FC = () => {
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="admin-login-form">
             <div className="admin-form-group">
-              <label htmlFor="email">Administrator Email</label>
+              <label htmlFor="email" className="admin-field-label">Administrator Email</label>
               <div className="admin-input-wrapper">
                 <Mail size={18} className="admin-input-icon" />
                 <input
@@ -174,7 +175,7 @@ export const AdminLogin: React.FC = () => {
 
             <div className="admin-form-group">
               <div className="admin-form-group__header">
-                <label htmlFor="password">Security Password</label>
+                <label htmlFor="password" className="admin-field-label">Security Password</label>
                 <button
                   type="button"
                   className="admin-forgot-link"
@@ -202,7 +203,7 @@ export const AdminLogin: React.FC = () => {
 
             <button
               type="submit"
-              className="btn btn--primary admin-login-btn"
+              className="admin-login-btn"
               disabled={submitting}
             >
               {submitting ? (
@@ -267,7 +268,7 @@ export const AdminLogin: React.FC = () => {
                 )}
 
                 <div className="admin-form-group" style={{ marginTop: '16px' }}>
-                  <label>Administrator Email</label>
+                  <label className="admin-field-label">Administrator Email</label>
                   <div className="admin-input-wrapper">
                     <Mail size={18} className="admin-input-icon" />
                     <input

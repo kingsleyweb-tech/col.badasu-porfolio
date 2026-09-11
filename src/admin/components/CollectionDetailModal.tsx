@@ -3,6 +3,7 @@ import { ArrowLeft, Trash2, UploadCloud, Loader2, CheckCircle2, AlertCircle, Ima
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { ConfirmDeleteModal } from './ConfirmDeleteModal'
 
 export interface CollectionItem {
   slug: string
@@ -47,12 +48,11 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
   // Deleting Image & Collection State
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingCollection, setDeletingCollection] = useState<boolean>(false)
+  const [photoToDelete, setPhotoToDelete] = useState<CollectionImage | null>(null)
+  const [showDeleteCollectionConfirm, setShowDeleteCollectionConfirm] = useState<boolean>(false)
 
-  const handleDeleteEntireCollection = async () => {
+  const executeDeleteEntireCollection = async () => {
     if (!collection) return
-    if (!window.confirm(`Are you sure you want to PERMANENTLY delete the collection "${collection.name}" and all photos inside it?`)) {
-      return
-    }
 
     setDeletingCollection(true)
     setToastMessage(null)
@@ -69,11 +69,13 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
         throw new Error(err.error || `HTTP ${res.status}`)
       }
 
+      setShowDeleteCollectionConfirm(false)
       if (onCollectionUpdated) onCollectionUpdated()
       onClose()
     } catch (err: any) {
       setToastMessage({ text: `Failed to delete collection: ${err.message || 'Unknown error'}`, type: 'error' })
       setDeletingCollection(false)
+      setShowDeleteCollectionConfirm(false)
     }
   }
 
@@ -147,11 +149,8 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
   }
 
   // Handle Photo Deletion
-  const handleDeletePhoto = async (image: CollectionImage) => {
-    if (!window.confirm(`Are you sure you want to delete this photo ("${image.title}") from Cloudinary?`)) {
-      return
-    }
-
+  const executeDeletePhoto = async (image: CollectionImage | null) => {
+    if (!image) return
     setDeletingId(image.id)
     setToastMessage(null)
 
@@ -159,6 +158,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
       await deleteCloudinaryImageIfUnused(image.publicId, data)
       setImages((prev) => prev.filter((img) => img.id !== image.id))
       setToastMessage({ text: `Photo successfully deleted from "${collection.name}".`, type: 'success' })
+      setPhotoToDelete(null)
       if (onCollectionUpdated) onCollectionUpdated()
     } catch {
       setToastMessage({ text: 'Could not delete photo. Check API credentials or network.', type: 'error' })
@@ -272,7 +272,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
             {/* Delete Collection Button */}
             <button
               type="button"
-              onClick={handleDeleteEntireCollection}
+              onClick={() => setShowDeleteCollectionConfirm(true)}
               disabled={deletingCollection}
               title="Delete this entire collection"
               style={{
@@ -433,7 +433,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => handleDeletePhoto(img)}
+                          onClick={() => setPhotoToDelete(img)}
                           disabled={isDeleting}
                           title="Delete photo from Cloudinary"
                           style={{
@@ -471,7 +471,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => handleDeletePhoto(img)}
+                        onClick={() => setPhotoToDelete(img)}
                         disabled={isDeleting}
                         title="Delete photo"
                         style={{
@@ -530,6 +530,28 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
           />
         </div>
       )}
+
+      {/* Delete Photo Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!photoToDelete}
+        title="Delete Photo"
+        itemName={photoToDelete?.title}
+        message="Are you sure you want to permanently delete this photo from Cloudinary? This action cannot be undone."
+        isLoading={deletingId === photoToDelete?.id}
+        onConfirm={() => executeDeletePhoto(photoToDelete)}
+        onClose={() => setPhotoToDelete(null)}
+      />
+
+      {/* Delete Entire Collection Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteCollectionConfirm}
+        title="Delete Entire Collection"
+        itemName={collection?.name}
+        message={`Are you sure you want to permanently delete "${collection?.name}" and ALL photos inside it from Cloudinary? This action cannot be undone.`}
+        isLoading={deletingCollection}
+        onConfirm={executeDeleteEntireCollection}
+        onClose={() => setShowDeleteCollectionConfirm(false)}
+      />
     </div>
   )
 }

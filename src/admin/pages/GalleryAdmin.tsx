@@ -4,6 +4,7 @@ import {
   AlertCircle, FolderOpen, Zap, X, Image as ImageIcon2, Trash2
 } from 'lucide-react'
 import { CollectionDetailModal, type CollectionItem } from '../components/CollectionDetailModal'
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { useUpload } from '../../context/UploadContext'
 
@@ -28,6 +29,7 @@ export const GalleryAdmin: React.FC = () => {
   const [collectionsError, setCollectionsError] = useState<string | null>(null)
   const [selectedCollection, setSelectedCollection] = useState<CollectionItem | null>(null)
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null)
+  const [collectionToDelete, setCollectionToDelete] = useState<CollectionItem | null>(null)
 
   // Revoke object URLs when component unmounts or files change
   useEffect(() => {
@@ -55,11 +57,8 @@ export const GalleryAdmin: React.FC = () => {
     fetchCollections()
   }, [fetchCollections])
 
-  const handleDeleteCollection = async (col: CollectionItem) => {
-    if (!window.confirm(`Are you sure you want to PERMANENTLY delete the collection "${col.name}" and ALL photos inside it?`)) {
-      return
-    }
-
+  const executeDeleteCollection = async (col: CollectionItem | null) => {
+    if (!col) return
     setDeletingSlug(col.slug)
     setMessage(null)
 
@@ -77,6 +76,7 @@ export const GalleryAdmin: React.FC = () => {
 
       setMessage(`Collection "${col.name}" was permanently deleted.`)
       setMessageType('success')
+      setCollectionToDelete(null)
       fetchCollections()
     } catch (err: any) {
       setMessage(`Failed to delete collection: ${err.message || 'Unknown error'}`)
@@ -476,7 +476,7 @@ export const GalleryAdmin: React.FC = () => {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleDeleteCollection(col)
+                          setCollectionToDelete(col)
                         }}
                         disabled={deletingSlug === col.slug}
                         title="Delete collection permanently"
@@ -517,6 +517,16 @@ export const GalleryAdmin: React.FC = () => {
           onCollectionUpdated={fetchCollections}
         />
       )}
+
+      <ConfirmDeleteModal
+        isOpen={!!collectionToDelete}
+        title="Delete Collection"
+        itemName={collectionToDelete?.name}
+        message="Are you sure you want to permanently delete this collection and ALL photos inside it from Cloudinary? This action cannot be undone."
+        isLoading={!!deletingSlug}
+        onConfirm={() => executeDeleteCollection(collectionToDelete)}
+        onClose={() => setCollectionToDelete(null)}
+      />
     </div>
   )
 }

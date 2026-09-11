@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ImageIcon, Images, Loader2 } from 'lucide-react'
+import { ArrowLeft, CalendarDays, ChevronRight, ImageIcon, Images, Info, Loader2 } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Lightbox from 'yet-another-react-lightbox'
 import Counter from 'yet-another-react-lightbox/plugins/counter'
@@ -15,6 +15,7 @@ type GalleryCollection = {
   name: string
   count?: number
   coverImage?: GalleryImage
+  updatedAt?: string
 }
 
 type GalleryImage = {
@@ -77,10 +78,17 @@ function GalleryCollectionsView() {
           <SectionHeading eyebrow="Collections" title="Military Career Archive" />
           {status === 'loading' && <GalleryNotice icon="loading" text="Preparing gallery collections..." />}
           {status === 'error' && <GalleryNotice text="Gallery collections are temporarily unavailable." />}
-          <div className="gallery-collection-grid" aria-label="Gallery collections">
+
+          <div className="gallery-album-list" aria-label="Gallery collections">
             {collections.map((collection) => (
-              <Link className="gallery-collection-card" key={collection.slug} to={`/gallery/${collection.slug}`}>
-                <span className="gallery-collection-card__media">
+              <Link
+                className="gallery-album-row"
+                key={collection.slug}
+                to={`/gallery/${collection.slug}`}
+                aria-label={`Open ${collection.name} collection`}
+              >
+                {/* Thumbnail */}
+                <span className="gallery-album-row__thumb">
                   {collection.coverImage ? (
                     <img
                       src={resolveImageUrl(collection.coverImage.thumbnailUrl)}
@@ -90,19 +98,42 @@ function GalleryCollectionsView() {
                     />
                   ) : (
                     <span className="gallery-image-fallback" aria-hidden="true">
-                      <ImageIcon size={34} />
+                      <ImageIcon size={26} />
                     </span>
                   )}
                 </span>
-                <span className="gallery-collection-card__body">
-                  <strong>{collection.name}</strong>
-                  {typeof collection.count === 'number' && (
-                    <span>{collection.count} {collection.count === 1 ? 'Photo' : 'Photos'}</span>
-                  )}
+
+                {/* Info */}
+                <span className="gallery-album-row__info">
+                  <strong className="gallery-album-row__title">{collection.name}</strong>
+                  <span className="gallery-album-row__meta">
+                    <span className="gallery-album-row__count">
+                      <Images size={13} aria-hidden="true" />
+                      {typeof collection.count === 'number'
+                        ? `${collection.count} image${collection.count === 1 ? '' : 's'}`
+                        : 'No images yet'}
+                    </span>
+                    {collection.updatedAt && (
+                      <span className="gallery-album-row__date">
+                        <CalendarDays size={13} aria-hidden="true" />
+                        Last updated: {collection.updatedAt}
+                      </span>
+                    )}
+                  </span>
                 </span>
+
+                {/* Arrow */}
+                <ChevronRight className="gallery-album-row__chevron" size={20} aria-hidden="true" />
               </Link>
             ))}
           </div>
+
+          {status === 'ready' && collections.length > 0 && (
+            <p className="gallery-album-hint">
+              <Info size={15} aria-hidden="true" />
+              Tap on a collection to view, edit or manage images.
+            </p>
+          )}
         </div>
       </section>
     </>
@@ -178,9 +209,9 @@ function GalleryCollectionView({ collectionSlug }: { collectionSlug: string }) {
       />
       <section className="section">
         <div className="container">
-          <button className="back-button" type="button" onClick={() => navigate('/')}>
+          <button className="back-button" type="button" onClick={() => navigate('/gallery')}>
             <ArrowLeft size={18} aria-hidden="true" />
-            <span>Back to Home</span>
+            <span>Back to Gallery</span>
           </button>
 
           <div className="gallery-collection-header">
@@ -252,7 +283,125 @@ async function fetchGallery(query = ''): Promise<GalleryResponse> {
 }
 
 function buildLocalCollections(): GalleryCollection[] {
-  return []
+  return [
+    {
+      slug: 'military-operations',
+      name: 'Military Operations',
+      count: 95,
+      updatedAt: '12 Apr 2025',
+      coverImage: {
+        id: 'boundary-ops-cover',
+        title: 'Boundary Operations',
+        alt: 'Colonel Badasu during military boundary operations',
+        thumbnailUrl: 'boundary opearations/WhatsApp Image 2026-08-31 at 11.25.27 AM.jpeg',
+        largeUrl: 'boundary opearations/WhatsApp Image 2026-08-31 at 11.25.27 AM.jpeg'
+      }
+    },
+    {
+      slug: 'leadership',
+      name: 'Leadership',
+      count: 47,
+      updatedAt: '10 Apr 2025',
+      coverImage: {
+        id: 'meetings-cover',
+        title: 'Leadership Meeting',
+        alt: 'Colonel Badasu in a leadership engagement',
+        thumbnailUrl: 'meetiings/WhatsApp Image 2026-08-31 at 12.01.28 PM (2).jpeg',
+        largeUrl: 'meetiings/WhatsApp Image 2026-08-31 at 12.01.28 PM (2).jpeg'
+      }
+    },
+    {
+      slug: 'community-service',
+      name: 'Community Service',
+      count: 100,
+      updatedAt: '8 Apr 2025',
+      coverImage: {
+        id: 'adventure-cover',
+        title: 'Community Service',
+        alt: 'Colonel Badasu community service activities',
+        thumbnailUrl: 'adventure/WhatsApp Image 2026-08-31 at 12.18.18 PM (1).jpeg',
+        largeUrl: 'adventure/WhatsApp Image 2026-08-31 at 12.18.18 PM (1).jpeg'
+      }
+    },
+    {
+      slug: 'awards-recognition',
+      name: 'Awards & Recognition',
+      count: 10,
+      updatedAt: '5 Apr 2025',
+      coverImage: {
+        id: 'collaborations-cover',
+        title: 'Awards Ceremony',
+        alt: 'Colonel Badasu at awards and recognition ceremony',
+        thumbnailUrl: 'collaborations/WhatsApp Image 2026-08-31 at 11.52.43 AM (3).jpeg',
+        largeUrl: 'collaborations/WhatsApp Image 2026-08-31 at 11.52.43 AM (3).jpeg'
+      }
+    },
+    {
+      slug: 'training-exercises',
+      name: 'Training & Exercises',
+      count: 43,
+      updatedAt: '2 Apr 2025',
+      coverImage: {
+        id: 'jungle-cover',
+        title: 'Jungle Training',
+        alt: 'Colonel Badasu during jungle training exercises',
+        thumbnailUrl: 'jungle/WhatsApp Image 2026-08-31 at 11.37.22 AM (2).jpeg',
+        largeUrl: 'jungle/WhatsApp Image 2026-08-31 at 11.37.22 AM (2).jpeg'
+      }
+    },
+    {
+      slug: 'official-events',
+      name: 'Official Events',
+      count: 61,
+      updatedAt: '28 Mar 2025',
+      coverImage: {
+        id: 'interviewing-cover',
+        title: 'Official Event',
+        alt: 'Colonel Badasu at official military event',
+        thumbnailUrl: 'interviewing/WhatsApp Image 2026-08-31 at 11.33.52 AM (1).jpeg',
+        largeUrl: 'interviewing/WhatsApp Image 2026-08-31 at 11.33.52 AM (1).jpeg'
+      }
+    },
+    {
+      slug: 'sea-border-operations',
+      name: 'Sea Border Operations',
+      count: 30,
+      updatedAt: '20 Mar 2025',
+      coverImage: {
+        id: 'sea-border-cover',
+        title: 'Sea Border Operation',
+        alt: 'Colonel Badasu during sea border operations',
+        thumbnailUrl: 'sea border operation/WhatsApp Image 2026-08-31 at 11.19.57 AM (1).jpeg',
+        largeUrl: 'sea border operation/WhatsApp Image 2026-08-31 at 11.19.57 AM (1).jpeg'
+      }
+    },
+    {
+      slug: 'university-graduation',
+      name: 'University of London Graduation',
+      count: 32,
+      updatedAt: '15 Mar 2025',
+      coverImage: {
+        id: 'graduation-cover',
+        title: 'Graduation Ceremony',
+        alt: 'Colonel Badasu at University of London graduation ceremony',
+        thumbnailUrl: 'university of london graduation/WhatsApp Image 2026-08-31 at 11.47.12 AM.jpeg',
+        largeUrl: 'university of london graduation/WhatsApp Image 2026-08-31 at 11.47.12 AM.jpeg'
+      }
+    },
+    {
+      slug: 'portfolio-gallery',
+      name: 'Portfolio Gallery',
+      count: 8,
+      updatedAt: '10 Mar 2025',
+      coverImage: {
+        id: 'gallery-cover',
+        title: 'Portfolio Gallery',
+        alt: 'Colonel Badasu portfolio gallery',
+        thumbnailUrl: 'gallery/a1.png',
+        largeUrl: 'gallery/a1.png'
+      }
+    }
+  ]
 }
 
 function getLocalImages(slug: string): GalleryImage[] {
@@ -292,4 +441,3 @@ function GalleryPhoto({ image, onClick }: { image: GalleryImage; onClick: () => 
     </button>
   )
 }
-

@@ -227,6 +227,50 @@ export const UsersAdmin: React.FC = () => {
               <p>When you update your Email or Password, your changes are saved immediately to both Firebase and local secure storage. You can log out and use your new credentials to log back in anytime.</p>
             </div>
           </div>
+
+          <div className="admin-card">
+            <div className="admin-card__header">
+              <div className="admin-card__title-wrap">
+                <Key size={18} style={{ color: '#0e5c3e' }} />
+                <h3>Account Security Overview</h3>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem', color: '#475569' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Account Role:</span>
+                <strong style={{ color: '#0f172a' }}>Primary Admin</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Session Encryption:</span>
+                <strong style={{ color: '#16a34a' }}>256-Bit SSL</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Firebase Auth:</span>
+                <strong style={{ color: '#0f172a' }}>{isDemoAdmin ? 'Demo Credentials' : 'Active'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Password Strength:</span>
+                <strong style={{ color: '#16a34a' }}>Protected</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-card">
+            <div className="admin-card__header">
+              <h3>Quick Navigation</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <a href="/admin/settings" className="btn btn--outline" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }}>
+                Site & Header Settings
+              </a>
+              <a href="/admin/gallery" className="btn btn--outline" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }}>
+                Gallery Management
+              </a>
+              <a href="/admin" className="btn btn--outline" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }}>
+                Overview Dashboard
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 

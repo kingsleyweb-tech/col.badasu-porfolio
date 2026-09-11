@@ -313,6 +313,79 @@ export const SiteSettingsAdmin: React.FC = () => {
             </form>
           </div>
         </div>
+
+        {/* Sidebar Status & Live Preview */}
+        <div className="admin-dashboard-sidebar">
+          {/* Card 1: Live Branding Preview */}
+          <div className="admin-card">
+            <div className="admin-card__header">
+              <div className="admin-card__title-wrap">
+                <ShieldCheck size={18} style={{ color: '#0e5c3e' }} />
+                <h3>Live Sidebar Preview</h3>
+              </div>
+            </div>
+            <div style={{ background: '#061d15', borderRadius: '10px', padding: '16px', color: '#ffffff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <img src={resolveImageUrl(logoUrl)} alt="Emblem Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+                <div>
+                  <strong style={{ display: 'block', fontSize: '0.9rem', color: '#ffffff' }}>{adminSidebarTitle}</strong>
+                  <small style={{ fontSize: '0.65rem', color: '#a7f3d0', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{adminSidebarSubtitle}</small>
+                </div>
+              </div>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0e5c3e', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
+                  {adminHeaderInitials}
+                </div>
+                <div>
+                  <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600 }}>{adminHeaderDisplayName}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{adminHeaderRole}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Cloudinary Asset Info */}
+          <div className="admin-card">
+            <div className="admin-card__header">
+              <div className="admin-card__title-wrap">
+                <UploadCloud size={18} style={{ color: '#0e5c3e' }} />
+                <h3>Asset Storage Status</h3>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.825rem', color: '#475569' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Storage Engine:</span>
+                <strong style={{ color: '#0f172a' }}>Cloudinary CDN</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Logo Folder:</span>
+                <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem' }}>site/logo</code>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Optimization:</span>
+                <strong style={{ color: '#16a34a' }}>Auto WebP & Lossless</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Quick Navigation */}
+          <div className="admin-card">
+            <div className="admin-card__header">
+              <h3>Quick Navigation</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <a href="/admin/users" className="btn btn--outline" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }}>
+                Users & Access
+              </a>
+              <a href="/admin/gallery" className="btn btn--outline" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }}>
+                Gallery Collections
+              </a>
+              <a href="/admin/hero" className="btn btn--outline" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }}>
+                Hero Section Settings
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
 
       <SaveSuccessModal

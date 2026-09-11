@@ -3411,6 +3411,26 @@ section[id],
   display: grid;
   grid-template-columns: 1fr 340px;
   gap: 24px;
+  width: 100%;
+}
+
+.admin-dashboard-grid:has(> :only-child),
+.admin-dashboard-grid:not(:has(.admin-dashboard-sidebar)) {
+  grid-template-columns: 1fr;
+}
+
+.admin-dashboard-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-dashboard-sidebar {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .admin-quick-grid {

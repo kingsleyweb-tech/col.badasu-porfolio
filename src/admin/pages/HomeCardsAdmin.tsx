@@ -121,10 +121,6 @@ function CardRow({
               <input type="text" value={card.meta} onChange={(e) => onChange(index, 'meta', e.target.value)} />
             </div>
           </div>
-          <div className="admin-form-group">
-            <label>Link (to)</label>
-            <input type="text" value={card.to} onChange={(e) => onChange(index, 'to', e.target.value)} />
-          </div>
         </div>
       </div>
     </div>

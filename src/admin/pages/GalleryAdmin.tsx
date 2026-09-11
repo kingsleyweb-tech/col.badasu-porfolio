@@ -47,16 +47,54 @@ export const GalleryAdmin: React.FC = () => {
     }
   }, [message])
 
+  // Retry helper: tries fetchFn up to maxAttempts times with exponential backoff
+  const fetchWithRetry = async (fetchFn: () => Promise<Response | null>, maxAttempts = 3): Promise<Response | null> => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await fetchFn()
+        if (res && res.ok) return res
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 400 * attempt))
+        }
+      } catch {
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 400 * attempt))
+        }
+      }
+    }
+    return null
+  }
+
   const fetchCollections = useCallback(async () => {
     setLoadingCollections(true)
     setCollectionsError(null)
     try {
-      // Fetch from Cloudinary API, Firestore, and Deleted collections set simultaneously
-      const [res, fsCols, deletedSlugs] = await Promise.all([
-        fetch('/api/gallery').catch(() => null),
+      // Fetch Firestore data immediately (fast), and retry Cloudinary API up to 3 times
+      const [fsCols, deletedSlugs] = await Promise.all([
         fetchFirestoreCollections().catch(() => []),
         fetchDeletedCollectionSlugs().catch(() => new Set<string>())
       ])
+
+      // Show Firestore collections immediately as initial data while Cloudinary loads
+      const colMap = new Map<string, CollectionItem>()
+      fsCols.forEach((fc) => {
+        const normSlug = fc.slug.toLowerCase()
+        if (!deletedSlugs.has(normSlug)) {
+          colMap.set(fc.slug, {
+            slug: fc.slug,
+            name: fc.name,
+            count: fc.count,
+            coverImage: fc.coverImage
+          })
+        }
+      })
+      if (colMap.size > 0) {
+        setCollections(Array.from(colMap.values()))
+        setLoadingCollections(false)
+      }
+
+      // Now retry Cloudinary API up to 3 times for authoritative data
+      const res = await fetchWithRetry(() => fetch('/api/gallery'), 3)
 
       let apiCols: CollectionItem[] = []
       if (res && res.ok) {
@@ -64,27 +102,27 @@ export const GalleryAdmin: React.FC = () => {
         apiCols = data.collections || []
       }
 
-      // Merge Cloudinary collections with Firestore collections, filtering out deleted ones
-      const colMap = new Map<string, CollectionItem>()
+      // Merge Cloudinary collections with Firestore, filtering out deleted ones
+      const merged = new Map<string, CollectionItem>()
       apiCols.forEach((c) => {
         const normSlug = c.slug.toLowerCase()
         if (!deletedSlugs.has(normSlug)) {
-          colMap.set(c.slug, c)
+          merged.set(c.slug, c)
         }
       })
 
       fsCols.forEach((fc) => {
         const normSlug = fc.slug.toLowerCase()
         if (!deletedSlugs.has(normSlug)) {
-          if (!colMap.has(fc.slug)) {
-            colMap.set(fc.slug, {
+          if (!merged.has(fc.slug)) {
+            merged.set(fc.slug, {
               slug: fc.slug,
               name: fc.name,
               count: fc.count,
               coverImage: fc.coverImage
             })
           } else {
-            const existing = colMap.get(fc.slug)!
+            const existing = merged.get(fc.slug)!
             if (fc.count > (existing.count || 0)) {
               existing.count = fc.count
             }
@@ -92,13 +130,22 @@ export const GalleryAdmin: React.FC = () => {
         }
       })
 
-      setCollections(Array.from(colMap.values()))
+      const final = Array.from(merged.values())
+      if (final.length > 0) {
+        setCollections(final)
+      } else if (colMap.size === 0) {
+        // Only show error if both Cloudinary and Firestore returned nothing
+        setCollectionsError('Could not load collections. Check your network or API credentials.')
+      }
     } catch {
-      setCollectionsError('Could not load collections. Check your network or API credentials.')
+      if (collections.length === 0) {
+        setCollectionsError('Could not load collections. Check your network or API credentials.')
+      }
     } finally {
       setLoadingCollections(false)
     }
   }, [])
+
 
   useEffect(() => {
     fetchCollections()

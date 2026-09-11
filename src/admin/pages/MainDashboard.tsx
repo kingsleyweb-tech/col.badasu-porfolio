@@ -29,16 +29,26 @@ export const MainDashboard: React.FC = () => {
 
   useEffect(() => {
     let active = true
-    fetch('/api/gallery')
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (active && data && Array.isArray(data.folders)) {
-          setCollectionCount(data.folders.length)
-          const total = data.folders.reduce((acc: number, folder: { totalResources?: number }) => acc + (folder.totalResources || 0), 0)
-          setTotalImages(total)
+    const loadGalleryStats = async () => {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const res = await fetch('/api/gallery')
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const data = await res.json()
+          if (active && data && Array.isArray(data.collections)) {
+            setCollectionCount(data.collections.length)
+            const total = data.collections.reduce((acc: number, col: { count?: number }) => acc + (col.count || 0), 0)
+            setTotalImages(total)
+          }
+          break
+        } catch {
+          if (attempt < 3) {
+            await new Promise((r) => setTimeout(r, 500 * attempt))
+          }
         }
-      })
-      .catch(() => {})
+      }
+    }
+    loadGalleryStats()
     return () => { active = false }
   }, [])
 

@@ -47,16 +47,26 @@ export const EveryoneSection: React.FC = () => {
   const fetchCollections = useCallback(async () => {
     setLoadingCollections(true)
     setCollectionsError(null)
-    try {
-      const res = await fetch('/api/gallery')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      setCollections(data.collections || [])
-    } catch {
-      setCollectionsError('Could not load collections from Cloudinary.')
-    } finally {
-      setLoadingCollections(false)
+    let lastData: CollectionItem[] | null = null
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await fetch('/api/gallery')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        lastData = data.collections || []
+        break
+      } catch {
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 500 * attempt))
+        }
+      }
     }
+    if (lastData !== null) {
+      setCollections(lastData)
+    } else {
+      setCollectionsError('Could not load collections. Please try again.')
+    }
+    setLoadingCollections(false)
   }, [])
 
   useEffect(() => { fetchCollections() }, [fetchCollections])

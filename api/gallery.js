@@ -20,7 +20,8 @@ export default async function handler(request, response) {
 
     const collectionSlug = typeof request.query.collection === 'string' ? request.query.collection : ''
 
-    response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    // Allow short CDN cache (60s) but revalidate in background — prevents hammering Cloudinary on every refresh
+    response.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
 
     if (collectionSlug) {
       const folders = await listFolders(cloudName, apiKey, apiSecret)
@@ -48,20 +49,29 @@ export default async function handler(request, response) {
       return
     }
 
+    // List all folders and fetch cover image for each
     const folders = await listFolders(cloudName, apiKey, apiSecret)
-    const collections = await Promise.all(folders.map(async (folder) => {
-      const resources = await listResources(cloudName, apiKey, apiSecret, folder.path, undefined, 1)
-      const cover = resources.items[0]
 
-      return {
-        slug: slugify(folder.name),
-        name: getCollectionDisplayName(folder.name),
-        count: resources.totalCount,
-        coverImage: cover ? imageFromResource(cloudName, cover, folder.name) : undefined
-      }
-    }))
+    // Use Promise.allSettled so one failing folder doesn't blow up all collections
+    const settled = await Promise.allSettled(
+      folders.map(async (folder) => {
+        const resources = await listResources(cloudName, apiKey, apiSecret, folder.path, undefined, 1)
+        const cover = resources.items[0]
+        return {
+          slug: slugify(folder.name),
+          name: getCollectionDisplayName(folder.name),
+          count: resources.totalCount,
+          coverImage: cover ? imageFromResource(cloudName, cover, folder.name) : undefined
+        }
+      })
+    )
 
-    response.status(200).json({ collections: collections.filter((collection) => collection.coverImage) })
+    // Only include successfully resolved collections that have a cover image
+    const collections = settled
+      .filter((result) => result.status === 'fulfilled' && result.value.coverImage)
+      .map((result) => result.value)
+
+    response.status(200).json({ collections })
   } catch (error) {
     console.error('Gallery API error', error)
     response.status(500).json({ error: 'Gallery is temporarily unavailable.' })
@@ -69,7 +79,7 @@ export default async function handler(request, response) {
 }
 
 async function listFolders(cloudName, apiKey, apiSecret) {
-  const data = await cloudinaryFetch(cloudName, apiKey, apiSecret, `/folders/${encodePath(rootFolder)}`)
+  const data = await cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, `/folders/${encodePath(rootFolder)}`)
   const ignoredFolders = new Set(['portfolio', 'portfolio website', 'portfolio-website', 'website', 'site', 'hero', 'career', 'achievements', 'gallery', '__optimized__'])
   return (data.folders || [])
     .filter((folder) => !ignoredFolders.has(folder.name.toLowerCase().trim()))
@@ -90,7 +100,7 @@ async function listResources(cloudName, apiKey, apiSecret, prefix, nextCursor, m
     params.set('next_cursor', nextCursor)
   }
 
-  const data = await cloudinaryFetch(cloudName, apiKey, apiSecret, `/resources/image/upload?${params.toString()}`)
+  const data = await cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, `/resources/image/upload?${params.toString()}`)
   const items = data.resources || []
 
   let totalCount = items.length
@@ -103,7 +113,7 @@ async function listResources(cloudName, apiKey, apiSecret, prefix, nextCursor, m
       max_results: '500',
       next_cursor: cursor
     })
-    const nextPage = await cloudinaryFetch(cloudName, apiKey, apiSecret, `/resources/image/upload?${nextParams.toString()}`)
+    const nextPage = await cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, `/resources/image/upload?${nextParams.toString()}`)
     totalCount += (nextPage.resources || []).length
     cursor = nextPage.next_cursor
   }
@@ -115,10 +125,32 @@ async function listResources(cloudName, apiKey, apiSecret, prefix, nextCursor, m
   }
 }
 
+/**
+ * Fetches from Cloudinary with automatic retry (up to 3 attempts) and exponential backoff.
+ * This prevents single transient network errors from failing the entire gallery load.
+ */
+async function cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, path, maxAttempts = 3) {
+  let lastError
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await cloudinaryFetch(cloudName, apiKey, apiSecret, path)
+    } catch (err) {
+      lastError = err
+      if (attempt < maxAttempts) {
+        // Exponential backoff: 300ms, 900ms, 2700ms
+        const delay = 300 * Math.pow(3, attempt - 1)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        console.warn(`[Gallery] Retrying Cloudinary request (attempt ${attempt + 1}/${maxAttempts}): ${path}`)
+      }
+    }
+  }
+  throw lastError
+}
+
 async function cloudinaryFetch(cloudName, apiKey, apiSecret, path) {
   const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30000)
+  const timeout = setTimeout(() => controller.abort(), 25000)
 
   try {
     const result = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}${path}`, {
@@ -129,7 +161,7 @@ async function cloudinaryFetch(cloudName, apiKey, apiSecret, path) {
     })
 
     if (!result.ok) {
-      throw new Error(`Cloudinary request failed: ${result.status}`)
+      throw new Error(`Cloudinary request failed: ${result.status} ${result.statusText}`)
     }
 
     return await result.json()
@@ -205,4 +237,3 @@ function getCollectionDisplayName(folderName) {
   }
   return toTitle(folderName);
 }
-

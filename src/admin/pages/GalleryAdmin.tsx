@@ -69,13 +69,13 @@ export const GalleryAdmin: React.FC = () => {
     setLoadingCollections(true)
     setCollectionsError(null)
     try {
-      // Fetch Firestore data immediately (fast), and retry Cloudinary API up to 3 times
+      // Fetch Firestore data immediately (fast), and deleted collection slugs set
       const [fsCols, deletedSlugs] = await Promise.all([
         fetchFirestoreCollections().catch(() => []),
         fetchDeletedCollectionSlugs().catch(() => new Set<string>())
       ])
 
-      // Show Firestore collections immediately as initial data while Cloudinary loads
+      // Map initial Firestore collections
       const colMap = new Map<string, CollectionItem>()
       fsCols.forEach((fc) => {
         const normSlug = fc.slug.toLowerCase()
@@ -90,15 +90,14 @@ export const GalleryAdmin: React.FC = () => {
       })
       if (colMap.size > 0) {
         setCollections(Array.from(colMap.values()))
-        setLoadingCollections(false)
       }
 
-      // Now retry Cloudinary API up to 3 times for authoritative data
+      // Retry Cloudinary API up to 3 times for live collections
       const res = await fetchWithRetry(() => fetch('/api/gallery'), 3)
 
       let apiCols: CollectionItem[] = []
       if (res && res.ok) {
-        const data = await res.json()
+        const data = await res.json().catch(() => ({}))
         apiCols = data.collections || []
       }
 
@@ -131,13 +130,10 @@ export const GalleryAdmin: React.FC = () => {
       })
 
       const final = Array.from(merged.values())
-      if (final.length > 0) {
-        setCollections(final)
-      } else if (colMap.size === 0) {
-        // Only show error if both Cloudinary and Firestore returned nothing
-        setCollectionsError('Could not load collections. Check your network or API credentials.')
-      }
-    } catch {
+      setCollections(final)
+      setCollectionsError(null)
+    } catch (err) {
+      console.warn('[GalleryAdmin] Error fetching collections:', err)
       if (collections.length === 0) {
         setCollectionsError('Could not load collections. Check your network or API credentials.')
       }
@@ -145,6 +141,7 @@ export const GalleryAdmin: React.FC = () => {
       setLoadingCollections(false)
     }
   }, [])
+
 
 
   useEffect(() => {

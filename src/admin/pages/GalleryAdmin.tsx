@@ -7,6 +7,7 @@ import { CollectionDetailModal, type CollectionItem } from '../components/Collec
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { useUpload } from '../../context/UploadContext'
+import { deleteGalleryCollectionFromFirestore, fetchFirestoreCollections } from '../../services/galleryFirestore'
 
 interface PreviewFile {
   file: File
@@ -31,7 +32,7 @@ export const GalleryAdmin: React.FC = () => {
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null)
   const [collectionToDelete, setCollectionToDelete] = useState<CollectionItem | null>(null)
 
-  // Revoke object URLs when component unmounts or files change
+  // Revoke object URLs when component unmounts
   useEffect(() => {
     return () => {
       objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
@@ -42,12 +43,42 @@ export const GalleryAdmin: React.FC = () => {
     setLoadingCollections(true)
     setCollectionsError(null)
     try {
-      const res = await fetch('/api/gallery')
-      if (!res.ok) throw new Error(`Server returned ${res.status}`)
-      const data = await res.json()
-      setCollections(data.collections || [])
+      // Fetch from both Cloudinary API and Firestore for completeness
+      const [res, fsCols] = await Promise.all([
+        fetch('/api/gallery').catch(() => null),
+        fetchFirestoreCollections().catch(() => [])
+      ])
+
+      let apiCols: CollectionItem[] = []
+      if (res && res.ok) {
+        const data = await res.json()
+        apiCols = data.collections || []
+      }
+
+      // Merge Cloudinary collections with Firestore collections
+      const colMap = new Map<string, CollectionItem>()
+      apiCols.forEach((c) => colMap.set(c.slug, c))
+
+      fsCols.forEach((fc) => {
+        if (!colMap.has(fc.slug)) {
+          colMap.set(fc.slug, {
+            slug: fc.slug,
+            name: fc.name,
+            count: fc.count,
+            coverImage: fc.coverImage
+          })
+        } else {
+          // Sync count if higher in Firestore
+          const existing = colMap.get(fc.slug)!
+          if (fc.count > (existing.count || 0)) {
+            existing.count = fc.count
+          }
+        }
+      })
+
+      setCollections(Array.from(colMap.values()))
     } catch {
-      setCollectionsError('Could not load collections from Cloudinary. Check your API credentials.')
+      setCollectionsError('Could not load collections. Check your network or API credentials.')
     } finally {
       setLoadingCollections(false)
     }
@@ -57,12 +88,14 @@ export const GalleryAdmin: React.FC = () => {
     fetchCollections()
   }, [fetchCollections])
 
+  // REQUIREMENT 12 & 13 & 15: Complete & Persistent Collection Deletion
   const executeDeleteCollection = async (col: CollectionItem | null) => {
     if (!col) return
     setDeletingSlug(col.slug)
     setMessage(null)
 
     try {
+      // 1. Delete Cloudinary folder and assets
       const res = await fetch('/api/delete-collection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -71,9 +104,13 @@ export const GalleryAdmin: React.FC = () => {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `HTTP ${res.status}`)
+        console.warn('Cloudinary collection delete response warning:', err.error)
       }
 
+      // 2. REQUIREMENT 15 & 16: Delete all Firestore records and collection document permanently!
+      await deleteGalleryCollectionFromFirestore(col.slug)
+
+      // 3. Refresh UI & local state immediately
       setCollections((prev) => prev.filter((item) => item.slug !== col.slug && item.name !== col.name))
       setMessage(`Collection "${col.name}" was permanently deleted.`)
       setMessageType('success')
@@ -102,7 +139,7 @@ export const GalleryAdmin: React.FC = () => {
 
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) addFiles(Array.from(e.target.files))
-    e.target.value = '' // reset so same files can be re-added
+    e.target.value = ''
   }
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -132,21 +169,23 @@ export const GalleryAdmin: React.FC = () => {
 
     const folderSlug = collectionName
       .toLowerCase()
+      .trim()
+      .replace(/&/g, 'and')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
 
+    // Trigger controlled sequential 1-by-1 upload
     startBatchUpload(
-      collectionName,
+      collectionName.trim(),
       folderSlug,
       previewFiles.map((p) => p.file),
       (uploaded, total) => {
         setMessage(`Successfully uploaded ${uploaded} of ${total} photos to "${collectionName}"!`)
         setMessageType('success')
-        setTimeout(() => fetchCollections(), 2000)
+        setTimeout(() => fetchCollections(), 1500)
       }
     )
 
-    // Reset form immediately — uploads continue in background via IndexedDB
     setCollectionName('')
     setDescription('')
     clearAll()
@@ -165,7 +204,7 @@ export const GalleryAdmin: React.FC = () => {
       <div className="admin-page-header">
         <div>
           <h1>Gallery Management</h1>
-          <p>Upload, organize and manage your photo collections from Cloudinary.</p>
+          <p>Upload, organize and manage your photo collections with sequential uploads and instant saving.</p>
         </div>
         <button
           type="button"
@@ -191,7 +230,7 @@ export const GalleryAdmin: React.FC = () => {
         <div className="admin-alert is-success" style={{ background: '#eff6ff', borderColor: '#93c5fd', color: '#1e40af' }}>
           <Zap size={18} />
           <span>
-            <strong>Upload started!</strong> Navigate freely — if you refresh the page, uploads will automatically resume from where they stopped.
+            <strong>Sequential Upload started!</strong> Images process one by one with immediate saving. You can minimize the progress panel and continue browsing.
           </span>
         </div>
       )}
@@ -204,7 +243,7 @@ export const GalleryAdmin: React.FC = () => {
               <h3>Create New Collection</h3>
               <span style={{ fontSize: '13px', color: 'var(--admin-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Zap size={13} style={{ color: '#f59e0b' }} />
-                Parallel · resumes after refresh
+                Sequential Queue · Auto-Compress · Immediate Save
               </span>
             </div>
 
@@ -239,7 +278,7 @@ export const GalleryAdmin: React.FC = () => {
                 <UploadCloud size={36} className="admin-dropzone__icon" />
                 <strong>Click to select or drag images here</strong>
                 <p style={{ margin: '4px 0 0', fontSize: '0.82rem' }}>
-                  JPG, PNG, WEBP — auto-compressed before upload
+                  JPG, PNG, WEBP — auto-optimized for fast sequential upload
                 </p>
                 <input
                   type="file"
@@ -314,7 +353,6 @@ export const GalleryAdmin: React.FC = () => {
                             display: 'block',
                           }}
                         />
-                        {/* Filename tooltip overlay */}
                         <div
                           style={{
                             position: 'absolute',
@@ -332,7 +370,6 @@ export const GalleryAdmin: React.FC = () => {
                         >
                           {pf.file.name}
                         </div>
-                        {/* Remove button */}
                         <button
                           type="button"
                           onClick={() => removePreview(i)}
@@ -360,7 +397,6 @@ export const GalleryAdmin: React.FC = () => {
                       </div>
                     ))}
 
-                    {/* Add more button */}
                     <label
                       style={{
                         border: '2px dashed #cbd5e1',
@@ -404,13 +440,13 @@ export const GalleryAdmin: React.FC = () => {
               </button>
 
               <p style={{ fontSize: '0.72rem', color: 'var(--admin-text-muted)', textAlign: 'center', margin: '6px 0 0' }}>
-                Uploads continue in background even after page refresh
+                Images upload one by one with live per-image progress and background saving
               </p>
             </form>
           </div>
         </div>
 
-        {/* Right: Live Collections */}
+        {/* Right: Live Collections List */}
         <div className="admin-dashboard-sidebar">
           <div className="admin-card">
             <div className="admin-card__header">
@@ -425,7 +461,7 @@ export const GalleryAdmin: React.FC = () => {
             {loadingCollections ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '24px 0', color: 'var(--admin-text-muted)' }}>
                 <Loader2 size={20} className="admin-spinner" />
-                <span>Loading collections from Cloudinary...</span>
+                <span>Loading collections...</span>
               </div>
             ) : collectionsError ? (
               <div style={{ padding: '16px', background: 'rgba(220,38,38,0.08)', borderRadius: '8px', color: '#ef4444', fontSize: '14px' }}>
@@ -435,7 +471,7 @@ export const GalleryAdmin: React.FC = () => {
             ) : collections.length === 0 ? (
               <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--admin-text-muted)' }}>
                 <ImageIcon size={32} style={{ marginBottom: '8px', opacity: 0.4 }} />
-                <p>No collections found in Cloudinary.</p>
+                <p>No collections found.</p>
               </div>
             ) : (
               <div className="admin-collection-list-vertical">
@@ -522,11 +558,12 @@ export const GalleryAdmin: React.FC = () => {
         />
       )}
 
+      {/* REQUIREMENT 14: Confirmation modal before deletion */}
       <ConfirmDeleteModal
         isOpen={!!collectionToDelete}
         title="Delete Collection"
         itemName={collectionToDelete?.name}
-        message="Are you sure you want to permanently delete this collection and ALL photos inside it from Cloudinary? This action cannot be undone."
+        message="This will permanently delete this collection and its images. This action cannot be undone."
         isLoading={!!deletingSlug}
         onConfirm={() => executeDeleteCollection(collectionToDelete)}
         onClose={() => setCollectionToDelete(null)}

@@ -7,7 +7,7 @@ const DB_NAME = 'colonel-upload-queue'
 const DB_VERSION = 1
 const STORE = 'uploads'
 
-export type QueuedFileStatus = 'pending' | 'uploading' | 'done' | 'error'
+export type QueuedFileStatus = 'pending' | 'uploading' | 'done' | 'error' | 'cancelled'
 
 export interface QueuedFile {
   id: string
@@ -20,6 +20,7 @@ export interface QueuedFile {
   progress: number
   addedAt: number
   error?: string
+  order?: number
 }
 
 let _db: IDBDatabase | null = null
@@ -91,6 +92,21 @@ export async function removeFileFromQueue(id: string): Promise<void> {
   })
 }
 
+export async function removePendingBatchFromQueue(batchId: string): Promise<void> {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    const store = tx.objectStore(STORE)
+    const req = store.getAll()
+    req.onsuccess = () => {
+      const items = (req.result || []).filter((f: QueuedFile) => f.batchId === batchId && f.status !== 'done')
+      items.forEach((f: QueuedFile) => store.delete(f.id))
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 export async function clearDoneFiles(): Promise<void> {
   const db = await openDB()
   return new Promise((resolve, reject) => {
@@ -98,7 +114,7 @@ export async function clearDoneFiles(): Promise<void> {
     const store = tx.objectStore(STORE)
     const req = store.getAll()
     req.onsuccess = () => {
-      const done = (req.result || []).filter((f: QueuedFile) => f.status === 'done' || f.status === 'error')
+      const done = (req.result || []).filter((f: QueuedFile) => f.status === 'done' || f.status === 'error' || f.status === 'cancelled')
       done.forEach((f: QueuedFile) => store.delete(f.id))
     }
     tx.oncomplete = () => resolve()

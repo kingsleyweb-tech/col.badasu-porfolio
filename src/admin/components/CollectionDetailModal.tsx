@@ -3,7 +3,13 @@ import { ArrowLeft, Trash2, UploadCloud, Loader2, CheckCircle2, AlertCircle, Ima
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { useUpload } from '../../context/UploadContext'
 import { ConfirmDeleteModal } from './ConfirmDeleteModal'
+import {
+  deleteGalleryCollectionFromFirestore,
+  deleteGalleryImageFromFirestore,
+  fetchFirestoreGalleryImages
+} from '../../services/galleryFirestore'
 
 export interface CollectionItem {
   slug: string
@@ -33,13 +39,12 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
   onCollectionUpdated
 }) => {
   const { data } = usePortfolio()
+  const { startBatchUpload } = useUpload()
   const [images, setImages] = useState<CollectionImage[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Photo Upload State inside Collection
-  const [uploading, setUploading] = useState<boolean>(false)
-  const [uploadProgress, setUploadProgress] = useState<number>(0)
+  // Toast Alert Notification state
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
   // Fullscreen Preview Lightbox
@@ -51,43 +56,41 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
   const [photoToDelete, setPhotoToDelete] = useState<CollectionImage | null>(null)
   const [showDeleteCollectionConfirm, setShowDeleteCollectionConfirm] = useState<boolean>(false)
 
-  const executeDeleteEntireCollection = async () => {
-    if (!collection) return
-
-    setDeletingCollection(true)
-    setToastMessage(null)
-
-    try {
-      const res = await fetch('/api/delete-collection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderName: collection.name, slug: collection.slug })
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `HTTP ${res.status}`)
-      }
-
-      setShowDeleteCollectionConfirm(false)
-      if (onCollectionUpdated) onCollectionUpdated()
-      onClose()
-    } catch (err: any) {
-      setToastMessage({ text: `Failed to delete collection: ${err.message || 'Unknown error'}`, type: 'error' })
-      setDeletingCollection(false)
-      setShowDeleteCollectionConfirm(false)
-    }
-  }
-
+  // Fetch images from Cloudinary + Firestore
   const fetchCollectionImages = useCallback(async () => {
     if (!collection) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      setImages(data.images || [])
+      const [res, fsImages] = await Promise.all([
+        fetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}`).catch(() => null),
+        fetchFirestoreGalleryImages(collection.slug).catch(() => [])
+      ])
+
+      let apiImages: CollectionImage[] = []
+      if (res && res.ok) {
+        const data = await res.json()
+        apiImages = data.images || []
+      }
+
+      // Merge Cloudinary images with Firestore images (prevent duplicates)
+      const imgMap = new Map<string, CollectionImage>()
+      apiImages.forEach((img) => imgMap.set(img.publicId || img.id, img))
+
+      fsImages.forEach((fsi) => {
+        if (!imgMap.has(fsi.publicId) && !imgMap.has(fsi.id)) {
+          imgMap.set(fsi.publicId || fsi.id, {
+            id: fsi.id,
+            publicId: fsi.publicId,
+            title: fsi.title,
+            alt: fsi.alt,
+            thumbnailUrl: fsi.thumbnailUrl,
+            largeUrl: fsi.largeUrl
+          })
+        }
+      })
+
+      setImages(Array.from(imgMap.values()))
     } catch {
       setError('Failed to load collection photos. Please check network connection.')
     } finally {
@@ -103,49 +106,54 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
 
   if (!collection) return null
 
-  // Handle Photo Upload directly into this collection folder
-  const handleAddPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return
-    const files = Array.from(e.target.files)
-    setUploading(true)
-    setUploadProgress(0)
+  // REQUIREMENT 12 & 13 & 15: Complete Collection Deletion
+  const executeDeleteEntireCollection = async () => {
+    if (!collection) return
+
+    setDeletingCollection(true)
     setToastMessage(null)
 
     try {
-      let successCount = 0
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        const reader = new FileReader()
-        const base64Data = await new Promise<string>((resolve) => {
-          reader.onload = () => resolve(reader.result as string)
-          reader.readAsDataURL(file)
-        })
+      // 1. Delete Cloudinary folder and images
+      await fetch('/api/delete-collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderName: collection.name, slug: collection.slug })
+      }).catch(() => null)
 
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            file: base64Data,
-            folder: collection.slug,
-            filename: file.name
-          })
-        })
+      // 2. Delete Firestore collection & image docs permanently
+      await deleteGalleryCollectionFromFirestore(collection.slug)
 
-        if (res.ok) successCount++
-        setUploadProgress(Math.round(((i + 1) / files.length) * 100))
-      }
-
-      setToastMessage({
-        text: `Successfully added ${successCount} new photo(s) to "${collection.name}"!`,
-        type: 'success'
-      })
-      fetchCollectionImages()
+      setShowDeleteCollectionConfirm(false)
       if (onCollectionUpdated) onCollectionUpdated()
-    } catch {
-      setToastMessage({ text: 'Failed to upload photo(s). Please try again.', type: 'error' })
-    } finally {
-      setUploading(false)
+      onClose()
+    } catch (err: any) {
+      setToastMessage({ text: `Failed to delete collection: ${err.message || 'Unknown error'}`, type: 'error' })
+      setDeletingCollection(false)
+      setShowDeleteCollectionConfirm(false)
     }
+  }
+
+  // Handle Photo Upload using Controlled Sequential Queue
+  const handleAddPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return
+    const files = Array.from(e.target.files)
+
+    startBatchUpload(
+      collection.name,
+      collection.slug,
+      files,
+      (uploaded, total) => {
+        setToastMessage({
+          text: `Successfully added ${uploaded} of ${total} photo(s) to "${collection.name}"!`,
+          type: 'success'
+        })
+        fetchCollectionImages()
+        if (onCollectionUpdated) onCollectionUpdated()
+      }
+    )
+
+    e.target.value = ''
   }
 
   // Handle Photo Deletion
@@ -155,13 +163,17 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
     setToastMessage(null)
 
     try {
+      // Delete Cloudinary asset if unused
       await deleteCloudinaryImageIfUnused(image.publicId, data)
-      setImages((prev) => prev.filter((img) => img.id !== image.id))
+      // Delete Firestore document
+      await deleteGalleryImageFromFirestore(image.id, collection.slug)
+
+      setImages((prev) => prev.filter((img) => img.id !== image.id && img.publicId !== image.publicId))
       setToastMessage({ text: `Photo successfully deleted from "${collection.name}".`, type: 'success' })
       setPhotoToDelete(null)
       if (onCollectionUpdated) onCollectionUpdated()
     } catch {
-      setToastMessage({ text: 'Could not delete photo. Check API credentials or network.', type: 'error' })
+      setToastMessage({ text: 'Could not delete photo. Check network or credentials.', type: 'error' })
     } finally {
       setDeletingId(null)
     }
@@ -254,17 +266,16 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
                 borderRadius: '8px',
                 fontSize: '0.875rem',
                 fontWeight: 600,
-                cursor: uploading ? 'not-allowed' : 'pointer'
+                cursor: 'pointer'
               }}
             >
-              {uploading ? <Loader2 size={16} className="admin-spinner" /> : <UploadCloud size={16} />}
-              <span>{uploading ? `Uploading (${uploadProgress}%)...` : 'Add Photos'}</span>
+              <UploadCloud size={16} />
+              <span>Add Photos</span>
               <input
                 type="file"
                 multiple
                 accept="image/*"
                 onChange={handleAddPhotos}
-                disabled={uploading}
                 style={{ display: 'none' }}
               />
             </label>
@@ -435,7 +446,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
                           type="button"
                           onClick={() => setPhotoToDelete(img)}
                           disabled={isDeleting}
-                          title="Delete photo from Cloudinary"
+                          title="Delete photo"
                           style={{
                             width: '36px',
                             height: '36px',
@@ -536,7 +547,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
         isOpen={!!photoToDelete}
         title="Delete Photo"
         itemName={photoToDelete?.title}
-        message="Are you sure you want to permanently delete this photo from Cloudinary? This action cannot be undone."
+        message="Are you sure you want to permanently delete this photo? This action cannot be undone."
         isLoading={deletingId === photoToDelete?.id}
         onConfirm={() => executeDeletePhoto(photoToDelete)}
         onClose={() => setPhotoToDelete(null)}
@@ -547,7 +558,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
         isOpen={showDeleteCollectionConfirm}
         title="Delete Entire Collection"
         itemName={collection?.name}
-        message={`Are you sure you want to permanently delete "${collection?.name}" and ALL photos inside it from Cloudinary? This action cannot be undone.`}
+        message={`This will permanently delete "${collection?.name}" and ALL photos inside it. This action cannot be undone.`}
         isLoading={deletingCollection}
         onConfirm={executeDeleteEntireCollection}
         onClose={() => setShowDeleteCollectionConfirm(false)}

@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInAnonymously,
   signOut,
   sendPasswordResetEmail,
   updateEmail as updateFirebaseEmail,
@@ -83,6 +84,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(currentUser)
         setLoading(false)
       })
+      if (!auth.currentUser && localStorage.getItem('colonel_demo_auth') === 'true') {
+        signInAnonymously(auth).catch(() => {})
+      }
       return () => unsubscribe()
     } catch {
       setLoading(false)
@@ -107,6 +111,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (cleanInputEmail === cleanStoredEmail && pass === currentCreds.pass) {
         setIsDemoAdmin(true)
         localStorage.setItem('colonel_demo_auth', 'true')
+        try {
+          await signInAnonymously(auth)
+        } catch {
+          // fallback
+        }
       } else {
         const firebaseErr = err as { code?: string; message?: string }
         if (

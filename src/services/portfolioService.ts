@@ -244,18 +244,9 @@ export const defaultPortfolioData: PortfolioData = {
 
 const PORTFOLIO_DOC_ID = 'portfolio_main'
 const LOCAL_STORAGE_KEY = 'colonel_portfolio_content_v2'
+const LAST_SAVE_KEY = 'colonel_portfolio_last_save_time'
 
-export async function fetchPortfolioContent(): Promise<PortfolioData> {
-  try {
-    const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
-    const snap = await getDoc(docRef)
-    if (snap.exists()) {
-      return { ...defaultPortfolioData, ...snap.data() } as PortfolioData
-    }
-  } catch (err) {
-    console.info('Firestore offline/fallback mode active:', err)
-  }
-
+function getLocalPortfolioContent(): PortfolioData | null {
   const localSaved = localStorage.getItem(LOCAL_STORAGE_KEY)
   if (localSaved) {
     try {
@@ -264,8 +255,29 @@ export async function fetchPortfolioContent(): Promise<PortfolioData> {
       // ignore corrupt cache
     }
   }
+  return null
+}
 
-  return defaultPortfolioData
+function mergePortfolioData(remote: PortfolioData, local: PortfolioData | null): PortfolioData {
+  if (!local) return remote
+  return { ...defaultPortfolioData, ...remote, ...local }
+}
+
+export async function fetchPortfolioContent(): Promise<PortfolioData> {
+  const localData = getLocalPortfolioContent()
+
+  try {
+    const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
+    const snap = await getDoc(docRef)
+    if (snap.exists()) {
+      const remoteData = { ...defaultPortfolioData, ...snap.data() } as PortfolioData
+      return mergePortfolioData(remoteData, localData)
+    }
+  } catch (err) {
+    console.info('Firestore offline/fallback mode active:', err)
+  }
+
+  return localData || defaultPortfolioData
 }
 
 export async function savePortfolioContent(updated: Partial<PortfolioData>): Promise<void> {
@@ -273,12 +285,13 @@ export async function savePortfolioContent(updated: Partial<PortfolioData>): Pro
   const merged = { ...current, ...updated }
 
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged))
+  localStorage.setItem(LAST_SAVE_KEY, String(Date.now()))
 
   try {
     const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
     await setDoc(docRef, merged, { merge: true })
   } catch (err) {
-    console.warn('Firestore write warning:', err)
+    console.warn('Firestore write warning (persisted to local cache):', err)
   }
 }
 
@@ -290,7 +303,9 @@ export function subscribePortfolioContent(callback: (data: PortfolioData) => voi
       (snap) => {
         if (snap.exists()) {
           const remoteData = { ...defaultPortfolioData, ...snap.data() } as PortfolioData
-          callback(remoteData)
+          const localData = getLocalPortfolioContent()
+          const merged = mergePortfolioData(remoteData, localData)
+          callback(merged)
         }
       },
       (err) => {

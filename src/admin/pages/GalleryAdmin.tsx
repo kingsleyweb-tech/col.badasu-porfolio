@@ -7,7 +7,7 @@ import { CollectionDetailModal, type CollectionItem } from '../components/Collec
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { useUpload } from '../../context/UploadContext'
-import { deleteGalleryCollectionFromFirestore, fetchFirestoreCollections } from '../../services/galleryFirestore'
+import { deleteGalleryCollectionFromFirestore, fetchFirestoreCollections, fetchDeletedCollectionSlugs } from '../../services/galleryFirestore'
 
 interface PreviewFile {
   file: File
@@ -39,14 +39,23 @@ export const GalleryAdmin: React.FC = () => {
     }
   }, [])
 
+  // Auto-dismiss toast alert after 5 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [message])
+
   const fetchCollections = useCallback(async () => {
     setLoadingCollections(true)
     setCollectionsError(null)
     try {
-      // Fetch from both Cloudinary API and Firestore for completeness
-      const [res, fsCols] = await Promise.all([
+      // Fetch from Cloudinary API, Firestore, and Deleted collections set simultaneously
+      const [res, fsCols, deletedSlugs] = await Promise.all([
         fetch('/api/gallery').catch(() => null),
-        fetchFirestoreCollections().catch(() => [])
+        fetchFirestoreCollections().catch(() => []),
+        fetchDeletedCollectionSlugs().catch(() => new Set<string>())
       ])
 
       let apiCols: CollectionItem[] = []
@@ -55,22 +64,30 @@ export const GalleryAdmin: React.FC = () => {
         apiCols = data.collections || []
       }
 
-      // Merge Cloudinary collections with Firestore collections
+      // Merge Cloudinary collections with Firestore collections, filtering out deleted ones
       const colMap = new Map<string, CollectionItem>()
-      apiCols.forEach((c) => colMap.set(c.slug, c))
+      apiCols.forEach((c) => {
+        const normSlug = c.slug.toLowerCase()
+        if (!deletedSlugs.has(normSlug)) {
+          colMap.set(c.slug, c)
+        }
+      })
 
       fsCols.forEach((fc) => {
-        if (!colMap.has(fc.slug)) {
-          colMap.set(fc.slug, {
-            slug: fc.slug,
-            name: fc.name,
-            count: fc.count,
-            coverImage: fc.coverImage
-          })
-        } else {
-          const existing = colMap.get(fc.slug)!
-          if (fc.count > (existing.count || 0)) {
-            existing.count = fc.count
+        const normSlug = fc.slug.toLowerCase()
+        if (!deletedSlugs.has(normSlug)) {
+          if (!colMap.has(fc.slug)) {
+            colMap.set(fc.slug, {
+              slug: fc.slug,
+              name: fc.name,
+              count: fc.count,
+              coverImage: fc.coverImage
+            })
+          } else {
+            const existing = colMap.get(fc.slug)!
+            if (fc.count > (existing.count || 0)) {
+              existing.count = fc.count
+            }
           }
         }
       })
@@ -219,9 +236,20 @@ export const GalleryAdmin: React.FC = () => {
 
       {message && (
         <div className={`admin-alert ${messageType === 'error' ? 'is-error' : 'is-success'}`}>
-          {messageType === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-          <span>{message}</span>
-          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>×</button>
+          <div className="admin-alert__icon">
+            {messageType === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+          </div>
+          <div className="admin-alert__content">
+            <span>{message}</span>
+          </div>
+          <button
+            type="button"
+            className="admin-alert__close"
+            onClick={() => setMessage(null)}
+            aria-label="Close message"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
 

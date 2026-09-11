@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInAnonymously,
   signOut,
   sendPasswordResetEmail,
   updateEmail as updateFirebaseEmail,
@@ -37,8 +36,8 @@ const DEFAULT_EMAIL = 'admin@colonelbadasu.com'
 const DEFAULT_PASS = 'Colonel2026!'
 
 // ─── Firestore paths ───────────────────────────────────────────────────────────
-const CREDS_DOC = 'admin_account'      // portfolio/admin_account
-const SESSION_DOC = 'admin_session'    // portfolio/admin_session
+const CREDS_DOC = 'admin_account'    // portfolio/admin_account
+const SESSION_DOC = 'admin_session'  // portfolio/admin_session
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -55,38 +54,8 @@ async function loadCredentialsFromFirestore(): Promise<AdminCredentials> {
   return { email: DEFAULT_EMAIL, pass: DEFAULT_PASS }
 }
 
-async function saveSessionToFirestore(uid: string): Promise<void> {
-  try {
-    await setDoc(doc(db, 'portfolio', SESSION_DOC), {
-      uid,
-      isDemoAdmin: true,
-      createdAt: new Date().toISOString(),
-    })
-  } catch {
-    // non-critical
-  }
-}
-
-async function clearSessionFromFirestore(): Promise<void> {
-  try {
-    await deleteDoc(doc(db, 'portfolio', SESSION_DOC))
-  } catch {
-    // non-critical
-  }
-}
-
-async function checkDemoSession(uid: string | null): Promise<boolean> {
-  if (!uid) return false
-  try {
-    const snap = await getDoc(doc(db, 'portfolio', SESSION_DOC))
-    if (snap.exists()) {
-      const data = snap.data()
-      return data.uid === uid && data.isDemoAdmin === true
-    }
-  } catch {
-    // ignore
-  }
-  return false
+function generateSessionToken(): string {
+  return `session_${Date.now()}_${Math.random().toString(36).slice(2)}`
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -101,24 +70,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
-  // On mount: listen to Firebase auth, restore demo session from Firestore
+  // In-memory session token (only lives for this browser session)
+  const sessionToken = useRef<string | null>(null)
+
+  // On mount: listen to Firebase Auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser)
-
-      if (currentUser) {
-        // Check if this Firebase user has an active demo session stored in Firestore
-        const demo = await checkDemoSession(currentUser.uid)
-        setIsDemoAdmin(demo)
-      } else {
-        setIsDemoAdmin(false)
-      }
-
+      // If Firebase Auth logs us out (e.g. token expired), clear demo state too
+      if (!currentUser) setIsDemoAdmin(false)
       setLoading(false)
     })
 
     // Load admin credentials from Firestore on boot
     loadCredentialsFromFirestore().then(setAdminCredentials)
+
+    // Check for an active demo session stored in Firestore
+    async function restoreSession() {
+      try {
+        const snap = await getDoc(doc(db, 'portfolio', SESSION_DOC))
+        if (snap.exists()) {
+          const data = snap.data()
+          if (data?.active === true && data?.token) {
+            sessionToken.current = data.token
+            setIsDemoAdmin(true)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    restoreSession()
 
     return () => unsubscribe()
   }, [])
@@ -131,23 +113,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Primary path: real Firebase email/password auth
       await signInWithEmailAndPassword(auth, email, pass)
       setIsDemoAdmin(false)
-    } catch {
-      // Fallback: check against Firestore-stored admin credentials
-      const creds = await loadCredentialsFromFirestore()
-      const match =
-        email.trim().toLowerCase() === creds.email.trim().toLowerCase() &&
-        pass === creds.pass
+    } catch (firebaseErr: unknown) {
+      const errCode = (firebaseErr as { code?: string }).code
 
-      if (match) {
-        // Sign in anonymously so Firestore write rules are satisfied
-        const anonResult = await signInAnonymously(auth)
-        setIsDemoAdmin(true)
-        // Persist demo session to Firestore (replaces localStorage)
-        await saveSessionToFirestore(anonResult.user.uid)
+      // Only fall through to credential check for auth errors, not network errors
+      if (
+        errCode === 'auth/invalid-credential' ||
+        errCode === 'auth/user-not-found' ||
+        errCode === 'auth/wrong-password' ||
+        errCode === 'auth/invalid-email'
+      ) {
+        // Fallback: check against Firestore-stored admin credentials
+        const creds = await loadCredentialsFromFirestore()
+        const emailMatch = email.trim().toLowerCase() === creds.email.trim().toLowerCase()
+        const passMatch = pass === creds.pass
+
+        if (emailMatch && passMatch) {
+          // Credentials are valid – create a demo session in Firestore
+          const token = generateSessionToken()
+          sessionToken.current = token
+          setAdminCredentials(creds)
+          setIsDemoAdmin(true)
+
+          // Persist session to Firestore so it survives page refresh
+          try {
+            await setDoc(doc(db, 'portfolio', SESSION_DOC), {
+              active: true,
+              token,
+              createdAt: new Date().toISOString(),
+            })
+          } catch {
+            // Session persistence is non-critical
+          }
+        } else {
+          setError('Invalid administrator email or password. Please try again.')
+          setLoading(false)
+          throw new Error('Invalid credentials')
+        }
       } else {
-        setError('Invalid administrator email or password. Please try again.')
+        // Re-throw unexpected errors (network, etc.)
+        const msg = (firebaseErr as { message?: string }).message
+        setError(msg || 'Login failed. Please check your connection.')
         setLoading(false)
-        throw new Error('Invalid credentials')
+        throw firebaseErr
       }
     } finally {
       setLoading(false)
@@ -157,7 +165,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setLoading(true)
     try {
-      await clearSessionFromFirestore()
+      // Clear Firestore demo session
+      await deleteDoc(doc(db, 'portfolio', SESSION_DOC)).catch(() => {})
+      sessionToken.current = null
+
+      // Sign out of Firebase Auth if we have a real session
       if (auth.currentUser) {
         await signOut(auth)
       }
@@ -190,9 +202,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Persist updated credentials to Firestore
+      // Persist updated credentials to Firestore (this is the source of truth)
       await setDoc(doc(db, 'portfolio', CREDS_DOC), updated, { merge: true })
-
       setAdminCredentials(updated)
     } catch (err: unknown) {
       const firebaseErr = err as { message?: string }

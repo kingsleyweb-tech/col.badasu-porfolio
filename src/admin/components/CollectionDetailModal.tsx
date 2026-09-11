@@ -44,8 +44,38 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
   // Fullscreen Preview Lightbox
   const [previewImage, setPreviewImage] = useState<CollectionImage | null>(null)
 
-  // Deleting Image State
+  // Deleting Image & Collection State
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingCollection, setDeletingCollection] = useState<boolean>(false)
+
+  const handleDeleteEntireCollection = async () => {
+    if (!collection) return
+    if (!window.confirm(`Are you sure you want to PERMANENTLY delete the collection "${collection.name}" and all photos inside it?`)) {
+      return
+    }
+
+    setDeletingCollection(true)
+    setToastMessage(null)
+
+    try {
+      const res = await fetch('/api/delete-collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderName: collection.name, slug: collection.slug })
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `HTTP ${res.status}`)
+      }
+
+      if (onCollectionUpdated) onCollectionUpdated()
+      onClose()
+    } catch (err: any) {
+      setToastMessage({ text: `Failed to delete collection: ${err.message || 'Unknown error'}`, type: 'error' })
+      setDeletingCollection(false)
+    }
+  }
 
   const fetchCollectionImages = useCallback(async () => {
     if (!collection) return
@@ -238,6 +268,30 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
                 style={{ display: 'none' }}
               />
             </label>
+
+            {/* Delete Collection Button */}
+            <button
+              type="button"
+              onClick={handleDeleteEntireCollection}
+              disabled={deletingCollection}
+              title="Delete this entire collection"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.5rem 0.875rem',
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                cursor: deletingCollection ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {deletingCollection ? <Loader2 size={16} className="admin-spinner" /> : <Trash2 size={16} />}
+              <span>{deletingCollection ? 'Deleting...' : 'Delete Collection'}</span>
+            </button>
 
             <button
               onClick={onClose}

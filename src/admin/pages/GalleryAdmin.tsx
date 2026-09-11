@@ -1,23 +1,40 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { UploadCloud, CheckCircle2, Loader2, RefreshCw, ImageIcon, AlertCircle, FolderOpen, Zap } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  UploadCloud, CheckCircle2, Loader2, RefreshCw, ImageIcon,
+  AlertCircle, FolderOpen, Zap, X, Image as ImageIcon2, Trash2
+} from 'lucide-react'
 import { CollectionDetailModal, type CollectionItem } from '../components/CollectionDetailModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { useUpload } from '../../context/UploadContext'
+
+interface PreviewFile {
+  file: File
+  previewUrl: string
+}
 
 export const GalleryAdmin: React.FC = () => {
   const { startBatchUpload } = useUpload()
 
   const [collectionName, setCollectionName] = useState('')
   const [description, setDescription] = useState('')
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
   const [justStarted, setJustStarted] = useState(false)
+  const objectUrlsRef = useRef<string[]>([])
 
   const [collections, setCollections] = useState<CollectionItem[]>([])
   const [loadingCollections, setLoadingCollections] = useState(true)
   const [collectionsError, setCollectionsError] = useState<string | null>(null)
   const [selectedCollection, setSelectedCollection] = useState<CollectionItem | null>(null)
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null)
+
+  // Revoke object URLs when component unmounts or files change
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [])
 
   const fetchCollections = useCallback(async () => {
     setLoadingCollections(true)
@@ -38,19 +55,72 @@ export const GalleryAdmin: React.FC = () => {
     fetchCollections()
   }, [fetchCollections])
 
+  const handleDeleteCollection = async (col: CollectionItem) => {
+    if (!window.confirm(`Are you sure you want to PERMANENTLY delete the collection "${col.name}" and ALL photos inside it?`)) {
+      return
+    }
+
+    setDeletingSlug(col.slug)
+    setMessage(null)
+
+    try {
+      const res = await fetch('/api/delete-collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderName: col.name, slug: col.slug })
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `HTTP ${res.status}`)
+      }
+
+      setMessage(`Collection "${col.name}" was permanently deleted.`)
+      setMessageType('success')
+      fetchCollections()
+    } catch (err: any) {
+      setMessage(`Failed to delete collection: ${err.message || 'Unknown error'}`)
+      setMessageType('error')
+    } finally {
+      setDeletingSlug(null)
+    }
+  }
+
+  const addFiles = (newFiles: File[]) => {
+    const imageFiles = newFiles.filter((f) => f.type.startsWith('image/'))
+    const previews: PreviewFile[] = imageFiles.map((file) => {
+      const previewUrl = URL.createObjectURL(file)
+      objectUrlsRef.current.push(previewUrl)
+      return { file, previewUrl }
+    })
+    setPreviewFiles((prev) => [...prev, ...previews])
+  }
+
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) setSelectedFiles(Array.from(e.target.files))
+    if (e.target.files) addFiles(Array.from(e.target.files))
+    e.target.value = '' // reset so same files can be re-added
   }
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
-    const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'))
-    setSelectedFiles(files)
+    addFiles(Array.from(e.dataTransfer.files))
+  }
+
+  const removePreview = (index: number) => {
+    setPreviewFiles((prev) => {
+      URL.revokeObjectURL(prev[index].previewUrl)
+      return prev.filter((_, i) => i !== index)
+    })
+  }
+
+  const clearAll = () => {
+    previewFiles.forEach((p) => URL.revokeObjectURL(p.previewUrl))
+    setPreviewFiles([])
   }
 
   const handleBatchUpload = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!collectionName.trim() || selectedFiles.length === 0) {
+    if (!collectionName.trim() || previewFiles.length === 0) {
       setMessage('Please enter a collection name and select at least one image.')
       setMessageType('error')
       return
@@ -61,19 +131,29 @@ export const GalleryAdmin: React.FC = () => {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
 
-    // Fire-and-forget — global context handles progress tracking
-    startBatchUpload(collectionName, folderSlug, selectedFiles, (uploaded, total) => {
-      setMessage(`Successfully uploaded ${uploaded} of ${total} photos to "${collectionName}"!`)
-      setMessageType('success')
-      setTimeout(() => fetchCollections(), 2000)
-    })
+    startBatchUpload(
+      collectionName,
+      folderSlug,
+      previewFiles.map((p) => p.file),
+      (uploaded, total) => {
+        setMessage(`Successfully uploaded ${uploaded} of ${total} photos to "${collectionName}"!`)
+        setMessageType('success')
+        setTimeout(() => fetchCollections(), 2000)
+      }
+    )
 
-    // Reset form immediately so user can navigate away
+    // Reset form immediately — uploads continue in background via IndexedDB
     setCollectionName('')
     setDescription('')
-    setSelectedFiles([])
+    clearAll()
     setJustStarted(true)
-    setTimeout(() => setJustStarted(false), 3000)
+    setTimeout(() => setJustStarted(false), 5000)
+  }
+
+  const totalSize = previewFiles.reduce((sum, p) => sum + p.file.size, 0)
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   return (
@@ -81,7 +161,7 @@ export const GalleryAdmin: React.FC = () => {
       <div className="admin-page-header">
         <div>
           <h1>Gallery Management</h1>
-          <p>Upload, organize and manage your photo collections from Cloudinary. Click any collection to view, add or delete photos.</p>
+          <p>Upload, organize and manage your photo collections from Cloudinary.</p>
         </div>
         <button
           type="button"
@@ -99,7 +179,7 @@ export const GalleryAdmin: React.FC = () => {
         <div className={`admin-alert ${messageType === 'error' ? 'is-error' : 'is-success'}`}>
           {messageType === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
           <span>{message}</span>
-          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>x</button>
+          <button type="button" className="admin-alert__close" onClick={() => setMessage(null)}>×</button>
         </div>
       )}
 
@@ -107,7 +187,7 @@ export const GalleryAdmin: React.FC = () => {
         <div className="admin-alert is-success" style={{ background: '#eff6ff', borderColor: '#93c5fd', color: '#1e40af' }}>
           <Zap size={18} />
           <span>
-            <strong>Upload started!</strong> You can freely navigate to other pages — the upload will continue in the background and show progress in the bottom-right corner.
+            <strong>Upload started!</strong> Navigate freely — if you refresh the page, uploads will automatically resume from where they stopped.
           </span>
         </div>
       )}
@@ -120,7 +200,7 @@ export const GalleryAdmin: React.FC = () => {
               <h3>Create New Collection</h3>
               <span style={{ fontSize: '13px', color: 'var(--admin-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Zap size={13} style={{ color: '#f59e0b' }} />
-                Parallel upload · navigate freely
+                Parallel · resumes after refresh
               </span>
             </div>
 
@@ -142,21 +222,21 @@ export const GalleryAdmin: React.FC = () => {
                   placeholder="Brief description about this collection..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
+                  rows={2}
                 />
               </div>
 
+              {/* Drop Zone */}
               <div
                 className="admin-dropzone"
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
               >
-                <UploadCloud size={40} className="admin-dropzone__icon" />
-                <strong>Select multiple images</strong>
-                <p>or drag and drop here</p>
-                <small style={{ color: 'var(--admin-text-muted)' }}>
-                  Supports JPG, PNG, WEBP. Auto-compressed for fast upload.
-                </small>
+                <UploadCloud size={36} className="admin-dropzone__icon" />
+                <strong>Click to select or drag images here</strong>
+                <p style={{ margin: '4px 0 0', fontSize: '0.82rem' }}>
+                  JPG, PNG, WEBP — auto-compressed before upload
+                </p>
                 <input
                   type="file"
                   multiple
@@ -166,30 +246,167 @@ export const GalleryAdmin: React.FC = () => {
                 />
               </div>
 
-              {selectedFiles.length > 0 && (
-                <div className="admin-file-summary">
-                  <strong>Selected {selectedFiles.length} images:</strong>
-                  <div className="admin-file-chips-scroll">
-                    {selectedFiles.map((file, i) => (
-                      <span key={i} className="admin-file-chip">{file.name}</span>
+              {/* Image Preview Grid */}
+              {previewFiles.length > 0 && (
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '10px',
+                  }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
+                      {previewFiles.length} image{previewFiles.length !== 1 ? 's' : ''} selected
+                      <span style={{ fontWeight: 400, color: '#64748b', marginLeft: '6px' }}>
+                        ({formatSize(totalSize)} total)
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearAll}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '0.78rem',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        padding: '2px 6px',
+                      }}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                      gap: '10px',
+                      maxHeight: '340px',
+                      overflowY: 'auto',
+                      padding: '4px',
+                    }}
+                  >
+                    {previewFiles.map((pf, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          position: 'relative',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: '1px solid #e2e8f0',
+                          background: '#f8fafc',
+                          aspectRatio: '1',
+                        }}
+                      >
+                        <img
+                          src={pf.previewUrl}
+                          alt={pf.file.name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                        {/* Filename tooltip overlay */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            background: 'rgba(15,23,42,0.7)',
+                            color: '#fff',
+                            fontSize: '9px',
+                            padding: '3px 5px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {pf.file.name}
+                        </div>
+                        {/* Remove button */}
+                        <button
+                          type="button"
+                          onClick={() => removePreview(i)}
+                          title="Remove this image"
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            background: '#ef4444',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '20px',
+                            height: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                            padding: 0,
+                          }}
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
                     ))}
+
+                    {/* Add more button */}
+                    <label
+                      style={{
+                        border: '2px dashed #cbd5e1',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        background: '#f8fafc',
+                        aspectRatio: '1',
+                        color: '#64748b',
+                        fontSize: '11px',
+                        gap: '4px',
+                        transition: 'border-color 0.2s',
+                      }}
+                    >
+                      <ImageIcon2 size={20} />
+                      <span>Add more</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleFileSelection}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
                   </div>
                 </div>
               )}
 
-              <button type="submit" className="btn btn--primary admin-btn-block">
+              <button
+                type="submit"
+                className="btn btn--primary admin-btn-block"
+                disabled={previewFiles.length === 0}
+              >
                 <UploadCloud size={18} />
-                <span>UPLOAD COLLECTION</span>
+                <span>
+                  UPLOAD {previewFiles.length > 0 ? `${previewFiles.length} IMAGES` : 'COLLECTION'}
+                </span>
               </button>
 
-              <p style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', textAlign: 'center', margin: '8px 0 0' }}>
-                Images are compressed & uploaded in parallel (4 at a time). You can navigate away anytime.
+              <p style={{ fontSize: '0.72rem', color: 'var(--admin-text-muted)', textAlign: 'center', margin: '6px 0 0' }}>
+                Uploads continue in background even after page refresh
               </p>
             </form>
           </div>
         </div>
 
-        {/* Right: Live Collections from Cloudinary */}
+        {/* Right: Live Collections */}
         <div className="admin-dashboard-sidebar">
           <div className="admin-card">
             <div className="admin-card__header">
@@ -230,22 +447,10 @@ export const GalleryAdmin: React.FC = () => {
                         <img
                           src={resolveImageUrl(col.coverImage.thumbnailUrl)}
                           alt={col.coverImage.alt}
-                          style={{
-                            width: '52px',
-                            height: '40px',
-                            objectFit: 'cover',
-                            borderRadius: '6px',
-                            flexShrink: 0,
-                            border: '1px solid var(--admin-border)'
-                          }}
+                          style={{ width: '52px', height: '40px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0, border: '1px solid var(--admin-border)' }}
                         />
                       ) : (
-                        <div style={{
-                          width: '52px', height: '40px', borderRadius: '6px',
-                          background: 'var(--admin-bg-secondary)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
+                        <div style={{ width: '52px', height: '40px', borderRadius: '6px', background: 'var(--admin-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <ImageIcon size={18} style={{ opacity: 0.4 }} />
                         </div>
                       )}
@@ -256,19 +461,47 @@ export const GalleryAdmin: React.FC = () => {
                         <small style={{ color: 'var(--admin-text-muted)' }}>{col.count} images • Click to edit</small>
                       </div>
                     </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--sm"
+                        onClick={(e) => { e.stopPropagation(); setSelectedCollection(col) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 10px', fontSize: '12px' }}
+                      >
+                        <FolderOpen size={14} />
+                        <span>Manage</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      className="btn btn--secondary btn--sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedCollection(col)
-                      }}
-                      style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', fontSize: '12px' }}
-                    >
-                      <FolderOpen size={14} />
-                      <span>Manage</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteCollection(col)
+                        }}
+                        disabled={deletingSlug === col.slug}
+                        title="Delete collection permanently"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '5px 10px',
+                          fontSize: '12px',
+                          backgroundColor: '#ef4444',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: deletingSlug === col.slug ? 'not-allowed' : 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        {deletingSlug === col.slug ? (
+                          <Loader2 size={13} className="admin-spinner" />
+                        ) : (
+                          <Trash2 size={13} />
+                        )}
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

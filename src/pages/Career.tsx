@@ -11,6 +11,15 @@ export function Career() {
   const recentAssignments = data?.recentAssignments || defaultRecentAssignments
   const operations = data?.operations || defaultOperations
 
+  const dynamicTimeline = workHistory.length > 0
+    ? workHistory.map((item) => ({
+        period: item.period,
+        title: item.title,
+        location: item.location,
+        description: item.description.join(' '),
+      }))
+    : timeline
+
   return (
     <>
       <PageHero eyebrow="Career" title="Military Career History" description="A chronological record of appointments, command responsibilities, operational service, and senior staff duties." />
@@ -25,7 +34,7 @@ export function Career() {
       <section className="section" id="timeline">
         <div className="container">
           <SectionHeading eyebrow="Chronology" title="Career Timeline" />
-          <CareerTimeline items={timeline} />
+          <CareerTimeline items={dynamicTimeline} />
         </div>
       </section>
 

@@ -145,7 +145,7 @@ export function Home() {
         <div className="container">
           <SectionHeading eyebrow="Education & Training" title="Academic, Military, and Professional Development" description="Professional development certificates, military diplomas, and courses from the supplied content." />
           <div className="info-grid">
-            {education.slice(0, 3).map((item) => (
+            {(data?.professionalCourses?.length ? data.professionalCourses.map(c => ({ category: c.period, title: c.title, institution: c.institution, period: c.period })) : education).slice(0, 3).map((item) => (
               <InfoCard key={item.title} label={item.category} title={item.title}>
                 <p>{item.institution}</p>
                 <p>{item.period}</p>
@@ -164,10 +164,10 @@ export function Home() {
         <div className="container">
           <SectionHeading eyebrow="Operations" title="Peace Support Experience" description="Operational experience from the supplied biographic form." />
           <div className="stat-band">
-            {operations.slice(0, 4).map((operation) => (
+            {(data?.operations?.length ? data.operations : operations).slice(0, 4).map((operation) => (
               <div key={operation}>
                 <strong>{operation.split(' - ')[0]}</strong>
-                <span>{operation.split(' - ').slice(1).join(' - ')}</span>
+                <span>{operation.split(' - ').slice(1).join(' - ') || operation}</span>
               </div>
             ))}
           </div>

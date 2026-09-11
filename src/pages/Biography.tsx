@@ -85,19 +85,19 @@ export function Biography() {
               <div className="detail-grid">
                 <div className="detail-card" id="languages">
                   <span>Spoken Languages</span>
-                  <strong>{officer.spokenLanguages.join(', ')}</strong>
+                  <strong>{(data?.languages?.spoken?.length ? data.languages.spoken : officer.spokenLanguages).join(', ')}</strong>
                 </div>
                 <div className="detail-card">
                   <span>Written Languages</span>
-                  <strong>{officer.writtenLanguages.join(', ')}</strong>
+                  <strong>{(data?.languages?.written?.length ? data.languages.written : officer.writtenLanguages).join(', ')}</strong>
                 </div>
                 <div className="detail-card">
                   <span>French Language Level</span>
-                  <strong>{officer.frenchLevel}</strong>
+                  <strong>{data?.languages?.frenchLevel || officer.frenchLevel}</strong>
                 </div>
                 <div className="detail-card" id="hobbies">
                   <span>Hobbies</span>
-                  <strong>{officer.hobbies.join(', ')}</strong>
+                  <strong>{(data?.languages?.hobbies?.length ? data.languages.hobbies : officer.hobbies).join(', ')}</strong>
                 </div>
               </div>
             </section>

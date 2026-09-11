@@ -241,94 +241,50 @@ export const defaultPortfolioData: PortfolioData = {
 }
 
 // ─── Firestore CRUD ────────────────────────────────────────────────────────────
-// Firestore is the SINGLE SOURCE OF TRUTH.
-// localStorage is only used as a read-fallback when offline.
-// Saves ALWAYS write to Firestore first. The public website reads from Firestore.
+// Firestore is the ONLY data source. No localStorage. No caching.
 
 const PORTFOLIO_DOC_ID = 'portfolio_main'
-const LOCAL_STORAGE_KEY = 'colonel_portfolio_cache_v3'
-
-function setLocalCache(data: PortfolioData): void {
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data))
-  } catch {
-    // ignore storage quota errors
-  }
-}
-
-function getLocalCache(): PortfolioData | null {
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (raw) return { ...defaultPortfolioData, ...JSON.parse(raw) } as PortfolioData
-  } catch {
-    // ignore corrupt cache
-  }
-  return null
-}
 
 /**
  * Fetch portfolio data from Firestore (single read).
- * Falls back to local cache only when Firestore is unreachable.
+ * Returns app defaults if the document does not exist yet.
  */
 export async function fetchPortfolioContent(): Promise<PortfolioData> {
-  try {
-    const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
-    const snap = await getDoc(docRef)
-    if (snap.exists()) {
-      const remote = { ...defaultPortfolioData, ...snap.data() } as PortfolioData
-      setLocalCache(remote) // keep cache fresh
-      return remote
-    }
-    // Document does not exist yet – return defaults (will be created on first save)
-    return getLocalCache() || defaultPortfolioData
-  } catch (err) {
-    console.warn('[Portfolio] Firestore offline – using local cache', err)
-    return getLocalCache() || defaultPortfolioData
+  const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
+  const snap = await getDoc(docRef)
+  if (snap.exists()) {
+    return { ...defaultPortfolioData, ...snap.data() } as PortfolioData
   }
+  // Document does not exist yet – return defaults (created on first save)
+  return defaultPortfolioData
 }
 
 /**
  * Save portfolio data to Firestore.
- * This is the ONLY authoritative write path.
- * Throws if the write fails so callers can show an error to the admin.
+ * Throws if the write fails so callers can surface the error to the admin.
  */
 export async function savePortfolioContent(updated: Partial<PortfolioData>): Promise<void> {
-  // Fetch current state from Firestore, then merge the updated fields on top
   const current = await fetchPortfolioContent()
   const merged: PortfolioData = { ...current, ...updated }
-
-  // Write to Firestore first – this is what the public website reads
   const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
   await setDoc(docRef, merged, { merge: true })
-
-  // Only update local cache AFTER a successful Firestore write
-  setLocalCache(merged)
 }
 
 /**
  * Subscribe to real-time Firestore updates.
- * Delivers Firestore data directly – no local overrides.
- * Falls back to local cache only if Firestore is unreachable.
+ * Calls callback whenever the Firestore document changes.
  */
 export function subscribePortfolioContent(callback: (data: PortfolioData) => void): () => void {
-  try {
-    const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
-    return onSnapshot(
-      docRef,
-      (snap) => {
-        if (snap.exists()) {
-          const remote = { ...defaultPortfolioData, ...snap.data() } as PortfolioData
-          setLocalCache(remote) // keep cache fresh
-          callback(remote)       // deliver Firestore data directly
-        }
-      },
-      (err) => {
-        console.warn('[Portfolio] Realtime snapshot unavailable, using cache:', err)
-        const cached = getLocalCache()
-        if (cached) callback(cached)
+  const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        callback({ ...defaultPortfolioData, ...snap.data() } as PortfolioData)
       }
-    )
-  } catch {
-    return () => {}
-  }
+    },
+    (err) => {
+      console.error('[Portfolio] Realtime snapshot error:', err)
+    }
+  )
 }

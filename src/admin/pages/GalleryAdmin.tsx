@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { UploadCloud, CheckCircle2, Loader2, RefreshCw, ImageIcon, AlertCircle, FolderOpen } from 'lucide-react'
+import { UploadCloud, CheckCircle2, Loader2, RefreshCw, ImageIcon, AlertCircle, FolderOpen, Zap } from 'lucide-react'
 import { CollectionDetailModal, type CollectionItem } from '../components/CollectionDetailModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
+import { useUpload } from '../../context/UploadContext'
 
 export const GalleryAdmin: React.FC = () => {
+  const { startBatchUpload } = useUpload()
+
   const [collectionName, setCollectionName] = useState('')
   const [description, setDescription] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
+  const [justStarted, setJustStarted] = useState(false)
 
   const [collections, setCollections] = useState<CollectionItem[]>([])
   const [loadingCollections, setLoadingCollections] = useState(true)
@@ -46,7 +48,7 @@ export const GalleryAdmin: React.FC = () => {
     setSelectedFiles(files)
   }
 
-  const handleBatchUpload = async (e: React.FormEvent) => {
+  const handleBatchUpload = (e: React.FormEvent) => {
     e.preventDefault()
     if (!collectionName.trim() || selectedFiles.length === 0) {
       setMessage('Please enter a collection name and select at least one image.')
@@ -54,44 +56,24 @@ export const GalleryAdmin: React.FC = () => {
       return
     }
 
-    setUploading(true)
-    setProgress(0)
-    setMessage(null)
+    const folderSlug = collectionName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
 
-    try {
-      const folderSlug = collectionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-      let uploadedCount = 0
-
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i]
-        const reader = new FileReader()
-        const base64Data = await new Promise<string>((resolve) => {
-          reader.onload = () => resolve(reader.result as string)
-          reader.readAsDataURL(file)
-        })
-
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file: base64Data, folder: folderSlug, filename: file.name })
-        })
-
-        if (res.ok) uploadedCount++
-        setProgress(Math.round(((i + 1) / selectedFiles.length) * 100))
-      }
-
-      setMessage(`Successfully uploaded ${uploadedCount} of ${selectedFiles.length} photos to "${collectionName}"!`)
+    // Fire-and-forget — global context handles progress tracking
+    startBatchUpload(collectionName, folderSlug, selectedFiles, (uploaded, total) => {
+      setMessage(`Successfully uploaded ${uploaded} of ${total} photos to "${collectionName}"!`)
       setMessageType('success')
-      setCollectionName('')
-      setDescription('')
-      setSelectedFiles([])
-      setTimeout(() => fetchCollections(), 1500)
-    } catch {
-      setMessage('An error occurred during upload. Please try again.')
-      setMessageType('error')
-    } finally {
-      setUploading(false)
-    }
+      setTimeout(() => fetchCollections(), 2000)
+    })
+
+    // Reset form immediately so user can navigate away
+    setCollectionName('')
+    setDescription('')
+    setSelectedFiles([])
+    setJustStarted(true)
+    setTimeout(() => setJustStarted(false), 3000)
   }
 
   return (
@@ -121,14 +103,24 @@ export const GalleryAdmin: React.FC = () => {
         </div>
       )}
 
+      {justStarted && (
+        <div className="admin-alert is-success" style={{ background: '#eff6ff', borderColor: '#93c5fd', color: '#1e40af' }}>
+          <Zap size={18} />
+          <span>
+            <strong>Upload started!</strong> You can freely navigate to other pages — the upload will continue in the background and show progress in the bottom-right corner.
+          </span>
+        </div>
+      )}
+
       <div className="admin-dashboard-grid">
         {/* Left: Upload Form */}
         <div className="admin-dashboard-main">
           <div className="admin-card">
             <div className="admin-card__header">
               <h3>Create New Collection</h3>
-              <span style={{ fontSize: '13px', color: 'var(--admin-text-muted)' }}>
-                Upload multiple images and create a collection.
+              <span style={{ fontSize: '13px', color: 'var(--admin-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Zap size={13} style={{ color: '#f59e0b' }} />
+                Parallel upload · navigate freely
               </span>
             </div>
 
@@ -137,7 +129,7 @@ export const GalleryAdmin: React.FC = () => {
                 <label>Collection Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Military Journey"
+                  placeholder="e.g. Field Operations"
                   value={collectionName}
                   onChange={(e) => setCollectionName(e.target.value)}
                   required
@@ -162,7 +154,9 @@ export const GalleryAdmin: React.FC = () => {
                 <UploadCloud size={40} className="admin-dropzone__icon" />
                 <strong>Select multiple images</strong>
                 <p>or drag and drop here</p>
-                <small style={{ color: 'var(--admin-text-muted)' }}>Supports JPG, PNG, WEBP. Max 10MB each</small>
+                <small style={{ color: 'var(--admin-text-muted)' }}>
+                  Supports JPG, PNG, WEBP. Auto-compressed for fast upload.
+                </small>
                 <input
                   type="file"
                   multiple
@@ -183,23 +177,14 @@ export const GalleryAdmin: React.FC = () => {
                 </div>
               )}
 
-              {uploading && (
-                <div className="admin-progress-container">
-                  <div className="admin-progress-bar" style={{ width: `${progress}%` }} />
-                  <span>Uploading to Cloudinary ({progress}%)...</span>
-                </div>
-              )}
-
-              <button type="submit" className="btn btn--primary admin-btn-block" disabled={uploading}>
-                {uploading ? (
-                  <>
-                    <Loader2 size={18} className="admin-spinner" />
-                    <span>Uploading...</span>
-                  </>
-                ) : (
-                  <span>UPLOAD COLLECTION</span>
-                )}
+              <button type="submit" className="btn btn--primary admin-btn-block">
+                <UploadCloud size={18} />
+                <span>UPLOAD COLLECTION</span>
               </button>
+
+              <p style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', textAlign: 'center', margin: '8px 0 0' }}>
+                Images are compressed & uploaded in parallel (4 at a time). You can navigate away anytime.
+              </p>
             </form>
           </div>
         </div>
@@ -302,4 +287,3 @@ export const GalleryAdmin: React.FC = () => {
     </div>
   )
 }
-

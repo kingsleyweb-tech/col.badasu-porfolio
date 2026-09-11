@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { PortfolioProvider } from './context/PortfolioContext'
+import { UploadProvider } from './context/UploadContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Footer } from './components/Footer'
 import { Navbar } from './components/Navbar'
 import { RouteScrollToTop } from './components/RouteScrollToTop'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { QrModal } from './components/QrModal'
+import { GlobalUploadToast } from './admin/components/GlobalUploadToast'
 
 // Public Pages
 import { Achievements } from './pages/Achievements'
@@ -47,9 +49,11 @@ function App() {
   return (
     <AuthProvider>
       <PortfolioProvider>
-        <BrowserRouter>
-          <AppShell />
-        </BrowserRouter>
+        <UploadProvider>
+          <BrowserRouter>
+            <AppShell />
+          </BrowserRouter>
+        </UploadProvider>
       </PortfolioProvider>
     </AuthProvider>
   )
@@ -118,6 +122,8 @@ function AppShell() {
       {showScrollTop && <ScrollToTopButton />}
 
       <QrModal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} />
+      {/* Global upload progress toast — visible on any admin page */}
+      <GlobalUploadToast />
     </>
   )
 }

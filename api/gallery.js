@@ -20,7 +20,7 @@ export default async function handler(request, response) {
 
     const collectionSlug = typeof request.query.collection === 'string' ? request.query.collection : ''
 
-    response.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=1800')
+    response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
 
     if (collectionSlug) {
       const folders = await listFolders(cloudName, apiKey, apiSecret)

@@ -27,10 +27,11 @@ export default async function handler(request, response) {
 
     const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
 
-    // List folders to find matching folder
-    const listRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/folders/${encodeURIComponent(rootFolder)}`, {
-      headers: { Authorization: `Basic ${credentials}` }
-    })
+    // 1. List folders under rootFolder to find matching folder name
+    const listRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/folders/${encodePath(rootFolder)}`,
+      { headers: { Authorization: `Basic ${credentials}` } }
+    )
 
     let targetFolderName = folderName
 
@@ -38,7 +39,10 @@ export default async function handler(request, response) {
       const listData = await listRes.json()
       const folders = listData.folders || []
       const found = folders.find(
-        (f) => f.name === folderName || slugify(f.name) === slug || f.name.toLowerCase() === (folderName || '').toLowerCase()
+        (f) =>
+          f.name === folderName ||
+          slugify(f.name) === slug ||
+          f.name.toLowerCase() === (folderName || '').toLowerCase()
       )
       if (found) {
         targetFolderName = found.name
@@ -52,9 +56,9 @@ export default async function handler(request, response) {
 
     const folderPath = `${rootFolder}/${targetFolderName}`
 
-    // 1. Delete all resources with this prefix
+    // 2. Delete all resources under this folder prefix (with all=true)
     const deleteResourcesRes = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/resources/image/upload?prefix=${encodeURIComponent(folderPath + '/')}`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/resources/image/upload?prefix=${encodePath(folderPath + '/')}&all=true`,
       {
         method: 'DELETE',
         headers: { Authorization: `Basic ${credentials}` }
@@ -65,9 +69,9 @@ export default async function handler(request, response) {
       console.warn(`Warning: deleting resources for ${folderPath} status: ${deleteResourcesRes.status}`)
     }
 
-    // 2. Delete the empty folder
+    // 3. Delete the empty folder in Cloudinary
     const deleteFolderRes = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/folders/${encodeURIComponent(folderPath)}`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/folders/${encodePath(folderPath)}`,
       {
         method: 'DELETE',
         headers: { Authorization: `Basic ${credentials}` }
@@ -76,7 +80,7 @@ export default async function handler(request, response) {
 
     if (!deleteFolderRes.ok) {
       const errText = await deleteFolderRes.text()
-      console.error(`Folder delete error: ${errText}`)
+      console.warn(`Folder delete response: ${errText}`)
     }
 
     response.status(200).json({
@@ -87,6 +91,10 @@ export default async function handler(request, response) {
     console.error('Server collection delete error:', error)
     response.status(500).json({ error: 'Failed to delete collection from server.' })
   }
+}
+
+function encodePath(value) {
+  return value.split('/').map(encodeURIComponent).join('/')
 }
 
 function slugify(value) {

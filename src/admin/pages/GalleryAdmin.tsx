@@ -74,9 +74,13 @@ export const GalleryAdmin: React.FC = () => {
         throw new Error(err.error || `HTTP ${res.status}`)
       }
 
+      setCollections((prev) => prev.filter((item) => item.slug !== col.slug && item.name !== col.name))
       setMessage(`Collection "${col.name}" was permanently deleted.`)
       setMessageType('success')
       setCollectionToDelete(null)
+      if (selectedCollection?.slug === col.slug) {
+        setSelectedCollection(null)
+      }
       fetchCollections()
     } catch (err: any) {
       setMessage(`Failed to delete collection: ${err.message || 'Unknown error'}`)

@@ -45,7 +45,7 @@ export function Gallery() {
 }
 
 function GalleryCollectionsView() {
-  const [collections, setCollections] = useState<GalleryCollection[]>(localCollections)
+  const [collections, setCollections] = useState<GalleryCollection[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => {
@@ -54,14 +54,17 @@ function GalleryCollectionsView() {
     fetchGallery().then((data) => {
       if (!active) return
 
-      if ('collections' in data && data.collections.length > 0) {
+      if ('collections' in data && Array.isArray(data.collections)) {
         setCollections(data.collections)
       }
 
       setStatus('ready')
     }).catch((error: unknown) => {
       console.info('Gallery collections fallback in use.', error)
-      if (active) setStatus(localCollections.length > 0 ? 'ready' : 'error')
+      if (active) {
+        setCollections(localCollections)
+        setStatus(localCollections.length > 0 ? 'ready' : 'error')
+      }
     })
 
     return () => {

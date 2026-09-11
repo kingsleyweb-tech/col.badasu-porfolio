@@ -4562,6 +4562,14 @@ section[id],
   color: #0f172a;
 }
 
+/* Horizontal Gallery Collection Cards */
+.admin-collection-card-horizontal:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px -6px rgba(15, 23, 42, 0.12), 0 4px 6px -4px rgba(15, 23, 42, 0.08) !important;
+  border-color: #cbd5e1 !important;
+}
+
+
 
 
 

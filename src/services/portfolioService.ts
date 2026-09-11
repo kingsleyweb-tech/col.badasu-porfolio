@@ -241,60 +241,75 @@ export const defaultPortfolioData: PortfolioData = {
 }
 
 // ─── Firestore CRUD ────────────────────────────────────────────────────────────
+// Firestore is the SINGLE SOURCE OF TRUTH.
+// localStorage is only used as a read-fallback when offline.
+// Saves ALWAYS write to Firestore first. The public website reads from Firestore.
 
 const PORTFOLIO_DOC_ID = 'portfolio_main'
-const LOCAL_STORAGE_KEY = 'colonel_portfolio_content_v2'
-const LAST_SAVE_KEY = 'colonel_portfolio_last_save_time'
+const LOCAL_STORAGE_KEY = 'colonel_portfolio_cache_v3'
 
-function getLocalPortfolioContent(): PortfolioData | null {
-  const localSaved = localStorage.getItem(LOCAL_STORAGE_KEY)
-  if (localSaved) {
-    try {
-      return { ...defaultPortfolioData, ...JSON.parse(localSaved) }
-    } catch {
-      // ignore corrupt cache
-    }
+function setLocalCache(data: PortfolioData): void {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data))
+  } catch {
+    // ignore storage quota errors
+  }
+}
+
+function getLocalCache(): PortfolioData | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
+    if (raw) return { ...defaultPortfolioData, ...JSON.parse(raw) } as PortfolioData
+  } catch {
+    // ignore corrupt cache
   }
   return null
 }
 
-function mergePortfolioData(remote: PortfolioData, local: PortfolioData | null): PortfolioData {
-  if (!local) return remote
-  return { ...defaultPortfolioData, ...remote, ...local }
-}
-
+/**
+ * Fetch portfolio data from Firestore (single read).
+ * Falls back to local cache only when Firestore is unreachable.
+ */
 export async function fetchPortfolioContent(): Promise<PortfolioData> {
-  const localData = getLocalPortfolioContent()
-
   try {
     const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
     const snap = await getDoc(docRef)
     if (snap.exists()) {
-      const remoteData = { ...defaultPortfolioData, ...snap.data() } as PortfolioData
-      return mergePortfolioData(remoteData, localData)
+      const remote = { ...defaultPortfolioData, ...snap.data() } as PortfolioData
+      setLocalCache(remote) // keep cache fresh
+      return remote
     }
+    // Document does not exist yet – return defaults (will be created on first save)
+    return getLocalCache() || defaultPortfolioData
   } catch (err) {
-    console.info('Firestore offline/fallback mode active:', err)
+    console.warn('[Portfolio] Firestore offline – using local cache', err)
+    return getLocalCache() || defaultPortfolioData
   }
-
-  return localData || defaultPortfolioData
 }
 
+/**
+ * Save portfolio data to Firestore.
+ * This is the ONLY authoritative write path.
+ * Throws if the write fails so callers can show an error to the admin.
+ */
 export async function savePortfolioContent(updated: Partial<PortfolioData>): Promise<void> {
+  // Fetch current state from Firestore, then merge the updated fields on top
   const current = await fetchPortfolioContent()
-  const merged = { ...current, ...updated }
+  const merged: PortfolioData = { ...current, ...updated }
 
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged))
-  localStorage.setItem(LAST_SAVE_KEY, String(Date.now()))
+  // Write to Firestore first – this is what the public website reads
+  const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
+  await setDoc(docRef, merged, { merge: true })
 
-  try {
-    const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
-    await setDoc(docRef, merged, { merge: true })
-  } catch (err) {
-    console.warn('Firestore write warning (persisted to local cache):', err)
-  }
+  // Only update local cache AFTER a successful Firestore write
+  setLocalCache(merged)
 }
 
+/**
+ * Subscribe to real-time Firestore updates.
+ * Delivers Firestore data directly – no local overrides.
+ * Falls back to local cache only if Firestore is unreachable.
+ */
 export function subscribePortfolioContent(callback: (data: PortfolioData) => void): () => void {
   try {
     const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
@@ -302,14 +317,15 @@ export function subscribePortfolioContent(callback: (data: PortfolioData) => voi
       docRef,
       (snap) => {
         if (snap.exists()) {
-          const remoteData = { ...defaultPortfolioData, ...snap.data() } as PortfolioData
-          const localData = getLocalPortfolioContent()
-          const merged = mergePortfolioData(remoteData, localData)
-          callback(merged)
+          const remote = { ...defaultPortfolioData, ...snap.data() } as PortfolioData
+          setLocalCache(remote) // keep cache fresh
+          callback(remote)       // deliver Firestore data directly
         }
       },
       (err) => {
-        console.info('Realtime snapshot offline, using fallback:', err)
+        console.warn('[Portfolio] Realtime snapshot unavailable, using cache:', err)
+        const cached = getLocalCache()
+        if (cached) callback(cached)
       }
     )
   } catch {

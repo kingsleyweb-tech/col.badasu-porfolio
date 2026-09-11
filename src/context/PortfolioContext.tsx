@@ -7,9 +7,13 @@ import {
   subscribePortfolioContent
 } from '../services/portfolioService'
 
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+
 type PortfolioContextType = {
   data: PortfolioData
   loading: boolean
+  saveStatus: SaveStatus
+  saveError: string | null
   updatePortfolio: (updated: Partial<PortfolioData>) => Promise<void>
   refreshData: () => Promise<void>
 }
@@ -19,6 +23,8 @@ const PortfolioContext = createContext<PortfolioContextType | undefined>(undefin
 export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [data, setData] = useState<PortfolioData>(defaultPortfolioData)
   const [loading, setLoading] = useState<boolean>(true)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -43,9 +49,27 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [])
 
   const updatePortfolio = async (updated: Partial<PortfolioData>) => {
+    // Optimistic UI update
+    const previous = data
     const next = { ...data, ...updated }
     setData(next)
-    await savePortfolioContent(updated)
+    setSaveStatus('saving')
+    setSaveError(null)
+
+    try {
+      await savePortfolioContent(updated)
+      setSaveStatus('saved')
+      // Reset to idle after 3 seconds
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    } catch (err) {
+      // Roll back the optimistic update
+      setData(previous)
+      const message = err instanceof Error ? err.message : 'Failed to save. Check your connection.'
+      setSaveStatus('error')
+      setSaveError(message)
+      console.error('[Portfolio] Save failed:', err)
+      throw err
+    }
   }
 
   const refreshData = async () => {
@@ -54,7 +78,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }
 
   return (
-    <PortfolioContext.Provider value={{ data, loading, updatePortfolio, refreshData }}>
+    <PortfolioContext.Provider value={{ data, loading, saveStatus, saveError, updatePortfolio, refreshData }}>
       {children}
     </PortfolioContext.Provider>
   )

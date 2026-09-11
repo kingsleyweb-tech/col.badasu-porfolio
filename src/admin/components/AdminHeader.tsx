@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { Search, ExternalLink, Menu, Circle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { usePortfolio } from '../../context/PortfolioContext'
 import { AdminSearchModal } from './AdminSearchModal'
 
 export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onToggleSidebar }) => {
   const { user, adminCredentials } = useAuth()
+  const { data } = usePortfolio()
   const [showSearchModal, setShowSearchModal] = useState(false)
 
   // Listen for Ctrl+K / Cmd+K shortcut
@@ -20,7 +22,11 @@ export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onTogg
   }, [])
 
   const adminEmail = user?.email || adminCredentials.email || 'admin@colonelbadasu.com'
-  const initial = adminEmail.charAt(0).toUpperCase() || 'C'
+  const fallbackInitial = adminEmail.charAt(0).toUpperCase() || 'C'
+
+  const displayName = data.siteSettings.adminHeaderDisplayName || 'Col. Henry K. Badasu'
+  const roleText = data.siteSettings.adminHeaderRole || 'Administrator'
+  const initialsBadge = data.siteSettings.adminHeaderInitials || `${fallbackInitial}B`
 
   return (
     <header className="admin-header">
@@ -74,10 +80,10 @@ export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onTogg
 
         {/* Admin Profile User Badge */}
         <div className="admin-user-pill">
-          <div className="admin-user-pill__avatar">{initial}B</div>
+          <div className="admin-user-pill__avatar">{initialsBadge}</div>
           <div className="admin-user-pill__info admin-user-pill__info--hidden-mobile">
-            <strong>Col. Henry K. Badasu</strong>
-            <small>Administrator</small>
+            <strong>{displayName}</strong>
+            <small>{roleText}</small>
           </div>
         </div>
       </div>

@@ -119,6 +119,11 @@ export type PortfolioData = {
     contactEmail: string
     contactPhone: string
     contactAddress: string
+    adminSidebarTitle?: string
+    adminSidebarSubtitle?: string
+    adminHeaderDisplayName?: string
+    adminHeaderRole?: string
+    adminHeaderInitials?: string
   }
 }
 
@@ -227,6 +232,11 @@ export const defaultPortfolioData: PortfolioData = {
     contactEmail: 'info@colonelbadasu.com',
     contactPhone: '+233 24 000 0000',
     contactAddress: 'Army Headquarters, Burma Camp, Accra - Ghana',
+    adminSidebarTitle: 'Col. Badasu',
+    adminSidebarSubtitle: 'PORTFOLIO ADMIN',
+    adminHeaderDisplayName: 'Col. Henry K. Badasu',
+    adminHeaderRole: 'Administrator',
+    adminHeaderInitials: 'MB',
   },
 }
 

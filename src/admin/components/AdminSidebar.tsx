@@ -24,6 +24,7 @@ import {
   Footprints
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { usePortfolio } from '../../context/PortfolioContext'
 import { resolveImageUrl } from '../../utils/imageResolver'
 
 type NavGroup = {
@@ -79,14 +80,20 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/admin/welcome', label: 'QR & Welcome Page', icon: QrCode },
       { to: '/admin/footer', label: 'Footer Settings', icon: Footprints },
-      { to: '/admin/settings', label: 'Site Settings', icon: Settings },
+      { to: '/admin/settings', label: 'Site & Header Settings', icon: Settings },
     ],
   },
 ]
 
 export const AdminSidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ isOpen = false, onClose }) => {
   const { logout } = useAuth()
+  const { data } = usePortfolio()
   const navigate = useNavigate()
+
+  const sidebarLogo = data.siteSettings.logoUrl || 'image.png'
+  const sidebarTitle = data.siteSettings.adminSidebarTitle || 'Col. Badasu'
+  const sidebarSubtitle = data.siteSettings.adminSidebarSubtitle || 'PORTFOLIO ADMIN'
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     'HOME PAGE': true,
     PORTFOLIO: true,
@@ -111,11 +118,11 @@ export const AdminSidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> 
       {/* Brand Header */}
       <div className="admin-sidebar__brand">
         <div className="admin-sidebar__crest">
-          <img src={resolveImageUrl('image.png')} alt="GAF Emblem" />
+          <img src={resolveImageUrl(sidebarLogo)} alt="GAF Emblem" />
         </div>
         <div className="admin-sidebar__brand-text">
-          <strong>Col. Badasu</strong>
-          <span>Portfolio Admin</span>
+          <strong>{sidebarTitle}</strong>
+          <span>{sidebarSubtitle}</span>
         </div>
       </div>
 

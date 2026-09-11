@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Settings, Save, UploadCloud, Trash2, Loader2 } from 'lucide-react'
+import { Settings, Save, UploadCloud, Trash2, Loader2, UserCheck, ShieldCheck } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
@@ -16,6 +16,13 @@ export const SiteSettingsAdmin: React.FC = () => {
   const [contactPhone, setContactPhone] = useState(data.siteSettings.contactPhone)
   const [contactAddress, setContactAddress] = useState(data.siteSettings.contactAddress)
 
+  // Admin Dashboard Branding & Header settings
+  const [adminSidebarTitle, setAdminSidebarTitle] = useState(data.siteSettings.adminSidebarTitle || 'Col. Badasu')
+  const [adminSidebarSubtitle, setAdminSidebarSubtitle] = useState(data.siteSettings.adminSidebarSubtitle || 'PORTFOLIO ADMIN')
+  const [adminHeaderDisplayName, setAdminHeaderDisplayName] = useState(data.siteSettings.adminHeaderDisplayName || 'Col. Henry K. Badasu')
+  const [adminHeaderRole, setAdminHeaderRole] = useState(data.siteSettings.adminHeaderRole || 'Administrator')
+  const [adminHeaderInitials, setAdminHeaderInitials] = useState(data.siteSettings.adminHeaderInitials || 'MB')
+
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -27,6 +34,11 @@ export const SiteSettingsAdmin: React.FC = () => {
     setContactEmail(data.siteSettings.contactEmail)
     setContactPhone(data.siteSettings.contactPhone)
     setContactAddress(data.siteSettings.contactAddress)
+    setAdminSidebarTitle(data.siteSettings.adminSidebarTitle || 'Col. Badasu')
+    setAdminSidebarSubtitle(data.siteSettings.adminSidebarSubtitle || 'PORTFOLIO ADMIN')
+    setAdminHeaderDisplayName(data.siteSettings.adminHeaderDisplayName || 'Col. Henry K. Badasu')
+    setAdminHeaderRole(data.siteSettings.adminHeaderRole || 'Administrator')
+    setAdminHeaderInitials(data.siteSettings.adminHeaderInitials || 'MB')
   }, [data])
 
   const isDirty =
@@ -35,7 +47,12 @@ export const SiteSettingsAdmin: React.FC = () => {
     logoUrl !== data.siteSettings.logoUrl ||
     contactEmail !== data.siteSettings.contactEmail ||
     contactPhone !== data.siteSettings.contactPhone ||
-    contactAddress !== data.siteSettings.contactAddress
+    contactAddress !== data.siteSettings.contactAddress ||
+    adminSidebarTitle !== (data.siteSettings.adminSidebarTitle || 'Col. Badasu') ||
+    adminSidebarSubtitle !== (data.siteSettings.adminSidebarSubtitle || 'PORTFOLIO ADMIN') ||
+    adminHeaderDisplayName !== (data.siteSettings.adminHeaderDisplayName || 'Col. Henry K. Badasu') ||
+    adminHeaderRole !== (data.siteSettings.adminHeaderRole || 'Administrator') ||
+    adminHeaderInitials !== (data.siteSettings.adminHeaderInitials || 'MB')
 
   const handleReset = () => {
     setSiteTitle(data.siteSettings.siteTitle)
@@ -44,6 +61,11 @@ export const SiteSettingsAdmin: React.FC = () => {
     setContactEmail(data.siteSettings.contactEmail)
     setContactPhone(data.siteSettings.contactPhone)
     setContactAddress(data.siteSettings.contactAddress)
+    setAdminSidebarTitle(data.siteSettings.adminSidebarTitle || 'Col. Badasu')
+    setAdminSidebarSubtitle(data.siteSettings.adminSidebarSubtitle || 'PORTFOLIO ADMIN')
+    setAdminHeaderDisplayName(data.siteSettings.adminHeaderDisplayName || 'Col. Henry K. Badasu')
+    setAdminHeaderRole(data.siteSettings.adminHeaderRole || 'Administrator')
+    setAdminHeaderInitials(data.siteSettings.adminHeaderInitials || 'MB')
   }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,7 +122,12 @@ export const SiteSettingsAdmin: React.FC = () => {
           logoUrl,
           contactEmail,
           contactPhone,
-          contactAddress
+          contactAddress,
+          adminSidebarTitle,
+          adminSidebarSubtitle,
+          adminHeaderDisplayName,
+          adminHeaderRole,
+          adminHeaderInitials
         }
       })
       setShowSuccessModal(true)
@@ -126,8 +153,8 @@ export const SiteSettingsAdmin: React.FC = () => {
             <Settings size={24} />
           </div>
           <div>
-            <h1>Site Settings & Header Logo</h1>
-            <p>Manage header crest logo (replace gaf.png), site title, SEO descriptions, and official contact information.</p>
+            <h1>Site Settings & Admin Dashboard Branding</h1>
+            <p>Customize the logo, sidebar brand name, header admin user profile, site title, and contact details.</p>
           </div>
         </div>
 
@@ -139,25 +166,28 @@ export const SiteSettingsAdmin: React.FC = () => {
 
       <div className="admin-dashboard-grid">
         <div className="admin-dashboard-main">
-          {/* Header Logo Management Card */}
+          {/* SECTION 1: Admin Dashboard Branding, Sidebar & Top Header Settings */}
           <div className="admin-card" style={{ marginBottom: '24px' }}>
             <div className="admin-card__header">
-              <h3>Header Crest Logo Management</h3>
-              <p>Replace or update the official crest logo displayed in the portfolio header.</p>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldCheck size={20} style={{ color: '#1f5c3a' }} />
+                <span>Admin Dashboard & Sidebar Branding</span>
+              </h3>
+              <p>Change the logo, title, and subtitle in the left sidebar as well as the name and avatar in the top header.</p>
             </div>
 
-            <div className="admin-logo-preview-row">
-              <div className="admin-logo-preview-box">
-                <img src={resolveImageUrl(logoUrl)} alt="Header Logo Preview" />
+            <div className="admin-logo-preview-row" style={{ marginBottom: '20px' }}>
+              <div className="admin-logo-preview-box" style={{ background: '#0b2d21', padding: '12px', borderRadius: '12px' }}>
+                <img src={resolveImageUrl(logoUrl)} alt="Header Logo Preview" style={{ objectFit: 'contain', maxHeight: '50px' }} />
               </div>
 
               <div className="admin-logo-preview-info">
-                <strong>Current Header Logo</strong>
-                <p>Stored in Cloudinary and referenced dynamically by the public navigation bar.</p>
+                <strong>Sidebar & Site Emblem Logo</strong>
+                <p>Appears in the left sidebar and public website header. Stored in Cloudinary.</p>
                 <div className="admin-action-group">
-                  <label className="btn btn--secondary btn--sm">
+                  <label className="btn btn--secondary btn--sm" style={{ cursor: 'pointer' }}>
                     <UploadCloud size={16} />
-                    <span>{uploadingLogo ? 'Uploading...' : 'Replace Logo'}</span>
+                    <span>{uploadingLogo ? 'Uploading...' : 'Replace Emblem / Logo'}</span>
                     <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
                   </label>
                   <button
@@ -171,12 +201,87 @@ export const SiteSettingsAdmin: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Sidebar Branding Fields */}
+            <div className="admin-form">
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '0.875rem', color: '#1f5c3a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                1. Left Sidebar Brand Name
+              </h4>
+              <div className="admin-form-row" style={{ marginBottom: '20px' }}>
+                <div className="admin-form-group">
+                  <label>Sidebar Brand Title *</label>
+                  <input
+                    type="text"
+                    value={adminSidebarTitle}
+                    onChange={(e) => setAdminSidebarTitle(e.target.value)}
+                    placeholder="e.g. Col. Badasu"
+                    required
+                  />
+                  <small style={{ color: '#64748b' }}>Primary name shown at top left of sidebar</small>
+                </div>
+                <div className="admin-form-group">
+                  <label>Sidebar Subtitle / Tagline *</label>
+                  <input
+                    type="text"
+                    value={adminSidebarSubtitle}
+                    onChange={(e) => setAdminSidebarSubtitle(e.target.value)}
+                    placeholder="e.g. PORTFOLIO ADMIN"
+                    required
+                  />
+                  <small style={{ color: '#64748b' }}>Subtitle shown beneath title in sidebar</small>
+                </div>
+              </div>
+
+              {/* Top Header User Profile Fields */}
+              <h4 style={{ margin: '16px 0 12px 0', fontSize: '0.875rem', color: '#1f5c3a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                2. Top Dashboard Header User Profile
+              </h4>
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label>Header Display Name *</label>
+                  <input
+                    type="text"
+                    value={adminHeaderDisplayName}
+                    onChange={(e) => setAdminHeaderDisplayName(e.target.value)}
+                    placeholder="e.g. Col. Henry K. Badasu"
+                    required
+                  />
+                  <small style={{ color: '#64748b' }}>Name displayed in top right user pill</small>
+                </div>
+                <div className="admin-form-group">
+                  <label>Header User Role *</label>
+                  <input
+                    type="text"
+                    value={adminHeaderRole}
+                    onChange={(e) => setAdminHeaderRole(e.target.value)}
+                    placeholder="e.g. Administrator"
+                    required
+                  />
+                  <small style={{ color: '#64748b' }}>Role subtitle beneath header name</small>
+                </div>
+                <div className="admin-form-group">
+                  <label>Avatar Badge Initials *</label>
+                  <input
+                    type="text"
+                    value={adminHeaderInitials}
+                    onChange={(e) => setAdminHeaderInitials(e.target.value)}
+                    placeholder="e.g. MB"
+                    maxLength={3}
+                    required
+                  />
+                  <small style={{ color: '#64748b' }}>1-3 letter badge (e.g. MB)</small>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Global Site Settings Form */}
+          {/* SECTION 2: Global Site Settings Form */}
           <div className="admin-card">
             <div className="admin-card__header">
-              <h3>Global Portfolio Settings</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <UserCheck size={20} style={{ color: '#1f5c3a' }} />
+                <span>Global Portfolio & Contact Settings</span>
+              </h3>
             </div>
 
             <form onSubmit={handleSave} className="admin-form">
@@ -213,10 +318,9 @@ export const SiteSettingsAdmin: React.FC = () => {
       <SaveSuccessModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        title="Site Settings Saved"
-        message="Site settings and logo updated live on your site."
+        title="Settings & Branding Saved"
+        message="Dashboard sidebar branding, header user info, site settings and logo updated live."
       />
     </div>
   )
 }
-

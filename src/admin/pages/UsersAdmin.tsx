@@ -224,7 +224,7 @@ export const UsersAdmin: React.FC = () => {
             <ShieldCheck size={24} />
             <div>
               <strong>Instant Credentials Activation</strong>
-              <p>When you update your Email or Password, your changes are saved immediately to both Firebase and local secure storage. You can log out and use your new credentials to log back in anytime.</p>
+              <p>When you update your Email or Password, your changes are saved immediately to Firestore. You can log out and use your new credentials to log back in right away.</p>
             </div>
           </div>
 

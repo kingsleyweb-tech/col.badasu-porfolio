@@ -4232,6 +4232,7 @@ section[id],
     align-items: center;
     justify-content: center;
   }
+  /* Keep search bar visible on mobile */
   .admin-header__search {
     padding: 7px 10px;
   }
@@ -4242,20 +4243,20 @@ section[id],
     font-size: 0.8rem;
   }
   .admin-header__right {
-    gap: 6px;
+    gap: 0;
+    flex-shrink: 0;
   }
+  /* Hide date/time on mobile */
   .admin-header__date {
     display: none;
   }
+  /* Hide Website Live badge on mobile */
   .admin-status-badge {
     display: none;
   }
-  /* Hide the text in view-site button on mobile, keep icon */
-  .admin-header__view-site span {
-    display: none;
-  }
+  /* Hide View Site button entirely on mobile */
   .admin-header__view-site {
-    padding: 6px 8px;
+    display: none;
   }
   /* Hide name/role text in avatar pill */
   .admin-user-pill__info--hidden-mobile {
@@ -4263,7 +4264,7 @@ section[id],
   }
   .admin-user-pill {
     border-left: none;
-    padding-left: 0;
+    padding-left: 4px;
   }
 
   .admin-stats-grid {

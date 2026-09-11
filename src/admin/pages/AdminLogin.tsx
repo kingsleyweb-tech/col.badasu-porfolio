@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ShieldCheck, Lock, Mail, Loader2, AlertCircle, CheckCircle2, ArrowRight, Shield, Award, Globe } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import ecowasBg from '../../assets/images/ecowas/WhatsApp Image 2026-08-31 at 11.18.07 AM.jpeg'
+import ecowasBg from '../../assets/images/ecowas/ecowas-bg.jpeg'
 
 export const AdminLogin: React.FC = () => {
   const { login, resetPassword, error, clearError } = useAuth()

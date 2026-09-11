@@ -1,4 +1,8 @@
-const localImages = import.meta.glob('/src/assets/images/**/*.{png,jpg,jpeg,webp,svg}', {
+const localImages = import.meta.glob([
+  '/src/assets/images/*.{png,jpg,jpeg,webp,svg}',
+  '/src/assets/images/hero/*.{png,jpg,jpeg,webp,svg}',
+  '/src/assets/images/ecowas/*.{png,jpg,jpeg,webp,svg}'
+], {
   eager: true,
   import: 'default'
 }) as Record<string, string>

@@ -1,94 +1,52 @@
-import React, { useEffect, useState } from 'react'
-import { Search, ExternalLink, Menu, Circle } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
+import React from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { ArrowUpRight, Menu, Search } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
-import { AdminSearchModal } from './AdminSearchModal'
+import { resolveImageUrl } from '../../utils/imageResolver'
+import { findAdminNavItem } from '../adminNav'
 
-export const AdminHeader: React.FC<{ onToggleSidebar?: () => void }> = ({ onToggleSidebar }) => {
-  const { user, adminCredentials } = useAuth()
+type AdminHeaderProps = {
+  onToggleSidebar: () => void
+  onOpenSearch: () => void
+}
+
+export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar, onOpenSearch }) => {
+  const { pathname } = useLocation()
   const { data } = usePortfolio()
-  const [showSearchModal, setShowSearchModal] = useState(false)
-
-  // Listen for Ctrl+K / Cmd+K shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault()
-        setShowSearchModal((prev) => !prev)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  const adminEmail = user?.email || adminCredentials.email || 'admin@colonelbadasu.com'
-  const fallbackInitial = adminEmail.charAt(0).toUpperCase() || 'C'
-
-  const displayName = data.siteSettings.adminHeaderDisplayName || 'Col. Henry K. Badasu'
-  const roleText = data.siteSettings.adminHeaderRole || 'Administrator'
-  const initialsBadge = data.siteSettings.adminHeaderInitials || `${fallbackInitial}B`
+  const { item, group } = findAdminNavItem(pathname)
+  const isDashboard = pathname === '/admin' || pathname === '/admin/'
 
   return (
-    <header className="admin-header">
-      {/* Left: Menu toggle + Search */}
-      <div className="admin-header__left">
-        <button
-          type="button"
-          className="admin-header__toggle"
-          onClick={onToggleSidebar}
-          aria-label="Toggle Navigation Menu"
-        >
-          <Menu size={20} />
-        </button>
-
-        <div
-          className="admin-header__search"
-          onClick={() => setShowSearchModal(true)}
-          style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center' }}
-        >
-          <Search size={16} />
-          <input
-            type="text"
-            placeholder="Search content... (Ctrl+K)"
-            readOnly
-            style={{ cursor: 'pointer' }}
-          />
-          <span className="admin-header__search-kbd">
-            Ctrl K
-          </span>
+    <header className="ad-tb">
+      {/* Phone-only brand bar */}
+      <div className="ad-tb-brand">
+        <img src={resolveImageUrl(data.siteSettings.logoUrl || 'image.png')} alt="Ghana Armed Forces crest" />
+        <div>
+          <b>{data.siteSettings.adminSidebarTitle || 'Col. Badasu'}</b>
+          <small>ADMIN</small>
         </div>
       </div>
 
-      {/* Right: Status + View Site + Avatar */}
-      <div className="admin-header__right">
-        {/* Website Status Badge */}
-        <div className="admin-status-badge">
-          <Circle size={8} className="admin-status-badge__dot" />
-          <span>Website Live</span>
-        </div>
+      <nav className="crumbs" aria-label="Breadcrumb">
+        {isDashboard ? <span>Admin</span> : <Link to="/admin">Admin</Link>}
+        {group && (<><span>/</span><span>{group}</span></>)}
+        {!isDashboard && (<><span>/</span><b>{item.label}</b></>)}
+        {isDashboard && (<><span>/</span><b>Dashboard</b></>)}
+      </nav>
 
-        {/* View Live Portfolio Shortcut */}
-        <a
-          href="/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="admin-header__view-site"
-        >
-          <span>View Site</span>
-          <ExternalLink size={14} />
+      <div className="r">
+        <span className="ad-live"><i />Website live</span>
+        <a className="ad-b l" href={item.publicPath} target="_blank" rel="noopener noreferrer">
+          View {item.publicLabel}
+          <ArrowUpRight size={14} strokeWidth={2.2} />
         </a>
-
-        {/* Admin Profile User Badge */}
-        <div className="admin-user-pill">
-          <div className="admin-user-pill__avatar">{initialsBadge}</div>
-          <div className="admin-user-pill__info admin-user-pill__info--hidden-mobile">
-            <strong>{displayName}</strong>
-            <small>{roleText}</small>
-          </div>
-        </div>
+        <button type="button" className="ad-tb-ib" onClick={onOpenSearch} aria-label="Search">
+          <Search size={17} />
+        </button>
+        <button type="button" className="ad-tb-ib menu" onClick={onToggleSidebar} aria-label="Open navigation menu">
+          <Menu size={18} strokeWidth={2.2} />
+        </button>
       </div>
-
-      <AdminSearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
     </header>
   )
 }

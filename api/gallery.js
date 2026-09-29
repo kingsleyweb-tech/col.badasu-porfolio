@@ -1,81 +1,139 @@
 const rootFolder = process.env.CLOUDINARY_GALLERY_ROOT || 'colonel-badasu'
 const pageSize = 36
 
+// Cloudinary's Admin API allows 500 calls per hour. The whole library is listed in a handful of
+// calls (folders + all photos, 500 per page), grouped in memory, and cached briefly, instead of
+// spending two or more calls per collection on every request.
+const CACHE_TTL_MS = 60 * 1000
+let libraryCache = null // { at: number, folders: Array<{ name, path, resources }> }
+let libraryInFlight = null
+
+class RateLimitError extends Error {
+  constructor(resetAt) {
+    super('Cloudinary rate limit reached')
+    this.resetAt = resetAt
+  }
+}
+
 export default async function handler(request, response) {
+  if (request.method !== 'GET') {
+    response.setHeader('Allow', 'GET')
+    response.status(405).json({ error: 'Method not allowed' })
+    return
+  }
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME
+  const apiKey = process.env.CLOUDINARY_API_KEY
+  const apiSecret = process.env.CLOUDINARY_API_SECRET
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    response.status(503).json({ error: 'Gallery is not configured.' })
+    return
+  }
+
+  const fresh = request.query.fresh === '1'
+  // Admin requests (fresh=1) must reflect uploads/deletes immediately; public requests may be
+  // served from the CDN for a minute, which keeps the Admin API quota safe.
+  response.setHeader(
+    'Cache-Control',
+    fresh ? 'no-store, no-cache, must-revalidate' : 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
+  )
+
+  let library
   try {
-    if (request.method !== 'GET') {
-      response.setHeader('Allow', 'GET')
-      response.status(405).json({ error: 'Method not allowed' })
-      return
-    }
-
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME
-    const apiKey = process.env.CLOUDINARY_API_KEY
-    const apiSecret = process.env.CLOUDINARY_API_SECRET
-
-    if (!cloudName || !apiKey || !apiSecret) {
-      response.status(503).json({ error: 'Gallery is not configured.' })
-      return
-    }
-
-    const collectionSlug = typeof request.query.collection === 'string' ? request.query.collection : ''
-
-    // Disable caching so creation & deletion reflect instantly everywhere
-    response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
-
-    if (collectionSlug) {
-      const folders = await listFolders(cloudName, apiKey, apiSecret)
-      const folder = folders.find((candidate) => slugify(candidate.name) === collectionSlug)
-
-      if (!folder) {
-        response.status(404).json({ error: 'Collection not found.' })
-        return
-      }
-
-      const cursor = typeof request.query.cursor === 'string' ? request.query.cursor : undefined
-      const resources = await listResources(cloudName, apiKey, apiSecret, folder.path, cursor)
-      const images = resources.items.map((asset) => imageFromResource(cloudName, asset, folder.name))
-
-      response.status(200).json({
-        collection: {
-          slug: slugify(folder.name),
-          name: getCollectionDisplayName(folder.name),
-          count: resources.totalCount,
-          coverImage: images[0]
-        },
-        images,
-        nextCursor: resources.nextCursor
-      })
-      return
-    }
-
-    // List all folders and fetch cover image for each
-    const folders = await listFolders(cloudName, apiKey, apiSecret)
-
-    // Use Promise.allSettled so one failing folder doesn't blow up all collections
-    const settled = await Promise.allSettled(
-      folders.map(async (folder) => {
-        const resources = await listResources(cloudName, apiKey, apiSecret, folder.path, undefined, 1)
-        const cover = resources.items[0]
-        return {
-          slug: slugify(folder.name),
-          name: getCollectionDisplayName(folder.name),
-          count: resources.totalCount,
-          coverImage: cover ? imageFromResource(cloudName, cover, folder.name) : undefined
-        }
-      })
-    )
-
-    // Only include successfully resolved collections that have a cover image
-    const collections = settled
-      .filter((result) => result.status === 'fulfilled' && result.value.coverImage)
-      .map((result) => result.value)
-
-    response.status(200).json({ collections })
+    library = await getLibrary(cloudName, apiKey, apiSecret, fresh)
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      response.status(503).json({
+        error: 'Cloudinary rate limit reached. Photos will be available again shortly.',
+        retryAt: error.resetAt || null,
+      })
+      return
+    }
     console.error('Gallery API error', error)
     response.status(500).json({ error: 'Gallery is temporarily unavailable.' })
+    return
   }
+
+  const collectionSlug = typeof request.query.collection === 'string' ? request.query.collection : ''
+
+  if (collectionSlug) {
+    const folder = library.folders.find((candidate) => slugify(candidate.name) === collectionSlug)
+    if (!folder) {
+      response.status(404).json({ error: 'Collection not found.' })
+      return
+    }
+
+    // The cursor is the offset of the next page within the cached listing
+    const offset = Math.max(0, parseInt(typeof request.query.cursor === 'string' ? request.query.cursor : '0', 10) || 0)
+    const pageItems = folder.resources.slice(offset, offset + pageSize)
+    const images = pageItems.map((asset) => imageFromResource(cloudName, asset, folder.name))
+    const nextOffset = offset + pageSize
+
+    response.status(200).json({
+      collection: {
+        slug: slugify(folder.name),
+        name: getCollectionDisplayName(folder.name),
+        count: folder.resources.length,
+        coverImage: folder.resources[0] ? imageFromResource(cloudName, folder.resources[0], folder.name) : undefined,
+      },
+      images,
+      nextCursor: nextOffset < folder.resources.length ? String(nextOffset) : undefined,
+    })
+    return
+  }
+
+  // Only collections that have at least one photograph are listed
+  const collections = library.folders
+    .filter((folder) => folder.resources.length > 0)
+    .map((folder) => ({
+      slug: slugify(folder.name),
+      name: getCollectionDisplayName(folder.name),
+      count: folder.resources.length,
+      coverImage: imageFromResource(cloudName, folder.resources[0], folder.name),
+    }))
+
+  response.status(200).json({ collections })
+}
+
+/** Returns the cached library, refreshing it when stale (or when `fresh`), shared across concurrent requests. */
+async function getLibrary(cloudName, apiKey, apiSecret, fresh) {
+  const isValid = libraryCache && Date.now() - libraryCache.at < CACHE_TTL_MS
+  if (isValid && !fresh) return libraryCache
+
+  if (!libraryInFlight) {
+    libraryInFlight = loadLibrary(cloudName, apiKey, apiSecret)
+      .then((library) => {
+        libraryCache = library
+        return library
+      })
+      .finally(() => {
+        libraryInFlight = null
+      })
+  }
+
+  try {
+    return await libraryInFlight
+  } catch (error) {
+    // Serve the last good listing rather than an error when Cloudinary refuses (rate limit, outage)
+    if (libraryCache) {
+      console.warn('[Gallery] Serving cached library after refresh failed:', error.message)
+      return libraryCache
+    }
+    throw error
+  }
+}
+
+async function loadLibrary(cloudName, apiKey, apiSecret) {
+  const folders = await listFolders(cloudName, apiKey, apiSecret)
+  const resources = await listAllResources(cloudName, apiKey, apiSecret, `${rootFolder}/`)
+
+  const withResources = folders.map((folder) => ({
+    ...folder,
+    resources: resources.filter((resource) => resource.public_id.startsWith(`${folder.path}/`)),
+  }))
+
+  return { at: Date.now(), folders: withResources }
 }
 
 async function listFolders(cloudName, apiKey, apiSecret) {
@@ -83,51 +141,26 @@ async function listFolders(cloudName, apiKey, apiSecret) {
   const ignoredFolders = new Set(['portfolio', 'portfolio website', 'portfolio-website', 'website', 'site', 'hero', 'career', 'achievements', 'gallery', '__optimized__'])
   return (data.folders || [])
     .filter((folder) => !ignoredFolders.has(folder.name.toLowerCase().trim()))
-    .map((folder) => ({
-      name: folder.name,
-      path: folder.path
-    }))
+    .map((folder) => ({ name: folder.name, path: folder.path }))
 }
 
-async function listResources(cloudName, apiKey, apiSecret, prefix, nextCursor, maxResults = pageSize) {
-  const params = new URLSearchParams({
-    type: 'upload',
-    prefix: `${prefix}/`,
-    max_results: String(maxResults)
-  })
-
-  if (nextCursor) {
-    params.set('next_cursor', nextCursor)
-  }
-
-  const data = await cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, `/resources/image/upload?${params.toString()}`)
-  const items = data.resources || []
-
-  let totalCount = items.length
-  let cursor = data.next_cursor
-
-  while (cursor) {
-    const nextParams = new URLSearchParams({
-      type: 'upload',
-      prefix: `${prefix}/`,
-      max_results: '500',
-      next_cursor: cursor
-    })
-    const nextPage = await cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, `/resources/image/upload?${nextParams.toString()}`)
-    totalCount += (nextPage.resources || []).length
-    cursor = nextPage.next_cursor
-  }
-
-  return {
-    items,
-    totalCount,
-    nextCursor: data.next_cursor
-  }
+/** Lists every image under a prefix, 500 per call. */
+async function listAllResources(cloudName, apiKey, apiSecret, prefix) {
+  const all = []
+  let cursor
+  do {
+    const params = new URLSearchParams({ type: 'upload', prefix, max_results: '500' })
+    if (cursor) params.set('next_cursor', cursor)
+    const data = await cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, `/resources/image/upload?${params.toString()}`)
+    all.push(...(data.resources || []))
+    cursor = data.next_cursor
+  } while (cursor)
+  return all
 }
 
 /**
- * Fetches from Cloudinary with automatic retry (up to 3 attempts) and exponential backoff.
- * This prevents single transient network errors from failing the entire gallery load.
+ * Fetches from Cloudinary, retrying transient failures (up to 3 attempts) with backoff.
+ * A rate-limit response is never retried: retrying would only burn more of the hourly quota.
  */
 async function cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, path, maxAttempts = 3) {
   let lastError
@@ -135,9 +168,9 @@ async function cloudinaryFetchWithRetry(cloudName, apiKey, apiSecret, path, maxA
     try {
       return await cloudinaryFetch(cloudName, apiKey, apiSecret, path)
     } catch (err) {
+      if (err instanceof RateLimitError) throw err
       lastError = err
       if (attempt < maxAttempts) {
-        // Exponential backoff: 300ms, 900ms, 2700ms
         const delay = 300 * Math.pow(3, attempt - 1)
         await new Promise((resolve) => setTimeout(resolve, delay))
         console.warn(`[Gallery] Retrying Cloudinary request (attempt ${attempt + 1}/${maxAttempts}): ${path}`)
@@ -154,12 +187,13 @@ async function cloudinaryFetch(cloudName, apiKey, apiSecret, path) {
 
   try {
     const result = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}${path}`, {
-      headers: {
-        Authorization: `Basic ${credentials}`
-      },
-      signal: controller.signal
+      headers: { Authorization: `Basic ${credentials}` },
+      signal: controller.signal,
     })
 
+    if (result.status === 420 || result.status === 429) {
+      throw new RateLimitError(result.headers.get('x-featureratelimit-reset'))
+    }
     if (!result.ok) {
       throw new Error(`Cloudinary request failed: ${result.status} ${result.statusText}`)
     }
@@ -180,9 +214,11 @@ function imageFromResource(cloudName, resource, folderName) {
     title: toTitle(resource.public_id.split('/').at(-1) || 'Photograph'),
     alt: `Colonel Henry Kwaku Badasu ${getCollectionDisplayName(folderName)} photograph`,
     thumbnailUrl: `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto,c_fill,g_auto,w_900,h_680/${publicId}${extension}`,
+    // Small, plain-crop tile for admin grids: cheap for Cloudinary to generate and fast to load
+    gridUrl: `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto,c_fill,w_480,h_360/${publicId}${extension}`,
     largeUrl: `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto,c_limit,w_1800/${publicId}${extension}`,
     width: resource.width,
-    height: resource.height
+    height: resource.height,
   }
 }
 
@@ -228,12 +264,12 @@ const nameMapping = {
   'military': 'Military Honors, Strategy & Ceremonial Engagements',
   'adventure': 'Tactical Expeditions & Field Adventures',
   'recce': 'Field Reconnaissance & Tactical Surveys'
-};
+}
 
 function getCollectionDisplayName(folderName) {
-  const normalized = folderName.toLowerCase().trim();
+  const normalized = folderName.toLowerCase().trim()
   if (nameMapping[normalized]) {
-    return nameMapping[normalized];
+    return nameMapping[normalized]
   }
-  return toTitle(folderName);
+  return toTitle(folderName)
 }

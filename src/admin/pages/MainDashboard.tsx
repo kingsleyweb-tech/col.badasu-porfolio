@@ -1,20 +1,42 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
-  ExternalLink,
-  ShieldCheck,
-  Clock,
-  Settings,
-  ImageIcon,
-  Briefcase,
   Award,
-  UserCheck
+  BookOpen,
+  Briefcase,
+  Download,
+  Flag,
+  Globe,
+  GraduationCap,
+  Home,
+  Image as ImageIcon,
+  PanelBottom,
+  Plus,
+  QrCode,
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
+  Trophy,
+  UserRound,
 } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { resolveImageUrl } from '../../utils/imageResolver'
+
+type Section = {
+  title: string
+  summary: string
+  icon: React.ComponentType<{ size?: number }>
+  edit: string
+  view: string
+}
 
 export const MainDashboard: React.FC = () => {
   const { data } = usePortfolio()
-  const [collectionCount, setCollectionCount] = useState<number>(0)
-  const [totalImages, setTotalImages] = useState<number>(0)
+  const { user, adminCredentials } = useAuth()
+  const [collectionCount, setCollectionCount] = useState<number | null>(null)
+  const [totalImages, setTotalImages] = useState<number | null>(null)
+  const [galleryOnline, setGalleryOnline] = useState<boolean | null>(null)
 
   useEffect(() => {
     let active = true
@@ -23,145 +45,177 @@ export const MainDashboard: React.FC = () => {
         try {
           const res = await fetch('/api/gallery')
           if (!res.ok) throw new Error(`HTTP ${res.status}`)
-          const data = await res.json()
-          if (active && data && Array.isArray(data.collections)) {
-            setCollectionCount(data.collections.length)
-            const total = data.collections.reduce((acc: number, col: { count?: number }) => acc + (col.count || 0), 0)
-            setTotalImages(total)
+          const json = await res.json()
+          if (active && json && Array.isArray(json.collections)) {
+            setCollectionCount(json.collections.length)
+            setTotalImages(json.collections.reduce((acc: number, col: { count?: number }) => acc + (col.count || 0), 0))
+            setGalleryOnline(true)
           }
-          break
+          return
         } catch {
-          if (attempt < 3) {
-            await new Promise((r) => setTimeout(r, 500 * attempt))
-          }
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 500 * attempt))
         }
       }
+      if (active) setGalleryOnline(false)
     }
     loadGalleryStats()
-    return () => { active = false }
+    return () => {
+      active = false
+    }
   }, [])
 
-  const totalEntries =
-    (data.workHistory?.length || 0) +
-    (data.awards?.length || 0) +
-    (data.militaryDiplomas?.length || 0) +
-    (data.professionalCertificates?.length || 0) +
-    (data.unitarPociCertificates?.length || 0) +
-    totalImages
+  const officer = data.officer
+  const lastName = officer.name.split(' ').pop()
+  const len = (list?: unknown[]) => list?.length ?? 0
+  const qualifications = len(data.professionalCertificates) + len(data.militaryDiplomas) + len(data.unitarPociCertificates) + len(data.professionalCourses)
+  const signedInAs = user?.email || adminCredentials.email || 'Administrator'
+  const portrait = resolveImageUrl(officer.profileImageUrl || 'hero/a1.png')
+  const collectionsLabel = collectionCount === null ? 'collections' : `${collectionCount} collection${collectionCount === 1 ? '' : 's'}`
 
-  const recentActivity = [
-    { title: 'Updated site settings', desc: 'Site title and logo changed', time: '2 hours ago', icon: Settings },
-    { title: 'New gallery collection added', desc: '"UN Peacekeeping" collection uploaded', time: '4 hours ago', icon: ImageIcon },
-    { title: 'Career section updated', desc: 'Added new position details', time: '6 hours ago', icon: Briefcase },
-    { title: 'Award added', desc: '"United Nations Medal" added', time: '8 hours ago', icon: Award },
-    { title: 'Profile information updated', desc: 'Contact details and bio updated', time: 'Yesterday', icon: UserCheck }
+  const stats = [
+    { value: len(data.workHistory), label: 'Appointments', meta: 'Career timeline' },
+    { value: len(data.operations), label: 'Missions', meta: 'Operational record' },
+    { value: len(data.awards), label: 'Decorations', meta: 'Awards page' },
+    { value: qualifications, label: 'Qualifications', meta: 'Education & courses' },
+    { value: collectionCount ?? '—', label: 'Collections', meta: totalImages !== null ? `${totalImages} photos in Cloudinary` : 'Photo library' },
+  ]
+
+  const groups: { label: string; sections: Section[] }[] = [
+    {
+      label: 'Home page',
+      sections: [
+        { title: 'Hero section', summary: `${len(data.hero?.slides)} slides · intro text`, icon: SlidersHorizontal, edit: '/admin/hero', view: '/' },
+        { title: 'Home cards', summary: `${len(data.homeCareerCards)} career · ${len(data.homeAchievementCards)} achievement`, icon: Home, edit: '/admin/home-cards', view: '/' },
+        { title: 'Welcome & QR', summary: '3 pillars · QR landing', icon: QrCode, edit: '/admin/welcome', view: '/welcome' },
+      ],
+    },
+    {
+      label: 'Profile & career',
+      sections: [
+        { title: 'Rank & title', summary: `${officer.rank} · ${officer.force}`, icon: ShieldCheck, edit: '/admin/rank', view: '/biography' },
+        { title: 'Biography', summary: `${len(officer.biography)} paragraphs · ${len(data.biographicDetails)} record fields`, icon: UserRound, edit: '/admin/biography', view: '/biography' },
+        { title: 'Career', summary: `${len(data.workHistory)} appointments`, icon: Briefcase, edit: '/admin/career', view: '/career' },
+        { title: 'Missions & assignments', summary: `${len(data.operations)} missions · ${len(data.recentAssignments)} assignments`, icon: Flag, edit: '/admin/achievements', view: '/career' },
+        { title: 'Awards', summary: `${len(data.awards)} decorations`, icon: Award, edit: '/admin/awards', view: '/awards' },
+        { title: 'Achievements', summary: `${len(data.achievements)} highlights · ${len(data.volunteerExperience)} volunteer`, icon: Trophy, edit: '/admin/achievements', view: '/achievements' },
+      ],
+    },
+    {
+      label: 'Education, personal & media',
+      sections: [
+        {
+          title: 'Education',
+          summary: `${len(data.professionalCertificates)} certs · ${len(data.militaryDiplomas)} diplomas · ${len(data.unitarPociCertificates)} UNITAR`,
+          icon: GraduationCap,
+          edit: '/admin/education',
+          view: '/education',
+        },
+        { title: 'Professional courses', summary: `${len(data.professionalCourses)} courses`, icon: BookOpen, edit: '/admin/courses', view: '/education' },
+        { title: 'Languages & hobbies', summary: `${len(data.languages?.spoken)} languages · ${len(data.languages?.hobbies)} hobbies`, icon: Globe, edit: '/admin/languages', view: '/biography' },
+        { title: 'Gallery', summary: collectionsLabel, icon: ImageIcon, edit: '/admin/gallery', view: '/gallery' },
+        { title: 'Footer', summary: 'Name · tagline · crest', icon: PanelBottom, edit: '/admin/footer', view: '/' },
+        { title: 'Site & branding', summary: 'Logo · titles · admin profile', icon: Settings, edit: '/admin/settings', view: '/' },
+      ],
+    },
+  ]
+  const sectionCount = groups.reduce((n, g) => n + g.sections.length, 0)
+
+  const quickActions = [
+    { to: '/admin/gallery', label: 'New gallery collection', icon: ImageIcon },
+    { to: '/admin/hero', label: 'Change hero slides', icon: SlidersHorizontal },
+    { to: '/admin/career', label: 'Add a career appointment', icon: Plus },
+    { to: '/admin/awards', label: 'Add an award', icon: Award },
+    { to: '/admin/welcome', label: 'Download QR code', icon: Download },
   ]
 
   return (
-    <div className="admin-page">
-      {/* Welcome Banner */}
-      <div className="admin-page-header">
-        <div>
-          <h1>Welcome, Colonel Badasu</h1>
-          <p>Manage your portfolio content from one place. Make changes anytime, and they will reflect instantly on your website.</p>
+    <div className="ad-page ad-dash">
+      <section className="ad-ban">
+        <img src={portrait} alt="" />
+        <div className="sh" />
+        <div className="in">
+          <div>
+            <span className="ad-tag"><i />Command Console</span>
+            <h2>Welcome back,<br />{officer.rank} {lastName}</h2>
+            <p>Every section of the public portfolio is managed from here. Changes save to Firestore and appear on the website instantly.</p>
+          </div>
+          <div className="acts">
+            <a className="ad-b gold" href="/" target="_blank" rel="noopener noreferrer">View live site</a>
+            <Link className="ad-b lw" to="/admin/welcome">Share QR code</Link>
+          </div>
         </div>
+      </section>
+
+      <div className="ad-stats">
+        {stats.map((s) => (
+          <div className="st" key={s.label}>
+            <b>{s.value}</b>
+            <span>{s.label}</span>
+            <small>{s.meta}</small>
+          </div>
+        ))}
       </div>
 
-      {/* Stat Cards — 1 primary hero + 3 secondary */}
-      <div className="admin-stats-hero-grid">
-        {/* Primary Big Card */}
-        <div className="admin-stat-card admin-stat-card--primary">
-          <span className="admin-stat-card__title">Gallery Collections</span>
-          <strong className="admin-stat-card__value">
-            {collectionCount ? collectionCount : '—'}
-          </strong>
-          <small className="admin-stat-card__meta">
-            {totalImages ? `${totalImages} total media files in Cloudinary` : 'Synced with Cloudinary CDN'}
-          </small>
-        </div>
-
-        {/* Secondary Small Cards */}
-        <div className="admin-stats-secondary-group">
-          <div className="admin-stat-card admin-stat-card--secondary">
-            <span className="admin-stat-card__title">Total Sections</span>
-            <strong className="admin-stat-card__value">11</strong>
-            <small className="admin-stat-card__meta">Active portfolio sections</small>
-          </div>
-
-          <div className="admin-stat-card admin-stat-card--secondary">
-            <span className="admin-stat-card__title">Content Items</span>
-            <strong className="admin-stat-card__value">{totalEntries}</strong>
-            <small className="admin-stat-card__meta">Total live data entries</small>
-          </div>
-
-          <div className="admin-stat-card admin-stat-card--secondary">
-            <span className="admin-stat-card__title">System Status</span>
-            <strong className="admin-stat-card__value">Live</strong>
-            <small className="admin-stat-card__meta">Firebase &amp; Cloudinary connected</small>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Grid Layout */}
-      <div className="admin-dashboard-grid">
-        {/* Left: empty main — sidebar takes full width now */}
-        <div className="admin-dashboard-main" style={{ display: 'none' }} />
-
-        {/* Sidebar: Flag Banner + Recent Activity + Security */}
-        <div className="admin-dashboard-sidebar" style={{ gridColumn: '1 / -1' }}>
-          {/* Ghana Flag Card */}
-          <div className="admin-flag-card">
-            <div className="admin-flag-card__overlay">
-              <span className="admin-flag-card__tag">Your Portfolio</span>
-              <h3>Live &amp; Updated</h3>
-              <p>Every change you make here will be reflected on your public website instantly.</p>
-              <a
-                href="/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn--secondary btn--sm admin-flag-card__btn"
-              >
-                <span>View Live Site</span>
-                <ExternalLink size={14} />
-              </a>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="admin-card">
-            <div className="admin-card__header">
-              <div className="admin-card__title-wrap">
-                <Clock size={18} />
-                <h3>Recent Activity</h3>
-              </div>
-              <span className="admin-link">View All</span>
-            </div>
-            <div className="admin-activity-list">
-              {recentActivity.map((act, idx) => {
-                const Icon = act.icon
-                return (
-                  <div key={idx} className="admin-activity-item">
-                    <div className="admin-activity-item__icon">
-                      <Icon size={16} />
-                    </div>
-                    <div className="admin-activity-item__body">
-                      <strong>{act.title}</strong>
-                      <p>{act.desc}</p>
-                    </div>
-                    <span className="admin-activity-item__time">{act.time}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Security Status Card */}
-          <div className="admin-security-status-card">
-            <ShieldCheck size={20} />
+      <div className="ad-two">
+        <div className="ad-card">
+          <div className="hd">
             <div>
-              <strong>Your portfolio is secure</strong>
-              <p>All changes are protected and backed up.</p>
+              <h3>Everything on the website</h3>
+              <p>Every public section, what it holds, and where to edit it.</p>
             </div>
+            <span className="ad-pill g">{sectionCount} sections</span>
+          </div>
+          {groups.map((g) => (
+            <React.Fragment key={g.label}>
+              <div className="ad-sect">{g.label}</div>
+              <div className="ad-map">
+                {g.sections.map((s) => {
+                  const Icon = s.icon
+                  return (
+                    <div className="ad-mc" key={s.title}>
+                      <Link className="top" to={s.edit}>
+                        <span className="i"><Icon size={18} /></span>
+                        <div><b>{s.title}</b><small>{s.summary}</small></div>
+                      </Link>
+                      <div className="ac">
+                        <Link className="e" to={s.edit}>Edit</Link>
+                        <a href={s.view} target="_blank" rel="noopener noreferrer">View</a>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="ad-side">
+          <div className="ad-card ad-qa">
+            <div className="hd"><h3>Quick actions</h3></div>
+            {quickActions.map((a) => {
+              const Icon = a.icon
+              return (
+                <Link key={a.label} to={a.to}>
+                  <span className="i"><Icon size={16} /></span>
+                  {a.label}
+                  <span className="ar" aria-hidden="true">→</span>
+                </Link>
+              )
+            })}
+          </div>
+          <div className="ad-card ad-sys">
+            <div className="hd"><h3>System status</h3></div>
+            <div><span>Public website</span><span className="ad-ok"><i />Live</span></div>
+            <div><span>Content database</span><span className="ad-ok"><i />Connected</span></div>
+            <div>
+              <span>Photo storage</span>
+              {galleryOnline === false ? (
+                <span className="ad-ok warn"><i />Unreachable</span>
+              ) : (
+                <span className="ad-ok"><i />{galleryOnline ? 'Connected' : 'Checking…'}</span>
+              )}
+            </div>
+            <div><span>Signed in as</span><span className="who">{signedInAs}</span></div>
           </div>
         </div>
       </div>

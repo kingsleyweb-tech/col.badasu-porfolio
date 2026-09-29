@@ -1,154 +1,92 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, useReducedMotion } from 'framer-motion'
-import { Clock, ArrowRight } from 'lucide-react'
-import { OptimizedImage } from '../components/OptimizedImage'
-import { welcomeFeatureImages, officer as defaultOfficer } from '../data/officerData'
-import type { ImageAsset } from '../data/officerData'
 import { usePortfolio } from '../context/PortfolioContext'
+import { officer as defaultOfficer } from '../data/officerData'
+import { siteImages } from '../data/siteImages'
+import { useBrand } from '../components/site/brand'
+import { IconArrowRight } from '../components/site/icons'
 import { resolveImageUrl } from '../utils/imageResolver'
+import { lastName, pad2 } from '../utils/portfolioFormat'
+
+const REDIRECT_SECONDS = 15
+const SLIDE_MS = 7000
 
 export function Welcome() {
-  const [seconds, setSeconds] = useState(15)
   const navigate = useNavigate()
-  const timerRef = useRef<number | null>(null)
-  const shouldReduceMotion = useReducedMotion()
   const { data } = usePortfolio()
+  const { logo } = useBrand()
+  const [seconds, setSeconds] = useState(REDIRECT_SECONDS)
+  const [slide, setSlide] = useState(0)
 
-  const officer = data?.officer || defaultOfficer
-  const rank = officer.rank || 'Colonel'
-  const name = officer.name || 'Henry Kwaku Badasu'
-  const lastName = name.split(' ').pop() || 'BADASU'
-
+  const officer = { ...defaultOfficer, ...data?.officer }
+  const surname = lastName(officer.name)
   const welcome = data?.welcome
-  const leadershipTitle = welcome?.leadershipTitle || 'LEADERSHIP'
-  const leadershipText = welcome?.leadershipText || 'Leading with vision, integrity and purpose.'
-  const serviceTitle = welcome?.serviceTitle || 'SERVICE'
-  const serviceText = welcome?.serviceText || 'Dedicated to duty, country and people.'
-  const excellenceTitle = welcome?.excellenceTitle || 'EXCELLENCE'
-  const excellenceText = welcome?.excellenceText || 'Striving for the highest standards in all I do.'
+  // "Welcome to the Official Portfolio" (Admin › QR & Welcome Page) reads into the name below it
+  const welcomeTitle = (welcome?.title || 'Welcome to the Official Portfolio').trim()
+  const welcomeLine = /\sof$/i.test(welcomeTitle) ? welcomeTitle : `${welcomeTitle} of`
 
-  const navigateToHome = () => {
-    if (timerRef.current) window.clearInterval(timerRef.current)
-    navigate('/')
-  }
+  const backgrounds = [siteImages.ecowasMeeting, siteImages.officersGroup, siteImages.portrait]
 
-  useEffect(() => {
-    timerRef.current = window.setInterval(() => {
-      setSeconds((prev) => {
-        if (prev <= 1) {
-          if (timerRef.current) window.clearInterval(timerRef.current)
-          navigate('/')
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => {
-      if (timerRef.current) window.clearInterval(timerRef.current)
-    }
-  }, [navigate])
-
-  const formatSeconds = (sec: number) => (sec < 10 ? `0${sec}` : `${sec}`)
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: shouldReduceMotion ? 0 : 0.15, delayChildren: 0.1 },
-    },
-  }
-  const fadeUpVariants = {
-    hidden: { opacity: 0, y: shouldReduceMotion ? 0 : 15 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
-  }
-  const fadeInVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.6 } },
-  }
-
-  const resolveCardAsset = (customUrl?: string, defaultAsset?: ImageAsset): ImageAsset => {
-    if (customUrl) {
-      const resolved = resolveImageUrl(customUrl)
-      return {
-        src: resolved,
-        fallbackSrc: resolved,
-        thumbnailSrc: resolved,
-        placeholderSrc: resolved,
-        srcSet: `${resolved} 100w`,
-        alt: 'Feature Icon',
-        caption: 'Feature Icon',
-        width: 48,
-        height: 48,
-      }
-    }
-    return defaultAsset!
-  }
-
-  const featureCards = [
-    { image: resolveCardAsset(welcome?.leadershipImage, welcomeFeatureImages.leadership), title: leadershipTitle, desc: leadershipText },
-    { image: resolveCardAsset(welcome?.serviceImage, welcomeFeatureImages.service), title: serviceTitle, desc: serviceText },
-    { image: resolveCardAsset(welcome?.excellenceImage, welcomeFeatureImages.excellence), title: excellenceTitle, desc: excellenceText },
+  const pillars = [
+    { image: resolveImageUrl(welcome?.leadershipImage) || siteImages.leadership, title: welcome?.leadershipTitle || 'Leadership', text: welcome?.leadershipText || 'Leading with vision, integrity and purpose.' },
+    { image: resolveImageUrl(welcome?.serviceImage) || siteImages.service, title: welcome?.serviceTitle || 'Service', text: welcome?.serviceText || 'Dedicated to duty, country and people.' },
+    { image: resolveImageUrl(welcome?.excellenceImage) || siteImages.excellence, title: welcome?.excellenceTitle || 'Excellence', text: welcome?.excellenceText || 'Striving for the highest standards in all I do.' },
   ]
 
+  useEffect(() => {
+    if (seconds <= 0) {
+      navigate('/')
+      return
+    }
+    const timer = window.setTimeout(() => setSeconds((s) => s - 1), 1000)
+    return () => window.clearTimeout(timer)
+  }, [seconds, navigate])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setSlide((s) => (s + 1) % 3), SLIDE_MS)
+    return () => window.clearInterval(timer)
+  }, [])
+
   return (
-    <div className="welcome-page-container">
-      <div className="welcome-page__bottom-arc" aria-hidden="true" />
+    <div className="wl">
+      {backgrounds.map((src, i) => (
+        <div key={src} className={`slide ${i === slide ? 'on' : ''}`} aria-hidden="true">
+          <img src={src} alt="" />
+        </div>
+      ))}
+      <div className="shade" />
 
-      <motion.main
-        className="welcome-page__content"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={fadeInVariants} className="welcome-page__star-decor">★</motion.div>
-
-        <motion.div variants={fadeInVariants} className="welcome-page__divider">
-          <div className="divider-line" />
-          <span className="divider-star">★</span>
-          <div className="divider-line" />
-        </motion.div>
-
-        <motion.div variants={fadeUpVariants} className="welcome-page__headers">
-          <span className="welcome-page__pre-title">Welcome to the</span>
-          <h1 className="welcome-page__title">OFFICIAL PORTFOLIO</h1>
-          <span className="welcome-page__of-title">OF</span>
-          <h2 className="welcome-page__name">{rank.toUpperCase()} {lastName.toUpperCase()}</h2>
-        </motion.div>
-
-        <motion.p variants={fadeUpVariants} className="welcome-page__intro-text">
-          This platform provides an overview of my journey, leadership, service, achievements and commitment to excellence.
-        </motion.p>
-
-        <motion.div variants={fadeInVariants} className="welcome-page__features">
-          {featureCards.map((card, idx) => (
-            <div key={idx} className="welcome-feature-card">
-              <div className="welcome-feature-card__img-container">
-                <OptimizedImage asset={card.image} sizes="48px" />
-              </div>
-              <h3>{card.title}</h3>
-              <p>{card.desc}</p>
+      <div className="in">
+        <img className="crest rv" src={logo} alt={`${officer.force} crest`} />
+        <div className="pre rv rv1">{welcomeLine}</div>
+        <h1 className="name rv rv2">{officer.rank} <em>{surname}</em></h1>
+        <p className="intro rv rv3">{welcome?.description || 'This platform provides an overview of my journey, leadership, service, achievements and commitment to excellence.'}</p>
+        <div className="pillars rv rv4">
+          {pillars.map((p) => (
+            <div className="pl" key={p.title}>
+              <img src={p.image} alt="" />
+              <div><b>{p.title}</b><span>{p.text}</span></div>
             </div>
           ))}
-        </motion.div>
-
-        <motion.div variants={fadeUpVariants} className="welcome-page__cta-wrapper">
-          <button onClick={navigateToHome} className="welcome-cta-btn" type="button">
-            <div className="welcome-cta-btn__content">
-              <span className="welcome-cta-btn__sub">READ EVERYTHING ABOUT</span>
-              <span className="welcome-cta-btn__main">{rank.toUpperCase()} {lastName.toUpperCase()}</span>
-            </div>
-            <ArrowRight size={20} className="welcome-cta-btn__icon" />
-          </button>
-        </motion.div>
-
-        <motion.div variants={fadeInVariants} className="welcome-page__countdown">
-          <Clock size={16} className="welcome-page__countdown-icon" />
-          <span className="welcome-page__countdown-text">You will be redirected automatically in</span>
-          <span className="welcome-page__countdown-number-ring">{formatSeconds(seconds)}</span>
-          <span className="welcome-page__countdown-text">seconds</span>
-        </motion.div>
-      </motion.main>
+        </div>
+        <div className="cta-gap" />
+        <button className="cta rv rv5" type="button" onClick={() => navigate('/')}>
+          <span><small>READ EVERYTHING ABOUT</small><b>{officer.rank} {surname}</b></span>
+          <i><IconArrowRight size={20} strokeWidth={2.2} /></i>
+        </button>
+        <div className="cd" role="timer" aria-live="polite">
+          <span>Redirecting automatically in</span>
+          <div className="cd-ring">
+            <svg viewBox="0 0 58 58" aria-hidden="true">
+              <circle cx="29" cy="29" r="26" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="3" />
+              <circle className="p" cx="29" cy="29" r="26" fill="none" stroke="#e2c47c" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+            <b>{pad2(seconds)}</b>
+          </div>
+          <span>seconds</span>
+        </div>
+        <button className="skip" type="button" onClick={() => navigate('/')}>Skip to portfolio</button>
+      </div>
     </div>
   )
 }

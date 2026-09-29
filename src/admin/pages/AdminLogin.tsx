@@ -1,16 +1,20 @@
 import React, { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { ShieldCheck, Lock, Mail, Loader2, AlertCircle, CheckCircle2, ArrowRight, Shield, Award, Globe } from 'lucide-react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { ShieldCheck, Lock, Mail, Loader2, AlertCircle, CheckCircle2, ArrowRight, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { usePortfolio } from '../../context/PortfolioContext'
+import { resolveImageUrl } from '../../utils/imageResolver'
 import ecowasBg from '../../assets/images/ecowas/ecowas-bg.jpeg'
 
 export const AdminLogin: React.FC = () => {
   const { login, resetPassword, error, clearError } = useAuth()
+  const { data } = usePortfolio()
   const navigate = useNavigate()
   const location = useLocation()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -22,6 +26,7 @@ export const AdminLogin: React.FC = () => {
   const [forgotError, setForgotError] = useState<string | null>(null)
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/admin'
+  const logo = resolveImageUrl(data.siteSettings.logoUrl || 'image.png')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,211 +72,149 @@ export const AdminLogin: React.FC = () => {
   }
 
   return (
-    <div className="admin-login-page">
-      <div className="admin-login-container">
-        {/* Left Info Panel (Visible on Large Screens with ECOWAS image background) */}
-        <div
-          className="admin-login-info-panel"
-          style={{ backgroundImage: `url("${ecowasBg}")` }}
-        >
-          <div className="admin-login-info-overlay">
-            <div className="admin-login-info-top">
-              <div className="admin-login-info-badge">
-                <Shield size={13} />
-                <span>ECOWAS MISSION & LEADERSHIP</span>
-              </div>
-              <h2 className="admin-login-info-title">Colonel Badasu</h2>
-              <p className="admin-login-info-subtitle">
-                Portfolio Content Management System
-              </p>
-              <div className="admin-login-info-divider" />
-              <blockquote className="admin-login-info-quote">
-                “Serving with honor, strategic military leadership, and unwavering commitment to peace, security, and national excellence.”
-              </blockquote>
-            </div>
-
-            <div className="admin-login-info-features">
-              <div className="admin-info-feature-item">
-                <div className="admin-info-feature-icon">
-                  <ShieldCheck size={18} />
-                </div>
-                <div>
-                  <h4>Secure Command Portal</h4>
-                  <p>Restricted access for authenticated military and portfolio administrators.</p>
-                </div>
-              </div>
-
-              <div className="admin-info-feature-item">
-                <div className="admin-info-feature-icon">
-                  <Award size={18} />
-                </div>
-                <div>
-                  <h4>Leadership & Career Management</h4>
-                  <p>Maintain verified records of achievements, military ranks, & honors.</p>
-                </div>
-              </div>
-
-              <div className="admin-info-feature-item">
-                <div className="admin-info-feature-icon">
-                  <Globe size={18} />
-                </div>
-                <div>
-                  <h4>ECOWAS Mission Gallery</h4>
-                  <p>Centralized cloud storage for operational media and public portfolio assets.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="admin-login-info-footer">
-              <p>© Ghana Armed Forces • Secure Administration Portal</p>
-            </div>
+    <div className="ad-login">
+      <div className="l">
+        <img className="bg" src={ecowasBg} alt="" />
+        <div className="sh" />
+        <div className="brand">
+          <img src={logo} alt="Ghana Armed Forces crest" />
+          <div>
+            <b>{data.siteSettings.adminSidebarTitle || 'Col. Badasu'}</b>
+            <small>{data.siteSettings.adminSidebarSubtitle || 'PORTFOLIO ADMIN'}</small>
           </div>
         </div>
+        <div className="in">
+          <span className="ad-tag"><i />Content management</span>
+          <h1>Command<br /><em>console</em></h1>
+          <p>
+            Manage every section of the official portfolio of {data.officer.rank} {data.officer.name}: biography, career, awards,
+            education, gallery and site settings.
+          </p>
+        </div>
+      </div>
 
-        {/* Right Form Card (Clean Sign In Form) */}
-        <div className="admin-login-card">
-          {/* Header */}
-          <div className="admin-login-card__header">
-            <div className="admin-login-card__crest-wrapper">
-              <img
-                src="https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_120/colonel-badasu/site/root/image"
-                alt="GAF Crest"
-                className="admin-login-card__crest-img"
+      <div className="r">
+        <div>
+          <span className="ad-tag dark"><i />Authorised personnel only</span>
+          <h2>Sign in</h2>
+          <p>Use your administrator email and password.</p>
+        </div>
+
+        {(localError || error) && (
+          <div className="ad-alert err" role="alert">
+            <AlertCircle size={16} />
+            <span>{localError || error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="ad-login-form">
+          <div>
+            <label htmlFor="email" className="ad-lbl">Administrator email</label>
+            <div className="ad-inp">
+              <Mail size={17} />
+              <input
+                id="email"
+                type="email"
+                placeholder="admin@colonelbadasu.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
               />
             </div>
-            <h1 className="admin-login-card__title">Administrator Sign In</h1>
-            <p className="admin-login-card__sub">Enter your credentials to access the command dashboard</p>
-            <div className="admin-login-card__badge">
-              <ShieldCheck size={13} />
-              <span>Authorized Personnel Only</span>
+          </div>
+
+          <div>
+            <div className="ad-lbl-row">
+              <label htmlFor="password" className="ad-lbl">Password</label>
+              <button
+                type="button"
+                className="ad-link"
+                onClick={() => {
+                  setForgotEmail(email)
+                  setShowForgotModal(true)
+                }}
+              >
+                Forgot password?
+              </button>
+            </div>
+            <div className="ad-inp">
+              <Lock size={17} />
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+              <button type="button" className="show" onClick={() => setShowPassword((v) => !v)} aria-pressed={showPassword}>
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
             </div>
           </div>
 
-          {/* Errors */}
-          {(localError || error) && (
-            <div className="admin-login-alert is-error">
-              <AlertCircle size={16} />
-              <span>{localError || error}</span>
-            </div>
-          )}
+          <button type="submit" className="ad-b g sub" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Loader2 size={18} className="admin-spinner" />
+                Authenticating…
+              </>
+            ) : (
+              <>
+                Sign in to dashboard
+                <ArrowRight size={16} strokeWidth={2.2} />
+              </>
+            )}
+          </button>
+        </form>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="admin-login-form">
-            <div className="admin-form-group">
-              <label htmlFor="email" className="admin-field-label">Administrator Email</label>
-              <div className="admin-input-wrapper">
-                <Mail size={18} className="admin-input-icon" />
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="admin@colonelbadasu.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="admin-form-group">
-              <div className="admin-form-group__header">
-                <label htmlFor="password" className="admin-field-label">Security Password</label>
-                <button
-                  type="button"
-                  className="admin-forgot-link"
-                  onClick={() => {
-                    setForgotEmail(email)
-                    setShowForgotModal(true)
-                  }}
-                >
-                  Forgot password?
-                </button>
-              </div>
-              <div className="admin-input-wrapper">
-                <Lock size={18} className="admin-input-icon" />
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="admin-login-btn"
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 size={18} className="admin-spinner" />
-                  <span>Authenticating...</span>
-                </>
-              ) : (
-                <>
-                  <span>SIGN IN TO DASHBOARD</span>
-                  <ArrowRight size={18} />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="admin-login-card__footer">
-            <p>Protected by Firebase Authentication & Firestore Security Rules.</p>
-          </div>
+        <div className="foot">
+          <ShieldCheck size={16} />
+          Protected by Firebase Authentication and Firestore security rules.
         </div>
+        <Link to="/" className="back">← Back to the public website</Link>
       </div>
 
       {/* Forgot Password Modal */}
       {showForgotModal && (
         <div className="admin-modal-overlay" onClick={() => setShowForgotModal(false)}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="reset-title">
             <div className="admin-modal__header">
-              <h3>Reset Administrator Password</h3>
-              <button
-                type="button"
-                className="admin-modal__close"
-                onClick={() => setShowForgotModal(false)}
-              >
-                ×
+              <h3 id="reset-title">Reset administrator password</h3>
+              <button type="button" className="admin-modal__close" onClick={() => setShowForgotModal(false)} aria-label="Close">
+                <X size={18} />
               </button>
             </div>
 
             {forgotSuccess ? (
               <div className="admin-modal__body">
-                <div className="admin-login-alert is-success">
+                <div className="ad-alert ok">
                   <CheckCircle2 size={18} />
                   <span>{forgotSuccess}</span>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn--primary"
-                  style={{ width: '100%', marginTop: '16px' }}
-                  onClick={() => setShowForgotModal(false)}
-                >
-                  Return to Login
+                <button type="button" className="ad-b g" style={{ width: '100%', marginTop: 16 }} onClick={() => setShowForgotModal(false)}>
+                  Return to sign in
                 </button>
               </div>
             ) : (
               <form onSubmit={handleForgotSubmit} className="admin-modal__body">
-                <p>Enter your administrator email address below to receive a secure Firebase password reset link.</p>
+                <p>Enter your administrator email address to receive a secure Firebase password reset link.</p>
 
                 {forgotError && (
-                  <div className="admin-login-alert is-error">
+                  <div className="ad-alert err">
                     <AlertCircle size={18} />
                     <span>{forgotError}</span>
                   </div>
                 )}
 
-                <div className="admin-form-group" style={{ marginTop: '16px' }}>
-                  <label className="admin-field-label">Administrator Email</label>
-                  <div className="admin-input-wrapper">
-                    <Mail size={18} className="admin-input-icon" />
+                <div style={{ marginTop: 16 }}>
+                  <label className="ad-lbl" htmlFor="reset-email">Administrator email</label>
+                  <div className="ad-inp">
+                    <Mail size={17} />
                     <input
+                      id="reset-email"
                       type="email"
                       placeholder="admin@colonelbadasu.com"
                       value={forgotEmail}
@@ -282,19 +225,11 @@ export const AdminLogin: React.FC = () => {
                 </div>
 
                 <div className="admin-modal__footer">
-                  <button
-                    type="button"
-                    className="btn btn--secondary"
-                    onClick={() => setShowForgotModal(false)}
-                  >
+                  <button type="button" className="ad-b l" onClick={() => setShowForgotModal(false)}>
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    className="btn btn--primary"
-                    disabled={forgotSubmitting}
-                  >
-                    {forgotSubmitting ? 'Sending...' : 'Send Reset Link'}
+                  <button type="submit" className="ad-b g" disabled={forgotSubmitting}>
+                    {forgotSubmitting ? 'Sending…' : 'Send reset link'}
                   </button>
                 </div>
               </form>

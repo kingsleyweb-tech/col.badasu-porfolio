@@ -103,7 +103,7 @@ export const GalleryAdmin: React.FC = () => {
       }
 
       // Retry Cloudinary API up to 3 times for live collections
-      const res = await fetchWithRetry(() => fetch('/api/gallery'), 3)
+      const res = await fetchWithRetry(() => fetch('/api/gallery?fresh=1'), 1)
 
       let apiCols: CollectionItem[] = []
       if (res && res.ok) {
@@ -140,6 +140,10 @@ export const GalleryAdmin: React.FC = () => {
       })
 
       const final = Array.from(merged.values())
+      // Nothing from Cloudinary or Firestore and the photo API failed: report it instead of "no collections"
+      if (!res && final.length === 0) {
+        throw new Error('Photo library unavailable')
+      }
       setCollections(final)
       setCollectionsError(null)
     } catch (err) {
@@ -147,7 +151,7 @@ export const GalleryAdmin: React.FC = () => {
       // Only show the error if we genuinely have no data to show.
       // If we already loaded collections before this refresh attempt, keep them visible.
       if (!hadDataBeforeFetch) {
-        setCollectionsError('Could not load collections. Check your network or API credentials.')
+        setCollectionsError('Could not load collections from Cloudinary right now. It may be limiting requests; try Refresh in a few minutes.')
       }
     } finally {
       setLoadingCollections(false)
@@ -214,7 +218,7 @@ export const GalleryAdmin: React.FC = () => {
     e.target.value = ''
   }
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     addFiles(Array.from(e.dataTransfer.files))
   }
@@ -272,417 +276,157 @@ export const GalleryAdmin: React.FC = () => {
   }
 
   return (
-    <div className="admin-page">
-      <div className="admin-page-header">
-        <div>
-          <h1>Gallery Management</h1>
-          <p>Upload, organize and manage your photo collections with sequential uploads and instant saving.</p>
+    <div className="ad-page">
+      <div className="ad-ph">
+        <div className="t">
+          <span className="ic"><ImageIcon2 size={26} /></span>
+          <div>
+            <h1>Gallery</h1>
+            <p>Create collections and upload photographs. Images are compressed and uploaded one after another, and each is saved the moment it finishes.</p>
+          </div>
         </div>
-        <button
-          type="button"
-          className="btn btn--outline"
-          onClick={fetchCollections}
-          disabled={loadingCollections}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <RefreshCw size={16} className={loadingCollections ? 'admin-spinner' : ''} />
+        <button type="button" className="ad-b l" onClick={fetchCollections} disabled={loadingCollections}>
+          <RefreshCw size={15} className={loadingCollections ? 'admin-spinner' : ''} />
           Refresh
         </button>
       </div>
 
       {message && (
-        <div className={`admin-alert ${messageType === 'error' ? 'is-error' : 'is-success'}`}>
-          <div className="admin-alert__icon">
-            {messageType === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
-          </div>
-          <div className="admin-alert__content">
-            <span>{message}</span>
-          </div>
-          <button
-            type="button"
-            className="admin-alert__close"
-            onClick={() => setMessage(null)}
-            aria-label="Close message"
-          >
+        <div className={`ad-alert ${messageType === 'error' ? 'err' : 'ok'}`} role={messageType === 'error' ? 'alert' : 'status'}>
+          {messageType === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+          <span>{message}</span>
+          <button type="button" className="x" onClick={() => setMessage(null)} aria-label="Dismiss message">
             <X size={16} />
           </button>
         </div>
       )}
 
       {justStarted && (
-        <div className="admin-alert is-success" style={{ background: '#eff6ff', borderColor: '#93c5fd', color: '#1e40af' }}>
+        <div className="ad-alert info" role="status">
           <Zap size={18} />
           <span>
-            <strong>Sequential Upload started!</strong> Images process one by one with immediate saving. You can minimize the progress panel and continue browsing.
+            <strong>Upload started.</strong> Photographs upload one by one and save as they finish. You can keep working; progress shows in the corner.
           </span>
         </div>
       )}
 
-      {/* Top Section: Upload / Create Collection Card */}
-      <div className="admin-card" style={{ marginBottom: '24px' }}>
-        <div className="admin-card__header">
-          <h3>Create New Collection</h3>
-          <span style={{ fontSize: '13px', color: 'var(--admin-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <Zap size={13} style={{ color: '#f59e0b' }} />
-            Sequential Queue · Auto-Compress · Immediate Save
-          </span>
+      <div className="ad-card">
+        <div className="hd">
+          <div>
+            <h3>Create a new collection</h3>
+            <p>Sequential queue · auto-compress · immediate save</p>
+          </div>
+          {previewFiles.length > 0 && (
+            <span className="ad-pill gold">{previewFiles.length} selected · {formatSize(totalSize)}</span>
+          )}
         </div>
 
-        <form onSubmit={handleBatchUpload} className="admin-form">
-          <div className="admin-form-group">
-            <label>Collection Name *</label>
-            <input
-              type="text"
-              placeholder="e.g. Field Operations"
-              value={collectionName}
-              onChange={(e) => setCollectionName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="admin-form-group">
-            <label>Description (optional)</label>
-            <textarea
-              placeholder="Brief description about this collection..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
-
-          {/* Drop Zone */}
-          <div
-            className="admin-dropzone"
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-          >
-            <UploadCloud size={36} className="admin-dropzone__icon" />
-            <strong>Click to select or drag images here</strong>
-            <p style={{ margin: '4px 0 0', fontSize: '0.82rem' }}>
-              JPG, PNG, WEBP — auto-optimized for fast sequential upload
-            </p>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileSelection}
-              className="admin-dropzone__input"
-            />
-          </div>
-
-          {/* Image Preview Grid */}
-          {previewFiles.length > 0 && (
+        <form onSubmit={handleBatchUpload} className="ad-gal-new">
+          <div className="fields">
             <div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '10px',
-              }}>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
-                  {previewFiles.length} image{previewFiles.length !== 1 ? 's' : ''} selected
-                  <span style={{ fontWeight: 400, color: '#64748b', marginLeft: '6px' }}>
-                    ({formatSize(totalSize)} total)
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '0.78rem',
-                    color: '#ef4444',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    padding: '2px 6px',
-                  }}
-                >
-                  Clear all
-                </button>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                  gap: '10px',
-                  maxHeight: '340px',
-                  overflowY: 'auto',
-                  padding: '4px',
-                }}
-              >
-                {previewFiles.map((pf, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      position: 'relative',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      border: '1px solid #e2e8f0',
-                      background: '#f8fafc',
-                      aspectRatio: '1',
-                    }}
-                  >
-                    <img
-                      src={pf.previewUrl}
-                      alt={pf.file.name}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        display: 'block',
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        background: 'rgba(15,23,42,0.7)',
-                        color: '#fff',
-                        fontSize: '9px',
-                        padding: '3px 5px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {pf.file.name}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removePreview(i)}
-                      title="Remove this image"
-                      style={{
-                        position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        background: '#ef4444',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-                        padding: 0,
-                      }}
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                ))}
-
-                <label
-                  style={{
-                    border: '2px dashed #cbd5e1',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    background: '#f8fafc',
-                    aspectRatio: '1',
-                    color: '#64748b',
-                    fontSize: '11px',
-                    gap: '4px',
-                    transition: 'border-color 0.2s',
-                  }}
-                >
-                  <ImageIcon2 size={20} />
-                  <span>Add more</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleFileSelection}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-              </div>
+              <label className="ad-lbl" htmlFor="col-name">Collection name *</label>
+              <input
+                id="col-name"
+                className="ad-field"
+                type="text"
+                placeholder="e.g. ECOWAS Summit 2026"
+                value={collectionName}
+                onChange={(e) => setCollectionName(e.target.value)}
+                required
+              />
             </div>
-          )}
+            <div>
+              <label className="ad-lbl" htmlFor="col-desc">Description (optional)</label>
+              <textarea
+                id="col-desc"
+                className="ad-field"
+                placeholder="Brief description about this collection…"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <button type="submit" className="ad-b g" disabled={previewFiles.length === 0}>
+              <UploadCloud size={16} />
+              {previewFiles.length > 0 ? `Create collection · upload ${previewFiles.length}` : 'Create collection'}
+            </button>
+          </div>
 
-          <button
-            type="submit"
-            className="btn btn--primary admin-btn-block"
-            disabled={previewFiles.length === 0}
-          >
-            <UploadCloud size={18} />
-            <span>
-              UPLOAD {previewFiles.length > 0 ? `${previewFiles.length} IMAGES` : 'COLLECTION'}
-            </span>
-          </button>
+          <div>
+            <label className="ad-drop" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+              <span className="i"><UploadCloud size={28} /></span>
+              <b>Drop photographs here or click to choose</b>
+              <small>JPG, PNG, WEBP · optimised automatically before upload</small>
+              <input type="file" multiple accept="image/*" onChange={handleFileSelection} className="sr-only" />
+            </label>
 
-          <p style={{ fontSize: '0.72rem', color: 'var(--admin-text-muted)', textAlign: 'center', margin: '6px 0 0' }}>
-            Images upload one by one with live per-image progress and background saving
-          </p>
+            {previewFiles.length > 0 && (
+              <>
+                <div className="ad-q">
+                  {previewFiles.map((pf, i) => (
+                    <div key={pf.previewUrl} title={pf.file.name}>
+                      <img src={pf.previewUrl} alt={pf.file.name} />
+                      <button type="button" className="rm" onClick={() => removePreview(i)} aria-label={`Remove ${pf.file.name}`}>
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" className="ad-link danger" onClick={clearAll}>Clear all</button>
+              </>
+            )}
+          </div>
         </form>
       </div>
 
-      {/* Bottom Section: Horizontal Gallery Collections Grid (Beneath Create Collection) */}
-      <div className="admin-card">
-        <div className="admin-card__header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="ad-card">
+        <div className="hd">
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#0f172a' }}>Gallery Collections</h3>
-            <p style={{ margin: '2px 0 0', fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
-              Manage existing photo collections, add images, or delete albums.
-            </p>
+            <h3>Collections</h3>
+            <p>Open a collection to add, reorder or delete photographs.</p>
           </div>
-          {!loadingCollections && (
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#1f5c3a', background: '#f0fdf4', padding: '4px 14px', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
-              {collections.length} collection{collections.length !== 1 ? 's' : ''}
-            </span>
-          )}
+          {!loadingCollections && <span className="ad-pill g">{collections.length} collection{collections.length !== 1 ? 's' : ''}</span>}
         </div>
 
-        {loadingCollections ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '48px 0', color: 'var(--admin-text-muted)' }}>
-            <Loader2 size={24} className="admin-spinner" />
-            <span>Loading gallery collections...</span>
-          </div>
+        {loadingCollections && collections.length === 0 ? (
+          <div className="ad-empty"><Loader2 size={20} className="admin-spinner" /> Loading gallery collections…</div>
         ) : collectionsError ? (
-          <div style={{ padding: '16px', background: 'rgba(220,38,38,0.08)', borderRadius: '8px', color: '#ef4444', fontSize: '14px' }}>
-            <AlertCircle size={16} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-            {collectionsError}
-          </div>
+          <div className="ad-alert err"><AlertCircle size={16} /><span>{collectionsError}</span></div>
         ) : collections.length === 0 ? (
-          <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--admin-text-muted)' }}>
-            <ImageIcon size={48} style={{ marginBottom: '8px', opacity: 0.4 }} />
-            <p style={{ fontWeight: 600, color: '#0f172a', margin: 0 }}>No collections found</p>
-            <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>Use the form above to create your first photo collection.</p>
+          <div className="ad-empty col">
+            <ImageIcon size={40} />
+            <b>No collections yet</b>
+            <span>Use the form above to create your first photo collection.</span>
           </div>
         ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '18px',
-              paddingTop: '8px'
-            }}
-          >
+          <div className="ad-cols">
             {collections.map((col) => (
-              <div
-                key={col.slug}
-                onClick={() => setSelectedCollection(col)}
-                style={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease'
-                }}
-                className="admin-collection-card-horizontal"
-              >
-                {/* Cover Image Thumbnail Header */}
-                <div style={{ position: 'relative', width: '100%', height: '150px', backgroundColor: '#f1f5f9' }}>
+              <div className="col" key={col.slug}>
+                <button type="button" className="cv" onClick={() => setSelectedCollection(col)} aria-label={`Manage ${col.name}`}>
                   {col.coverImage ? (
-                    <img
-                      src={resolveImageUrl(col.coverImage.thumbnailUrl)}
-                      alt={col.coverImage.alt}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                    <img src={resolveImageUrl(col.coverImage.thumbnailUrl)} alt="" loading="lazy" />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                      <ImageIcon size={36} style={{ opacity: 0.4 }} />
-                    </div>
+                    <span className="none"><ImageIcon size={32} /></span>
                   )}
-                  {/* Image count pill overlay */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                      backgroundColor: 'rgba(15, 23, 42, 0.8)',
-                      backdropFilter: 'blur(4px)',
-                      color: '#ffffff',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '3px 10px',
-                      borderRadius: '20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-                    }}
-                  >
-                    <ImageIcon size={12} />
-                    <span>{col.count} {col.count === 1 ? 'image' : 'images'}</span>
-                  </div>
-                </div>
-
-                {/* Card Content & Details */}
-                <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a', lineHeight: '1.35' }}>
-                      {col.name}
-                    </h4>
-                    <span style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                      Click card or Manage to view photos
-                    </span>
-                  </div>
-
-                  {/* Card Action Buttons */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                    <button
-                      type="button"
-                      className="btn btn--secondary btn--sm"
-                      onClick={(e) => { e.stopPropagation(); setSelectedCollection(col) }}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        padding: '7px 12px',
-                        fontSize: '12px',
-                        fontWeight: 600
-                      }}
-                    >
-                      <FolderOpen size={14} />
-                      <span>MANAGE</span>
+                  <span className="ad-pill g">{col.count} {col.count === 1 ? 'photo' : 'photos'}</span>
+                </button>
+                <div className="bd">
+                  <b>{col.name}</b>
+                  <small>/gallery/{col.slug}</small>
+                  <div className="ac">
+                    <button type="button" className="ad-b sm g" onClick={() => setSelectedCollection(col)}>
+                      <FolderOpen size={13} />
+                      Manage
                     </button>
-
+                    <a className="ad-b sm l" href={`/gallery/${col.slug}`} target="_blank" rel="noopener noreferrer">View</a>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setCollectionToDelete(col)
-                      }}
+                      className="ad-b sm red"
+                      onClick={() => setCollectionToDelete(col)}
                       disabled={deletingSlug === col.slug}
-                      title="Delete collection permanently"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                        padding: '7px 12px',
-                        fontSize: '12px',
-                        backgroundColor: '#fef2f2',
-                        color: '#dc2626',
-                        border: '1px solid #fecaca',
-                        borderRadius: '6px',
-                        cursor: deletingSlug === col.slug ? 'not-allowed' : 'pointer',
-                        fontWeight: 600,
-                        transition: 'all 0.2s'
-                      }}
                     >
-                      {deletingSlug === col.slug ? (
-                        <Loader2 size={14} className="admin-spinner" />
-                      ) : (
-                        <Trash2 size={14} />
-                      )}
-                      <span>DELETE</span>
+                      {deletingSlug === col.slug ? <Loader2 size={13} className="admin-spinner" /> : <Trash2 size={13} />}
+                      Delete
                     </button>
                   </div>
                 </div>

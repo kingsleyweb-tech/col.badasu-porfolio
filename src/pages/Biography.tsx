@@ -1,128 +1,132 @@
-import { BackButton } from '../components/BackButton'
-import { InfoCard } from '../components/InfoCard'
-import { OptimizedImage } from '../components/OptimizedImage'
-import { SectionHeading } from '../components/SectionHeading'
-import { biographyCategoryLinks, officer as defaultOfficer } from '../data/officerData'
-import type { ImageAsset } from '../data/officerData'
-import { resolveImageUrl } from '../utils/imageResolver'
 import { usePortfolio } from '../context/PortfolioContext'
+import { biographicDetails as defaultDetails, officer as defaultOfficer } from '../data/officerData'
+import { siteImages } from '../data/siteImages'
+import { IconCalendar, IconCap, IconPin } from '../components/site/icons'
+import { NextPrev, PageHero, SectionHead, SubNav } from '../components/site/PageParts'
+import { resolveImageUrl } from '../utils/imageResolver'
+import { pullQuote, shortName, splitYear } from '../utils/portfolioFormat'
+
+const SECTIONS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'service', label: 'Service Profile' },
+  { id: 'details', label: 'Biographic Form' },
+  { id: 'languages', label: 'Languages' },
+  { id: 'hobbies', label: 'Hobbies' },
+] as const
 
 export function Biography() {
   const { data } = usePortfolio()
-  const officer = data?.officer || defaultOfficer
-
-  const portraitUrl = resolveImageUrl(officer.profileImageUrl || 'hero/profile-home.jpeg')
-  const portraitAsset: ImageAsset = {
-    src: portraitUrl,
-    fallbackSrc: portraitUrl,
-    thumbnailSrc: portraitUrl,
-    placeholderSrc: portraitUrl,
-    srcSet: `${portraitUrl} 800w`,
-    alt: `${officer.rank} ${officer.name}`,
-    caption: officer.name,
-    width: 600,
-    height: 800,
-  }
+  const officer = { ...defaultOfficer, ...data?.officer }
+  const biography = officer.biography?.length ? officer.biography : defaultOfficer.biography
+  const details = data?.biographicDetails?.length ? data.biographicDetails : defaultDetails
+  const spoken = data?.languages?.spoken?.length ? data.languages.spoken : officer.spokenLanguages
+  const written = data?.languages?.written?.length ? data.languages.written : officer.writtenLanguages
+  const languages = spoken.concat(written.filter((l) => !spoken.includes(l)))
+  const hobbies = data?.languages?.hobbies?.length ? data.languages.hobbies : officer.hobbies
+  const frenchLevel = data?.languages?.frenchLevel || officer.frenchLevel
+  const [firstName, ...otherNames] = officer.name.split(' ')
+  const portrait = resolveImageUrl(officer.profileImageUrl) || siteImages.portrait
 
   return (
-    <>
-      <PageHero eyebrow="Biography" title={`${officer.rank} ${officer.name}`} description="Biographic form details and summary of experience from the supplied PDF content." />
-      <section className="section">
-        <div className="container content-layout">
-          <aside className="side-nav" aria-label="Biography sections">
-            {biographyCategoryLinks.map((link) => (
-              <a key={link.to} href={link.to}>{link.label}</a>
+    <div className="pg-bio">
+      <PageHero
+        image={siteImages.ecowasMeeting}
+        crumb="Home / Biography"
+        tag="01 — Biography"
+        title={<>{officer.rank} {firstName}<br />{otherNames.join(' ')}</>}
+        lead="His biographic record, summary of experience, service profile and personal notes, in one continuous profile."
+        stats={[
+          { value: officer.shortRank.replace('.', '').toUpperCase(), label: 'Rank' },
+          { value: splitYear(officer.enlistment).year, label: 'Enlisted' },
+          { value: languages.length, label: 'Languages' },
+        ]}
+      />
+
+      <SubNav items={SECTIONS} />
+
+      <section className="sec" id="overview" style={{ paddingTop: 80 }}>
+        <div className="wrap ov2">
+          <div className="idcard">
+            <div className="img"><img src={portrait} alt={`${officer.rank} ${officer.name}`} /></div>
+            <div className="b">
+              <b>{shortName(officer.shortRank, officer.name)}</b>
+              <div className="role">{officer.profileLabel}</div>
+              <div className="row"><span>Force</span>{officer.force}</div>
+              <div className="row"><span>Motto</span>{officer.motto}</div>
+            </div>
+          </div>
+          <div>
+            <span className="tag"><i />Overview</span>
+            <h2 className="d2">Summary of experience</h2>
+            <p className="lede">{biography[0]}</p>
+            {biography[1] && <p className="txt">{biography[1]}</p>}
+            {biography[2] && <div className="quote"><p>{pullQuote(biography[2])}</p></div>}
+            {biography.slice(2).map((paragraph) => (
+              <p className="txt" key={paragraph}>{paragraph}</p>
             ))}
-          </aside>
-          <div className="text-block">
-            <section id="overview">
-              <SectionHeading eyebrow="Overview" title="Summary of Experience" />
-              <div className="biography-overview">
-                <div className="biography-overview__image">
-                  <OptimizedImage asset={portraitAsset} alt={`${officer.rank} ${officer.name}`} sizes="(max-width: 760px) 100vw, 360px" />
-                </div>
-                <div>
-                  {(officer.biography || defaultOfficer.biography).map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-
-            <section id="service">
-              <SectionHeading eyebrow="Service Profile" title="Leadership, Operations, and Administration" />
-              <p>
-                The supplied profile describes responsibilities spanning Ghana Army administration, force planning, peacekeeping operations, personnel management, liaison work, logistics, combat operations, and operational coordination in multinational environments.
-              </p>
-              <div className="info-grid">
-                <InfoCard label="Branch" title={officer.branch}>
-                  <p>Branch information supplied in the biographic form.</p>
-                </InfoCard>
-                <InfoCard label="Academy" title={officer.academy}>
-                  <p>Military academy supplied in the biographic form.</p>
-                </InfoCard>
-                <InfoCard label="Enlistment" title={officer.enlistment}>
-                  <p>Date provided in the supplied content.</p>
-                </InfoCard>
-              </div>
-
-              <div style={{ marginTop: '2rem' }}>
-                <SectionHeading eyebrow="Official Record" title="Official Biographic Details" />
-                <div className="detail-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
-                  {(data?.biographicDetails || []).map((item, idx) => (
-                    <div className="detail-card" key={idx} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>{item.label}</span>
-                      <strong style={{ fontSize: '0.9375rem', color: '#0f172a' }}>{item.value}</strong>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section id="personal">
-              <SectionHeading eyebrow="Languages & Interests" title="Personal Profile Notes" />
-              <div className="detail-grid">
-                <div className="detail-card" id="languages">
-                  <span>Spoken Languages</span>
-                  <strong>{(data?.languages?.spoken?.length ? data.languages.spoken : officer.spokenLanguages).join(', ')}</strong>
-                </div>
-                <div className="detail-card">
-                  <span>Written Languages</span>
-                  <strong>{(data?.languages?.written?.length ? data.languages.written : officer.writtenLanguages).join(', ')}</strong>
-                </div>
-                <div className="detail-card">
-                  <span>French Language Level</span>
-                  <strong>{data?.languages?.frenchLevel || officer.frenchLevel}</strong>
-                </div>
-                <div className="detail-card" id="hobbies">
-                  <span>Hobbies</span>
-                  <strong>{(data?.languages?.hobbies?.length ? data.languages.hobbies : officer.hobbies).join(', ')}</strong>
-                </div>
-              </div>
-            </section>
           </div>
         </div>
       </section>
-    </>
-  )
-}
 
-type PageHeroProps = {
-  eyebrow: string
-  title: string
-  description: string
-}
+      <section className="sec surface" id="service">
+        <div className="wrap">
+          <SectionHead
+            tag="Service Profile"
+            title={<>Leadership, operations<br />&amp; administration</>}
+            aside="His responsibilities span Ghana Army administration, force planning, peacekeeping operations, personnel management, liaison work, logistics, combat operations, and operational coordination in multinational environments."
+          />
+          <div className="facts3">
+            <div className="fact"><div className="ic"><IconPin size={24} strokeWidth={1.8} /></div><div><span>Branch</span><b>{officer.branch}</b></div></div>
+            <div className="fact"><div className="ic"><IconCap size={24} strokeWidth={1.8} /></div><div><span>Academy</span><b>{officer.academy}</b></div></div>
+            <div className="fact"><div className="ic"><IconCalendar size={24} strokeWidth={1.8} /></div><div><span>Enlistment</span><b>{officer.enlistment}</b></div></div>
+          </div>
+        </div>
+      </section>
 
-export function PageHero({ eyebrow, title, description }: PageHeroProps) {
-  return (
-    <section className="page-hero">
-      <div className="container">
-        <BackButton />
-        <span>{eyebrow}</span>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </div>
-    </section>
+      <section className="sec" id="details">
+        <div className="wrap">
+          <div className="record">
+            <div className="stamp" aria-hidden="true">Official<br />Record</div>
+            <span className="tag on-dark"><i />Official Record</span>
+            <h2 className="d2">Official biographic details</h2>
+            <div className="kvs">
+              {details.map((item, idx) => (
+                <div className="kv" key={item.label + idx}><span>{item.label}</span><b>{item.value}</b></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="sec" id="personal" style={{ paddingTop: 0 }}>
+        <div className="wrap">
+          <SectionHead tag="Languages & Interests" title="Personal profile notes" aside="Spoken and written languages, French proficiency and personal interests." />
+          <div className="langs" id="languages">
+            {languages.map((lang) => (
+              <div className="lg" key={lang}>
+                <b>{lang}</b>
+                <div className="ok">
+                  {spoken.includes(lang) && <span>✓ Spoken</span>}
+                  {written.includes(lang) && <span>✓ Written</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="extras">
+            <div className="french">
+              <div className="lbl">French Language Level</div>
+              <b>{frenchLevel}</b>
+            </div>
+            <div className="hobbies" id="hobbies">
+              <div className="lbl">Hobbies</div>
+              <div className="chips">
+                {hobbies.map((h) => <span className="chip" key={h}>{h}</span>)}
+              </div>
+            </div>
+          </div>
+          <NextPrev prev={{ to: '/', label: 'Home' }} next={{ to: '/career', label: 'Career' }} />
+        </div>
+      </section>
+    </div>
   )
 }

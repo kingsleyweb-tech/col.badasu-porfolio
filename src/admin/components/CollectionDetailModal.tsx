@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Trash2, UploadCloud, Loader2, CheckCircle2, AlertCircle, ImageIcon, Eye, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, ImageIcon, Loader2, Maximize2, Plus, Trash2, UploadCloud, X } from 'lucide-react'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
 import { usePortfolio } from '../../context/PortfolioContext'
@@ -25,6 +26,8 @@ export interface CollectionImage {
   alt: string
   thumbnailUrl: string
   largeUrl: string
+  /** Small tile served by /api/gallery; older Firestore records only have thumbnailUrl. */
+  gridUrl?: string
 }
 
 interface CollectionDetailModalProps {
@@ -32,6 +35,10 @@ interface CollectionDetailModalProps {
   onClose: () => void
   onCollectionUpdated?: () => void
 }
+
+type GalleryPage = { images?: CollectionImage[]; nextCursor?: string }
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
 
 export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
   collection,
@@ -41,42 +48,35 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
   const { data } = usePortfolio()
   const { startBatchUpload } = useUpload()
   const [images, setImages] = useState<CollectionImage[]>([])
+  const [nextCursor, setNextCursor] = useState<string | undefined>()
   const [loading, setLoading] = useState<boolean>(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  // Toast Alert Notification state
+
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
 
-  // Fullscreen Preview Lightbox
-  const [previewImage, setPreviewImage] = useState<CollectionImage | null>(null)
-
-  // Deleting Image & Collection State
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingCollection, setDeletingCollection] = useState<boolean>(false)
   const [photoToDelete, setPhotoToDelete] = useState<CollectionImage | null>(null)
   const [showDeleteCollectionConfirm, setShowDeleteCollectionConfirm] = useState<boolean>(false)
 
-  // Fetch images from Cloudinary + Firestore
+  // First page from Cloudinary, merged with any Firestore-only records (no duplicates)
   const fetchCollectionImages = useCallback(async () => {
     if (!collection) return
     setLoading(true)
     setError(null)
     try {
       const [res, fsImages] = await Promise.all([
-        fetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}`).catch(() => null),
+        fetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}&fresh=1`).catch(() => null),
         fetchFirestoreGalleryImages(collection.slug).catch(() => [])
       ])
 
-      let apiImages: CollectionImage[] = []
-      if (res && res.ok) {
-        const data = await res.json()
-        apiImages = data.images || []
-      }
+      let page: GalleryPage = {}
+      if (res && res.ok) page = await res.json()
 
-      // Merge Cloudinary images with Firestore images (prevent duplicates)
       const imgMap = new Map<string, CollectionImage>()
-      apiImages.forEach((img) => imgMap.set(img.publicId || img.id, img))
-
+      ;(page.images || []).forEach((img) => imgMap.set(img.publicId || img.id, img))
       fsImages.forEach((fsi) => {
         if (!imgMap.has(fsi.publicId) && !imgMap.has(fsi.id)) {
           imgMap.set(fsi.publicId || fsi.id, {
@@ -91,28 +91,65 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
       })
 
       setImages(Array.from(imgMap.values()))
+      setNextCursor(page.nextCursor)
+      if (!res || !res.ok) {
+        if (imgMap.size === 0) setError('Failed to load collection photos. Please check the network connection.')
+      }
     } catch {
-      setError('Failed to load collection photos. Please check network connection.')
+      setError('Failed to load collection photos. Please check the network connection.')
     } finally {
       setLoading(false)
     }
   }, [collection])
 
   useEffect(() => {
-    if (collection) {
-      fetchCollectionImages()
-    }
+    if (collection) fetchCollectionImages()
   }, [collection, fetchCollectionImages])
+
+  const loadMore = async () => {
+    if (!collection || !nextCursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}&cursor=${encodeURIComponent(nextCursor)}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const page: GalleryPage = await res.json()
+      setImages((prev) => {
+        const seen = new Set(prev.map((img) => img.publicId || img.id))
+        return [...prev, ...(page.images || []).filter((img) => !seen.has(img.publicId || img.id))]
+      })
+      setNextCursor(page.nextCursor)
+    } catch {
+      setToastMessage({ text: 'Could not load more photographs. Try again.', type: 'error' })
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  // Escape closes the preview first, then the collection; body scroll is locked while open
+  const previewOpen = previewIndex !== null
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (photoToDelete || showDeleteCollectionConfirm) return
+      if (e.key === 'Escape') {
+        if (previewOpen) setPreviewIndex(null)
+        else onClose()
+      }
+      if (previewOpen && e.key === 'ArrowRight') setPreviewIndex((i) => (i === null ? i : (i + 1) % images.length))
+      if (previewOpen && e.key === 'ArrowLeft') setPreviewIndex((i) => (i === null ? i : (i - 1 + images.length) % images.length))
+    }
+    window.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [previewOpen, images.length, onClose, photoToDelete, showDeleteCollectionConfirm])
 
   if (!collection) return null
 
-  // REQUIREMENT 12 & 13 & 15: Complete Collection Deletion
   const executeDeleteEntireCollection = async () => {
-    if (!collection) return
-
     setDeletingCollection(true)
     setToastMessage(null)
-
     try {
       // 1. Delete Cloudinary folder and images
       await fetch('/api/delete-collection', {
@@ -127,50 +164,37 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
       setShowDeleteCollectionConfirm(false)
       if (onCollectionUpdated) onCollectionUpdated()
       onClose()
-    } catch (err: any) {
-      setToastMessage({ text: `Failed to delete collection: ${err.message || 'Unknown error'}`, type: 'error' })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setToastMessage({ text: `Failed to delete collection: ${message}`, type: 'error' })
       setDeletingCollection(false)
       setShowDeleteCollectionConfirm(false)
     }
   }
 
-  // Handle Photo Upload using Controlled Sequential Queue
+  // Upload through the controlled sequential queue
   const handleAddPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return
     const files = Array.from(e.target.files)
-
-    startBatchUpload(
-      collection.name,
-      collection.slug,
-      files,
-      (uploaded, total) => {
-        setToastMessage({
-          text: `Successfully added ${uploaded} of ${total} photo(s) to "${collection.name}"!`,
-          type: 'success'
-        })
-        fetchCollectionImages()
-        if (onCollectionUpdated) onCollectionUpdated()
-      }
-    )
-
+    startBatchUpload(collection.name, collection.slug, files, (uploaded, total) => {
+      setToastMessage({ text: `Added ${uploaded} of ${total} photo(s) to "${collection.name}".`, type: 'success' })
+      fetchCollectionImages()
+      if (onCollectionUpdated) onCollectionUpdated()
+    })
     e.target.value = ''
   }
 
-  // Handle Photo Deletion
   const executeDeletePhoto = async (image: CollectionImage | null) => {
     if (!image) return
     setDeletingId(image.id)
     setToastMessage(null)
-
     try {
-      // Delete Cloudinary asset if unused
       await deleteCloudinaryImageIfUnused(image.publicId, data)
-      // Delete Firestore document
       await deleteGalleryImageFromFirestore(image.id, collection.slug)
-
       setImages((prev) => prev.filter((img) => img.id !== image.id && img.publicId !== image.publicId))
-      setToastMessage({ text: `Photo successfully deleted from "${collection.name}".`, type: 'success' })
+      setToastMessage({ text: `Photo deleted from "${collection.name}".`, type: 'success' })
       setPhotoToDelete(null)
+      setPreviewIndex(null)
       if (onCollectionUpdated) onCollectionUpdated()
     } catch {
       setToastMessage({ text: 'Could not delete photo. Check network or credentials.', type: 'error' })
@@ -179,390 +203,171 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
     }
   }
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(6px)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1.5rem',
-        animation: 'fadeIn 0.2s ease-out'
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          maxWidth: '1080px',
-          width: '100%',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden',
-          border: '1px solid #e2e8f0'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Modal Header */}
-        <div
-          style={{
-            padding: '1.25rem 1.75rem',
-            borderBottom: '1px solid #e2e8f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            backgroundColor: '#f8fafc'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button
-              onClick={onClose}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.4rem 0.75rem',
-                backgroundColor: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                color: '#475569',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <ArrowLeft size={16} />
-              <span>Back</span>
-            </button>
+  const total = Math.max(collection.count || 0, images.length)
+  const preview = previewIndex !== null ? images[previewIndex] : null
 
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                {collection.name}
-              </h2>
-              <span style={{ fontSize: '0.8125rem', color: '#64748b' }}>
-                {images.length} photo{images.length !== 1 ? 's' : ''} in collection
-              </span>
-            </div>
+  return createPortal(
+    <div className="ad-cm-scrim" onClick={onClose}>
+      <div className="ad-cm" role="dialog" aria-modal="true" aria-labelledby="cm-title" onClick={(e) => e.stopPropagation()}>
+        <header className="ad-cm-hd">
+          <div className="ttl">
+            <span className="ad-pill g">Collection</span>
+            <h2 id="cm-title">{collection.name}</h2>
+            <p>
+              {loading ? 'Loading photographs…' : `Showing ${images.length} of ${total} photo${total === 1 ? '' : 's'}`}
+              <span> · /gallery/{collection.slug}</span>
+            </p>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {/* Add Photo Button */}
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1.125rem',
-                backgroundColor: '#1f5c3a',
-                color: '#ffffff',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
+          <div className="acts">
+            <label className="ad-b g">
               <UploadCloud size={16} />
-              <span>Add Photos</span>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleAddPhotos}
-                style={{ display: 'none' }}
-              />
+              Add photos
+              <input type="file" multiple accept="image/*" onChange={handleAddPhotos} className="sr-only" />
             </label>
-
-            {/* Delete Collection Button */}
-            <button
-              type="button"
-              onClick={() => setShowDeleteCollectionConfirm(true)}
-              disabled={deletingCollection}
-              title="Delete this entire collection"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.5rem 0.875rem',
-                backgroundColor: '#fef2f2',
-                color: '#dc2626',
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: deletingCollection ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {deletingCollection ? <Loader2 size={16} className="admin-spinner" /> : <Trash2 size={16} />}
-              <span>{deletingCollection ? 'Deleting...' : 'Delete Collection'}</span>
+            <button type="button" className="ad-b red" onClick={() => setShowDeleteCollectionConfirm(true)} disabled={deletingCollection}>
+              {deletingCollection ? <Loader2 size={15} className="admin-spinner" /> : <Trash2 size={15} />}
+              <span className="lbl-long">{deletingCollection ? 'Deleting…' : 'Delete collection'}</span>
             </button>
-
-            <button
-              onClick={onClose}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                padding: '6px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              aria-label="Close"
-            >
-              <X size={20} />
+            <button type="button" className="ad-icb x" onClick={onClose} aria-label="Close collection">
+              <X size={18} />
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Toast Alert Notification */}
         {toastMessage && (
-          <div
-            style={{
-              padding: '0.875rem 1.75rem',
-              backgroundColor: toastMessage.type === 'error' ? '#fef2f2' : '#f0fdf4',
-              color: toastMessage.type === 'error' ? '#dc2626' : '#16a34a',
-              borderBottom: '1px solid #e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '0.875rem',
-              fontWeight: 500
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {toastMessage.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-              <span>{toastMessage.text}</span>
-            </div>
-            <button
-              onClick={() => setToastMessage(null)}
-              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}
-            >
-              ×
+          <div className={`ad-alert ${toastMessage.type === 'error' ? 'err' : 'ok'} ad-cm-toast`} role="status">
+            {toastMessage.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+            <span>{toastMessage.text}</span>
+            <button type="button" className="x" onClick={() => setToastMessage(null)} aria-label="Dismiss">
+              <X size={16} />
             </button>
           </div>
         )}
 
-        {/* Modal Body: Image Grid */}
-        <div style={{ padding: '1.75rem', overflowY: 'auto', flex: 1 }}>
+        <div className="ad-cm-body">
           {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem 0', color: '#64748b', gap: '0.75rem' }}>
-              <Loader2 size={24} className="admin-spinner" />
-              <span>Loading collection photos...</span>
+            <div className="ad-cm-grid" aria-busy="true">
+              {Array.from({ length: 12 }, (_, i) => <div key={i} className="ad-cm-tile skel" />)}
             </div>
           ) : error ? (
-            <div style={{ padding: '1.5rem', backgroundColor: '#fef2f2', color: '#ef4444', borderRadius: '12px', textAlign: 'center' }}>
-              <AlertCircle size={32} style={{ marginBottom: '0.5rem' }} />
-              <p>{error}</p>
-              <button onClick={fetchCollectionImages} className="btn btn--secondary btn--sm" style={{ marginTop: '0.75rem' }}>
-                Retry
-              </button>
+            <div className="ad-empty col">
+              <AlertCircle size={36} />
+              <b>{error}</b>
+              <button type="button" className="ad-b l" onClick={fetchCollectionImages}>Retry</button>
             </div>
           ) : images.length === 0 ? (
-            <div style={{ padding: '4rem 0', textAlign: 'center', color: '#94a3b8' }}>
-              <ImageIcon size={48} style={{ marginBottom: '1rem', opacity: 0.4 }} />
-              <h3 style={{ color: '#0f172a', fontSize: '1.125rem' }}>No photos in this collection yet</h3>
-              <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>Use the "Add Photos" button above to upload images.</p>
+            <div className="ad-empty col">
+              <ImageIcon size={44} />
+              <b>No photos in this collection yet</b>
+              <span>Use “Add photos” above to upload images.</span>
             </div>
           ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '1.25rem'
-              }}
-            >
-              {images.map((img) => {
-                const isDeleting = deletingId === img.id
-                return (
-                  <div
+            <>
+              <div className="ad-cm-grid">
+                {images.map((img, i) => (
+                  <PhotoTile
                     key={img.id}
-                    style={{
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      border: '1px solid #e2e8f0',
-                      backgroundColor: '#f8fafc',
-                      position: 'relative',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                      opacity: isDeleting ? 0.5 : 1,
-                      transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                  >
-                    <div style={{ position: 'relative', width: '100%', height: '150px', backgroundColor: '#e2e8f0' }}>
-                      <img
-                        src={resolveImageUrl(img.thumbnailUrl)}
-                        alt={img.alt}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-
-                      {/* Image Action Buttons Overlay */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.75rem',
-                          opacity: 0,
-                          transition: 'opacity 0.2s ease-in-out'
-                        }}
-                        onMouseOver={(e) => (e.currentTarget.style.opacity = '1')}
-                        onMouseOut={(e) => (e.currentTarget.style.opacity = '0')}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setPreviewImage(img)}
-                          title="Preview full photo"
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '50%',
-                            backgroundColor: '#ffffff',
-                            color: '#0f172a',
-                            border: 'none',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <Eye size={16} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setPhotoToDelete(img)}
-                          disabled={isDeleting}
-                          title="Delete photo"
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '50%',
-                            backgroundColor: '#ef4444',
-                            color: '#ffffff',
-                            border: 'none',
-                            cursor: isDeleting ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          {isDeleting ? <Loader2 size={16} className="admin-spinner" /> : <Trash2 size={16} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <span
-                        style={{
-                          fontSize: '0.8125rem',
-                          fontWeight: 600,
-                          color: '#334155',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title={img.title}
-                      >
-                        {img.title}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => setPhotoToDelete(img)}
-                        disabled={isDeleting}
-                        title="Delete photo"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ef4444',
-                          cursor: 'pointer',
-                          padding: '4px'
-                        }}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                    image={img}
+                    index={i}
+                    deleting={deletingId === img.id}
+                    onOpen={() => setPreviewIndex(i)}
+                    onDelete={() => setPhotoToDelete(img)}
+                  />
+                ))}
+              </div>
+              {nextCursor && (
+                <div className="ad-cm-more">
+                  <button type="button" className="ad-b l" onClick={loadMore} disabled={loadingMore}>
+                    {loadingMore ? <Loader2 size={15} className="admin-spinner" /> : <Plus size={15} />}
+                    {loadingMore ? 'Loading…' : `Load more photographs (${total - images.length} left)`}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* Lightbox Full Photo Preview Modal */}
-      {previewImage && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.9)',
-            zIndex: 10000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '2rem'
-          }}
-          onClick={() => setPreviewImage(null)}
-        >
-          <button
-            onClick={() => setPreviewImage(null)}
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: 'none',
-              border: 'none',
-              color: '#ffffff',
-              cursor: 'pointer'
-            }}
-          >
-            <X size={28} />
-          </button>
-          <img
-            src={resolveImageUrl(previewImage.largeUrl)}
-            alt={previewImage.title}
-            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px' }}
-            onClick={(e) => e.stopPropagation()}
-          />
+      {preview && previewIndex !== null && (
+        <div className="ad-cm-pv" onClick={(e) => { e.stopPropagation(); setPreviewIndex(null) }} role="dialog" aria-label="Photo preview">
+          <div className="bar" onClick={(e) => e.stopPropagation()}>
+            <span>{pad2(previewIndex + 1)} / {pad2(images.length)}</span>
+            <div className="acts">
+              <button type="button" className="ad-b sm red" onClick={() => setPhotoToDelete(preview)}>
+                <Trash2 size={14} /> Delete
+              </button>
+              <button type="button" className="ad-icb" onClick={() => setPreviewIndex(null)} aria-label="Close preview">
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+          <img key={preview.id} src={resolveImageUrl(preview.largeUrl)} alt={preview.alt} onClick={(e) => e.stopPropagation()} />
+          {images.length > 1 && (
+            <>
+              <button type="button" className="nav prev" aria-label="Previous photo" onClick={(e) => { e.stopPropagation(); setPreviewIndex((previewIndex - 1 + images.length) % images.length) }}>
+                <ChevronLeft size={22} />
+              </button>
+              <button type="button" className="nav next" aria-label="Next photo" onClick={(e) => { e.stopPropagation(); setPreviewIndex((previewIndex + 1) % images.length) }}>
+                <ChevronRight size={22} />
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      {/* Delete Photo Confirmation Modal */}
-      <ConfirmDeleteModal
-        isOpen={!!photoToDelete}
-        title="Delete Photo"
-        itemName={photoToDelete?.title}
-        message="Are you sure you want to permanently delete this photo? This action cannot be undone."
-        isLoading={deletingId === photoToDelete?.id}
-        onConfirm={() => executeDeletePhoto(photoToDelete)}
-        onClose={() => setPhotoToDelete(null)}
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <ConfirmDeleteModal
+          isOpen={!!photoToDelete}
+          title="Delete Photo"
+          itemName={photoToDelete?.title}
+          message="Are you sure you want to permanently delete this photo? This action cannot be undone."
+          isLoading={deletingId === photoToDelete?.id}
+          onConfirm={() => executeDeletePhoto(photoToDelete)}
+          onClose={() => setPhotoToDelete(null)}
+        />
+        <ConfirmDeleteModal
+          isOpen={showDeleteCollectionConfirm}
+          title="Delete Entire Collection"
+          itemName={collection.name}
+          message={`This will permanently delete "${collection.name}" and ALL photos inside it. This action cannot be undone.`}
+          isLoading={deletingCollection}
+          onConfirm={executeDeleteEntireCollection}
+          onClose={() => setShowDeleteCollectionConfirm(false)}
+        />
+      </div>
+    </div>,
+    document.body
+  )
+}
 
-      {/* Delete Entire Collection Confirmation Modal */}
-      <ConfirmDeleteModal
-        isOpen={showDeleteCollectionConfirm}
-        title="Delete Entire Collection"
-        itemName={collection?.name}
-        message={`This will permanently delete "${collection?.name}" and ALL photos inside it. This action cannot be undone.`}
-        isLoading={deletingCollection}
-        onConfirm={executeDeleteEntireCollection}
-        onClose={() => setShowDeleteCollectionConfirm(false)}
-      />
+/** One photo tile: shimmer until loaded, placeholder if the URL fails. */
+function PhotoTile({ image, index, deleting, onOpen, onDelete }: {
+  image: CollectionImage
+  index: number
+  deleting: boolean
+  onOpen: () => void
+  onDelete: () => void
+}) {
+  const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const src = resolveImageUrl(image.gridUrl || image.thumbnailUrl)
+
+  return (
+    <div className={`ad-cm-tile ${loaded ? 'is-loaded' : 'skel'} ${deleting ? 'is-busy' : ''}`}>
+      <button type="button" className="open" onClick={onOpen} aria-label={`Preview photo ${index + 1}`}>
+        {failed ? (
+          <span className="none"><ImageIcon size={26} /></span>
+        ) : (
+          <img src={src} alt={image.alt} loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => { setFailed(true); setLoaded(true) }} />
+        )}
+        <span className="zoom" aria-hidden="true"><Maximize2 size={15} /></span>
+      </button>
+      <div className="ft">
+        <span title={image.title}>Photo {pad2(index + 1)}</span>
+        <button type="button" className="del" onClick={onDelete} disabled={deleting} aria-label={`Delete photo ${index + 1}`}>
+          {deleting ? <Loader2 size={14} className="admin-spinner" /> : <Trash2 size={14} />}
+        </button>
+      </div>
     </div>
   )
 }

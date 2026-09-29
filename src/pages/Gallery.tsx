@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, CalendarDays, ChevronRight, ImageIcon, Images, Info, Loader2, RefreshCw } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import Lightbox from 'yet-another-react-lightbox'
-import Counter from 'yet-another-react-lightbox/plugins/counter'
-import 'yet-another-react-lightbox/plugins/counter.css'
-import { BackButton } from '../components/BackButton'
-import { SectionHeading } from '../components/SectionHeading'
-import { officer } from '../data/officerData'
-import { PageHero } from './Biography'
+import { Link, useParams } from 'react-router-dom'
+import { usePortfolio } from '../context/PortfolioContext'
+import { officer as defaultOfficer } from '../data/officerData'
+import { siteImages } from '../data/siteImages'
+import { useIsMobile } from '../hooks/useMediaQuery'
+import { IconArrowRight, IconExpand, IconImage, IconInfo, IconLoader, IconPlay, IconPlus, IconRefresh } from '../components/site/icons'
+import { Lightbox } from '../components/site/Lightbox'
+import type { LightboxImage } from '../components/site/Lightbox'
+import { BackLink, NextPrev, SectionHead } from '../components/site/PageParts'
 import { resolveImageUrl } from '../utils/imageResolver'
 
 type GalleryCollection = {
@@ -33,33 +33,25 @@ type GalleryResponse =
   | { collections: GalleryCollection[] }
   | { collection: GalleryCollection; images: GalleryImage[]; nextCursor?: string }
 
+type Status = 'loading' | 'ready' | 'error'
+
 export function Gallery() {
   const { collectionSlug } = useParams()
-
-  if (collectionSlug) {
-    return <GalleryCollectionView collectionSlug={collectionSlug} />
-  }
-
-  return <GalleryCollectionsView />
+  return collectionSlug ? <GalleryCollectionView key={collectionSlug} collectionSlug={collectionSlug} /> : <GalleryCollectionsView />
 }
 
-// ─── Collections List ────────────────────────────────────────────────────────
-
-function GalleryCollectionsView() {
+/** Loads the collection list; shared by the gallery page and the "next collection" link. */
+function useCollections() {
   const [collections, setCollections] = useState<GalleryCollection[]>([])
-  // DISTINCT states: loading | ready | error — never conflated
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [status, setStatus] = useState<Status>('loading')
+  const [attempt, setAttempt] = useState(0)
 
-  const loadCollections = useCallback(() => {
-    setStatus('loading')
+  useEffect(() => {
     let active = true
-
     fetchGalleryWithRetry()
       .then((data) => {
         if (!active) return
-        if ('collections' in data && Array.isArray(data.collections)) {
-          setCollections(data.collections)
-        }
+        if ('collections' in data && Array.isArray(data.collections)) setCollections(data.collections)
         setStatus('ready')
       })
       .catch((error: unknown) => {
@@ -67,142 +59,131 @@ function GalleryCollectionsView() {
         console.warn('[Gallery] Failed to load collections after retries.', error)
         setStatus('error')
       })
+    return () => {
+      active = false
+    }
+  }, [attempt])
 
-    return () => { active = false }
+  const retry = useCallback(() => {
+    setStatus('loading')
+    setAttempt((n) => n + 1)
   }, [])
 
-  useEffect(() => {
-    return loadCollections()
-  }, [loadCollections])
+  return { collections, status, retry }
+}
+
+// ─── Collections list ─────────────────────────────────────────────────────────
+
+function GalleryCollectionsView() {
+  const { collections, status, retry } = useCollections()
+  const isMobile = useIsMobile()
+
+  // The first collection is featured (2×2). Stretch the last card so the final row has no gap.
+  const remainder = (collections.length + 3) % 3
+  const lastSpan = isMobile ? ((collections.length - 1) % 2 === 1 ? 'span2' : '') : remainder === 1 ? 'span3' : remainder === 2 ? 'span2' : ''
 
   return (
-    <>
-      <PageHero
-        eyebrow="Gallery"
-        title="Gallery"
-        description="A visual journey through Colonel Badasu's military career, professional service, international assignments, leadership, training, and distinguished moments."
-      />
-      <section className="section">
-        <div className="container">
-          <BackButton />
-          <SectionHeading eyebrow="Collections" title="Military Career Archive" />
+    <div className="pg-gallery">
+      <section className="ghero">
+        <div className="wrap">
+          <div>
+            <div className="crumb rv"><BackLink /><span>Home / Gallery</span></div>
+            <span className="tag on-dark rv rv1"><i />06 — Gallery</span>
+            <h1 className="d1 rv rv2">Military career<br /><em>archive</em></h1>
+            <p className="lead rv rv3">
+              A visual journey through Colonel Badasu&apos;s military career, professional service, international assignments, leadership, training, and distinguished moments.
+            </p>
+          </div>
+          <div className="pstack rv rv3" aria-hidden="true">
+            <div className="sp p2"><img src={siteImages.portrait} alt="" /></div>
+            <div className="sp p1"><img src={siteImages.television} alt="" /></div>
+            <div className="sp p3"><img src={siteImages.ecowasMeeting} alt="" /></div>
+          </div>
+        </div>
+      </section>
 
-          {/* LOADING — shown only while fetching */}
+      <section className="sec" style={{ paddingTop: 100 }}>
+        <div className="wrap">
+          <SectionHead
+            tag="Collections"
+            title={<>Browse the<br />collections</>}
+            aside="Each collection opens as its own photo set with a full-screen viewer."
+          />
+
           {status === 'loading' && (
-            <GalleryNotice icon="loading" text="Preparing gallery collections..." />
-          )}
-
-          {/* ERROR — shown only on actual failure, with Retry button */}
-          {status === 'error' && (
-            <div className="gallery-notice gallery-notice--error" role="alert">
-              <ImageIcon size={19} aria-hidden="true" />
-              <span>Gallery collections are temporarily unavailable.</span>
-              <button
-                type="button"
-                className="btn btn--secondary btn--sm"
-                onClick={loadCollections}
-                style={{ marginLeft: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <RefreshCw size={14} />
-                Retry
-              </button>
+            <div className="grid-c" aria-busy="true" aria-label="Loading collections">
+              {[0, 1, 2, 3, 4].map((i) => <div key={i} className={`gc skel ${i === 0 ? 'big' : ''}`} />)}
             </div>
           )}
 
-          {/* SUCCESS — only shown when status is 'ready' */}
-          {status === 'ready' && (
+          {status === 'error' && (
+            <div className="notice err" role="alert">
+              <IconImage size={19} />
+              <span>Gallery collections are temporarily unavailable.</span>
+              <button type="button" className="btn btn-line" onClick={retry}><IconRefresh size={15} />Retry</button>
+            </div>
+          )}
+
+          {status === 'ready' && collections.length === 0 && (
+            <div className="notice" role="status"><IconImage size={19} /><span>No collections have been published yet.</span></div>
+          )}
+
+          {status === 'ready' && collections.length > 0 && (
             <>
-              {/* EMPTY — only shown when successfully loaded but nothing returned */}
-              {collections.length === 0 ? (
-                <GalleryNotice text="No collections have been published yet." />
-              ) : (
-                <div className="gallery-album-list" aria-label="Gallery collections">
-                  {collections.map((col) => (
-                    <Link
-                      className="gallery-album-row"
-                      key={col.slug}
-                      to={`/gallery/${col.slug}`}
-                      aria-label={`Open ${col.name} collection`}
-                    >
-                      {/* Thumbnail */}
-                      <span className="gallery-album-row__thumb">
-                        {col.coverImage ? (
-                          <GalleryThumbnail
-                            src={resolveImageUrl(col.coverImage.thumbnailUrl)}
-                            alt={col.coverImage.alt ?? col.name}
-                          />
-                        ) : (
-                          <span className="gallery-image-fallback" aria-hidden="true">
-                            <ImageIcon size={26} />
-                          </span>
-                        )}
-                      </span>
-
-                      {/* Info */}
-                      <span className="gallery-album-row__info">
-                        <strong className="gallery-album-row__title">{col.name}</strong>
-                        <span className="gallery-album-row__meta">
-                          <span className="gallery-album-row__count">
-                            <Images size={13} aria-hidden="true" />
-                            {typeof col.count === 'number'
-                              ? `${col.count} image${col.count === 1 ? '' : 's'}`
-                              : 'No images yet'}
-                          </span>
-                          {col.updatedAt && (
-                            <span className="gallery-album-row__date">
-                              <CalendarDays size={13} aria-hidden="true" />
-                              Last updated: {col.updatedAt}
-                            </span>
-                          )}
-                        </span>
-                      </span>
-
-                      {/* Arrow */}
-                      <ChevronRight className="gallery-album-row__chevron" size={20} aria-hidden="true" />
+              <div className="grid-c">
+                {collections.map((col, i) => {
+                  const isLast = i === collections.length - 1 && i > 0
+                  const cover = col.coverImage ? resolveImageUrl(i === 0 ? col.coverImage.largeUrl : col.coverImage.thumbnailUrl) : ''
+                  return (
+                    <Link key={col.slug} className={`gc ${i === 0 ? 'big' : ''} ${isLast ? lastSpan : ''}`} to={`/gallery/${col.slug}`}>
+                      {cover ? <CoverImage src={cover} alt={col.coverImage?.alt || `${col.name} cover`} /> : <span className="noimg"><IconImage size={40} /></span>}
+                      <div className="ov" />
+                      {i === 0 && <span className="cnt pill">Featured collection</span>}
+                      <div className="t">
+                        <div>
+                          <span className="pill">{typeof col.count === 'number' ? `${col.count} ${col.count === 1 ? 'Photograph' : 'Photographs'}` : 'Photographs'}</span>
+                          <h3>{col.name}</h3>
+                        </div>
+                        <span className="go"><IconArrowRight /></span>
+                      </div>
                     </Link>
-                  ))}
-                </div>
-              )}
-
-              {collections.length > 0 && (
-                <p className="gallery-album-hint">
-                  <Info size={15} aria-hidden="true" />
-                  Tap on a collection to view photographs.
-                </p>
-              )}
+                  )
+                })}
+              </div>
+              <p className="hint"><IconInfo size={16} />Select a collection to view its photographs.</p>
             </>
           )}
+
+          <NextPrev prev={{ to: '/education', label: 'Education' }} next={{ to: '/', label: 'Home', small: 'Back to start →' }} />
         </div>
       </section>
-    </>
+    </div>
   )
 }
 
-// ─── Single Collection View ───────────────────────────────────────────────────
+// ─── Single collection ────────────────────────────────────────────────────────
 
 function GalleryCollectionView({ collectionSlug }: { collectionSlug: string }) {
-  const navigate = useNavigate()
+  const { data } = usePortfolio()
+  const officer = { ...defaultOfficer, ...data?.officer }
+  const { collections } = useCollections()
   const [collection, setCollection] = useState<GalleryCollection | undefined>()
   const [images, setImages] = useState<GalleryImage[]>([])
   const [nextCursor, setNextCursor] = useState<string | undefined>()
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [status, setStatus] = useState<Status>('loading')
+  const [attempt, setAttempt] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [lightboxIndex, setLightboxIndex] = useState(-1)
+  const [viewerIndex, setViewerIndex] = useState(-1)
 
-  const loadCollection = useCallback(() => {
-    setStatus('loading')
-    setImages([])
-    setCollection(undefined)
-    setNextCursor(undefined)
+  useEffect(() => {
     let active = true
-
     fetchGalleryWithRetry(`collection=${encodeURIComponent(collectionSlug)}`)
-      .then((data) => {
+      .then((res) => {
         if (!active) return
-        if ('collection' in data) {
-          setCollection(data.collection)
-          setImages(data.images ?? [])
-          setNextCursor(data.nextCursor)
+        if ('collection' in res) {
+          setCollection(res.collection)
+          setImages(res.images ?? [])
+          setNextCursor(res.nextCursor)
         }
         setStatus('ready')
       })
@@ -211,32 +192,24 @@ function GalleryCollectionView({ collectionSlug }: { collectionSlug: string }) {
         console.warn('[Gallery] Failed to load collection:', collectionSlug, error)
         setStatus('error')
       })
+    return () => {
+      active = false
+    }
+  }, [collectionSlug, attempt])
 
-    return () => { active = false }
-  }, [collectionSlug])
-
-  useEffect(() => {
-    return loadCollection()
-  }, [loadCollection])
-
-  const slides = useMemo(() => images.map((img) => ({
-    src: resolveImageUrl(img.largeUrl),
-    alt: img.alt,
-    title: img.title,
-    width: img.width,
-    height: img.height
-  })), [images])
+  const retry = () => {
+    setStatus('loading')
+    setAttempt((n) => n + 1)
+  }
 
   const loadMore = async () => {
     if (!nextCursor || loadingMore) return
     setLoadingMore(true)
     try {
-      const data = await fetchGalleryWithRetry(
-        `collection=${encodeURIComponent(collectionSlug)}&cursor=${encodeURIComponent(nextCursor)}`
-      )
-      if ('collection' in data) {
-        setImages((prev) => [...prev, ...(data.images ?? [])])
-        setNextCursor(data.nextCursor)
+      const res = await fetchGalleryWithRetry(`collection=${encodeURIComponent(collectionSlug)}&cursor=${encodeURIComponent(nextCursor)}`)
+      if ('collection' in res) {
+        setImages((prev) => [...prev, ...(res.images ?? [])])
+        setNextCursor(res.nextCursor)
       }
     } catch (error) {
       console.warn('[Gallery] Unable to load more gallery images.', error)
@@ -245,178 +218,133 @@ function GalleryCollectionView({ collectionSlug }: { collectionSlug: string }) {
     }
   }
 
+  const viewerImages = useMemo<LightboxImage[]>(
+    () => images.map((img) => ({ src: resolveImageUrl(img.largeUrl), thumb: resolveImageUrl(img.thumbnailUrl), alt: img.alt || img.title })),
+    [images]
+  )
+
+  const name = collection?.name ?? collections.find((c) => c.slug === collectionSlug)?.name ?? 'Gallery Collection'
+  const coverSource = collection?.coverImage ?? images[0]
+  const cover = coverSource ? resolveImageUrl(coverSource.largeUrl) : siteImages.ecowasChamber
+  const position = collections.findIndex((c) => c.slug === collectionSlug)
+  const nextCollection = position >= 0 && collections.length > 1 ? collections[(position + 1) % collections.length] : undefined
+  const count = collection?.count ?? (status === 'ready' ? images.length : undefined)
+
   return (
-    <>
-      <PageHero
-        eyebrow="Gallery Collection"
-        title={collection?.name ?? 'Gallery Collection'}
-        description={`Selected photographs from ${officer.rank} ${officer.name}'s professional archive.`}
-      />
-      <section className="section">
-        <div className="container">
-          <button className="back-button" type="button" onClick={() => navigate('/gallery')}>
-            <ArrowLeft size={18} aria-hidden="true" />
-            <span>Back to Gallery</span>
-          </button>
-
-          <div className="gallery-collection-header">
-            <SectionHeading eyebrow="Photographs" title={collection?.name ?? 'Collection'} />
-            {typeof collection?.count === 'number' && (
-              <p>{collection.count} {collection.count === 1 ? 'Photo' : 'Photos'}</p>
-            )}
-          </div>
-
-          {/* LOADING */}
-          {status === 'loading' && (
-            <GalleryNotice icon="loading" text="Loading collection photographs..." />
-          )}
-
-          {/* ERROR with retry */}
-          {status === 'error' && (
-            <div className="gallery-notice gallery-notice--error" role="alert">
-              <ImageIcon size={19} aria-hidden="true" />
-              <span>This gallery collection is temporarily unavailable.</span>
-              <button
-                type="button"
-                className="btn btn--secondary btn--sm"
-                onClick={loadCollection}
-                style={{ marginLeft: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <RefreshCw size={14} />
-                Retry
-              </button>
-            </div>
-          )}
-
-          {/* EMPTY — only when loaded but no images */}
-          {status === 'ready' && images.length === 0 && (
-            <GalleryNotice text="No photographs in this collection yet." />
-          )}
-
-          {/* Photo grid — visible even while loading more */}
+    <div className="pg-col">
+      <section className="phero">
+        <img className="bgimg" src={cover} alt="" />
+        <div className="shade" />
+        <div className="wrap">
+          <div className="crumb rv"><BackLink to="/gallery" label="Back to Gallery" /><span>Gallery / Collection</span></div>
+          <span className="tag on-dark rv rv1"><i />Gallery Collection</span>
+          <h1 className="d1 rv rv2">{name}</h1>
+          <p className="lead rv rv3">Selected photographs from {officer.rank} {officer.name}&apos;s professional archive.</p>
           {images.length > 0 && (
-            <div className="gallery-photo-grid" aria-label={`${collection?.name ?? 'Gallery'} photographs`}>
-              {images.map((image, imageIndex) => (
-                <GalleryPhoto
-                  key={image.id}
-                  image={image}
-                  onClick={() => setLightboxIndex(imageIndex)}
-                />
-              ))}
-            </div>
-          )}
-
-          {nextCursor && (
-            <div className="gallery-load-more">
-              <button className="btn btn--secondary" type="button" onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? <Loader2 size={18} aria-hidden="true" /> : <Images size={18} aria-hidden="true" />}
-                <span>{loadingMore ? 'Loading' : 'Load More'}</span>
-              </button>
+            <div className="hstats rv rv4">
+              <button className="btn btn-gold" type="button" onClick={() => setViewerIndex(0)}><IconPlay size={18} />View as slideshow</button>
             </div>
           )}
         </div>
       </section>
 
-      <Lightbox
-        open={lightboxIndex >= 0}
-        index={lightboxIndex}
-        close={() => setLightboxIndex(-1)}
-        slides={slides}
-        plugins={[Counter]}
-        carousel={{ preload: 1, imageFit: 'contain' }}
-        controller={{ closeOnBackdropClick: true }}
-        labels={{
-          Lightbox: `${collection?.name ?? 'Gallery'} image viewer`,
-          Previous: 'Previous photograph',
-          Next: 'Next photograph',
-          Close: 'Close photograph viewer'
-        }}
-      />
-    </>
-  )
-}
+      <div className="wrap">
+        <div className="bar2">
+          <div className="l">
+            {typeof count === 'number' && <span className="pill g">{count} {count === 1 ? 'Photo' : 'Photos'}</span>}
+            <span className="sm">Select any photograph to open the full-screen viewer.</span>
+          </div>
+          <Link className="chip" to="/gallery">All collections</Link>
+        </div>
 
-// ─── Shared Components ────────────────────────────────────────────────────────
+        {status === 'error' && (
+          <div className="notice err" role="alert">
+            <IconImage size={19} />
+            <span>This gallery collection is temporarily unavailable.</span>
+            <button type="button" className="btn btn-line" onClick={retry}><IconRefresh size={15} />Retry</button>
+          </div>
+        )}
 
-function GalleryNotice({ icon, text }: { icon?: 'loading'; text: string }) {
-  return (
-    <div className="gallery-notice" role="status">
-      {icon === 'loading' ? <Loader2 size={19} aria-hidden="true" /> : <ImageIcon size={19} aria-hidden="true" />}
-      <span>{text}</span>
+        {status === 'ready' && images.length === 0 && (
+          <div className="notice" role="status"><IconImage size={19} /><span>No photographs in this collection yet.</span></div>
+        )}
+
+        {(images.length > 0 || status === 'loading') && (
+          <div className="mas" aria-label={`${name} photographs`} aria-busy={status === 'loading'}>
+            {images.map((image, i) => (
+              <GalleryPhoto key={image.id} image={image} index={i} onOpen={() => setViewerIndex(i)} />
+            ))}
+            {(status === 'loading' || loadingMore) &&
+              [220, 300, 180, 260].map((h, i) => <div key={i} className="ph skel" style={{ height: h }} aria-hidden="true" />)}
+          </div>
+        )}
+
+        {nextCursor && (
+          <div className="more">
+            <button className="btn btn-line" type="button" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? <IconLoader size={18} className="spin" /> : <IconPlus size={18} />}
+              {loadingMore ? 'Loading photographs' : 'Load more photographs'}
+            </button>
+          </div>
+        )}
+
+        <NextPrev
+          prev={{ to: '/gallery', label: 'All collections', small: '← Back to' }}
+          next={nextCollection ? { to: `/gallery/${nextCollection.slug}`, label: nextCollection.name, small: 'Next collection →' } : { to: '/', label: 'Home', small: 'Back to start →' }}
+        />
+      </div>
+
+      {viewerIndex >= 0 && (
+        <Lightbox
+          images={viewerImages}
+          index={viewerIndex}
+          title={name}
+          subtitle="Selected photographs from the professional archive"
+          onIndexChange={setViewerIndex}
+          onClose={() => setViewerIndex(-1)}
+        />
+      )}
     </div>
   )
 }
 
-/**
- * Thumbnail image with graceful fallback when the Cloudinary URL fails.
- * Prevents a broken image from breaking the entire collection list row.
- */
-function GalleryThumbnail({ src, alt }: { src: string; alt: string }) {
+// ─── Pieces ───────────────────────────────────────────────────────────────────
+
+function CoverImage({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false)
-
-  if (failed || !src) {
-    return (
-      <span className="gallery-image-fallback" aria-hidden="true">
-        <ImageIcon size={26} />
-      </span>
-    )
-  }
-
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      decoding="async"
-      onError={() => {
-        console.warn('[Gallery] Cover image failed to load:', src)
-        setFailed(true)
-      }}
-    />
-  )
+  if (failed) return <span className="noimg"><IconImage size={40} /></span>
+  return <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />
 }
 
-/**
- * Individual photo in the grid. Shows a placeholder if the Cloudinary URL is
- * invalid or fails to load, without breaking the rest of the gallery.
- */
-function GalleryPhoto({ image, onClick }: { image: GalleryImage; onClick: () => void }) {
-  const [loaded, setLoaded] = useState(false)
+/** One photograph in the masonry. Shows a placeholder if its URL fails, without breaking the rest. */
+function GalleryPhoto({ image, index, onOpen }: { image: GalleryImage; index: number; onOpen: () => void }) {
   const [failed, setFailed] = useState(false)
-
   const src = resolveImageUrl(image.thumbnailUrl)
 
   return (
-    <button
-      className="gallery-photo-button"
-      type="button"
-      onClick={onClick}
-      aria-label={`Open ${image.title}`}
-    >
-      <span className={`gallery-photo-frame ${loaded ? 'is-loaded' : 'is-loading'}`}>
-        {failed || !src ? (
-          <span className="gallery-image-fallback gallery-image-fallback--photo" aria-hidden="true">
-            <ImageIcon size={32} />
-          </span>
-        ) : (
-          <img
-            src={src}
-            alt={image.alt}
-            loading="lazy"
-            decoding="async"
-            onLoad={() => setLoaded(true)}
-            onError={() => {
-              console.warn('[Gallery] Photo thumbnail failed to load. PublicId:', image.publicId ?? image.id, 'URL:', src)
-              setFailed(true)
-            }}
-          />
-        )}
-      </span>
+    <button className="ph" type="button" onClick={onOpen} aria-label={`Open photograph ${index + 1}${image.title ? `: ${image.title}` : ''}`}>
+      {failed || !src ? (
+        <span className="noimg"><IconImage size={32} /></span>
+      ) : (
+        <img
+          src={src}
+          alt={image.alt}
+          loading="lazy"
+          decoding="async"
+          width={image.width}
+          height={image.height}
+          onError={() => {
+            console.warn('[Gallery] Photo thumbnail failed to load. PublicId:', image.publicId ?? image.id, 'URL:', src)
+            setFailed(true)
+          }}
+        />
+      )}
+      <span className="zoom"><IconExpand size={18} /></span>
     </button>
   )
 }
 
-// ─── API Helpers ──────────────────────────────────────────────────────────────
+// ─── API ──────────────────────────────────────────────────────────────────────
 
 /**
  * Fetches from /api/gallery with automatic retry (up to 3 attempts, exponential backoff).
@@ -430,7 +358,7 @@ async function fetchGalleryWithRetry(query = '', maxAttempts = 3): Promise<Galle
       if (!response.ok) {
         throw new Error(`Gallery API responded with ${response.status}`)
       }
-      return await response.json() as GalleryResponse
+      return (await response.json()) as GalleryResponse
     } catch (err) {
       lastError = err
       if (attempt < maxAttempts) {

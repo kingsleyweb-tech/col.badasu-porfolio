@@ -29,21 +29,21 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     let active = true
 
-    fetchPortfolioContent().then((initial) => {
+    // The live listener delivers the current document first, then every later change,
+    // so admin edits reach every open page within about a second.
+    const unsubscribe = subscribePortfolioContent((remoteData) => {
       if (active) {
-        setData(initial)
+        setData(remoteData)
         setLoading(false)
       }
     })
 
-    const unsubscribe = subscribePortfolioContent((remoteData) => {
-      if (active) {
-        setData(remoteData)
-      }
-    })
+    // If the listener can't connect (offline, blocked), stop waiting and show the defaults.
+    const fallback = window.setTimeout(() => active && setLoading(false), 4000)
 
     return () => {
       active = false
+      window.clearTimeout(fallback)
       unsubscribe()
     }
   }, [])

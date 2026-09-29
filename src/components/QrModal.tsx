@@ -1,10 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Download, Printer } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { QR_PORTFOLIO_URL } from '../config/qrConfig'
-import { officer as defaultOfficer } from '../data/officerData'
-import { usePortfolio } from '../context/PortfolioContext'
+import { useBrand } from './site/brand'
+import { IconClose, IconDownload, IconPrint } from './site/icons'
 
 type QrModalProps = {
   isOpen: boolean
@@ -12,127 +11,104 @@ type QrModalProps = {
 }
 
 export function QrModal({ isOpen, onClose }: QrModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null)
-  const { data } = usePortfolio()
-  const officer = data?.officer || defaultOfficer
+  const { officer, logo, motto } = useBrand()
+  const [copied, setCopied] = useState(false)
+  const closeRef = useRef<HTMLButtonElement>(null)
 
-  // Close on Escape key press
   useEffect(() => {
     if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
-
-  // Prevent background scrolling when modal is active
-  useEffect(() => {
-    if (isOpen) {
-      document.body.classList.add('modal-open')
-    } else {
-      document.body.classList.remove('modal-open')
-    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
     return () => {
-      document.body.classList.remove('modal-open')
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
     }
-  }, [isOpen])
+  }, [isOpen, onClose])
 
   if (!isOpen) return null
 
+  const displayUrl = QR_PORTFOLIO_URL.replace(/^https?:\/\//, '')
+
   const downloadQrCode = () => {
-    const canvas = document.getElementById('qr-modal-canvas') as HTMLCanvasElement
+    const canvas = document.getElementById('qr-modal-canvas') as HTMLCanvasElement | null
     if (!canvas) return
-    const pngUrl = canvas.toDataURL('image/png')
-    const downloadLink = document.createElement('a')
-    downloadLink.href = pngUrl
-    downloadLink.download = 'colonel-badasu-portfolio-qr.png'
-    document.body.appendChild(downloadLink)
-    downloadLink.click()
-    document.body.removeChild(downloadLink)
+    const link = document.createElement('a')
+    link.href = canvas.toDataURL('image/png')
+    link.download = 'colonel-badasu-portfolio-qr.png'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
-  const printQrCode = () => {
-    window.print()
-  }
-
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-      onClose()
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(QR_PORTFOLIO_URL)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      window.prompt('Copy this link', QR_PORTFOLIO_URL)
     }
   }
 
-  // We mount the overlay inside a portal or inline. Inline is fine, but print layout uses portal.
   return (
     <>
-      <div 
-        className="qr-modal-overlay" 
-        onClick={handleOverlayClick}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="qr-modal-title"
-      >
-        <div className="qr-modal" ref={modalRef}>
-          <button 
-            className="qr-modal__close-btn" 
-            type="button" 
-            aria-label="Close modal" 
-            onClick={onClose}
-          >
-            <X size={20} aria-hidden="true" />
-          </button>
-          
-          <h2 id="qr-modal-title" className="qr-modal__title">{officer.rank} {officer.name}</h2>
-          <p className="qr-modal__subtitle">Scan to visit this portfolio</p>
-          
-          <div className="qr-modal__code-container">
-            <QRCodeCanvas
-              id="qr-modal-canvas"
-              value={QR_PORTFOLIO_URL}
-              size={200}
-              level="H"
-              includeMargin={true}
-              bgColor="#ffffff"
-              fgColor="#000000"
-            />
+      <div className="qm">
+        <div className="dim" onClick={onClose} aria-hidden="true" />
+        <div className="dlg" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
+          <div className="dl">
+            <div>
+              <img src={logo} alt={`${officer.force} crest`} />
+              <h2 id="qr-modal-title">{officer.rank} {officer.name}</h2>
+              <p>Share the official portfolio. The code opens the welcome page on any phone camera.</p>
+            </div>
+            <div className="motto">{motto}</div>
           </div>
-
-          <p className="qr-modal__url">{QR_PORTFOLIO_URL}</p>
-
-          <div className="qr-modal__actions">
-            <button className="btn btn--primary" type="button" onClick={downloadQrCode}>
-              <Download size={16} aria-hidden="true" /> Download QR Code
+          <div className="dr2">
+            <button className="x" type="button" onClick={onClose} aria-label="Close dialog" ref={closeRef}>
+              <IconClose size={18} strokeWidth={2.2} />
             </button>
-            <button className="btn btn--secondary" type="button" onClick={printQrCode}>
-              <Printer size={16} aria-hidden="true" /> Print QR Code
-            </button>
-            <button className="btn btn--text" type="button" onClick={onClose}>
-              Close
-            </button>
+            <span className="tag"><i />Scan to visit this portfolio</span>
+            <div className="qrbox">
+              <QRCodeCanvas
+                id="qr-modal-canvas"
+                value={QR_PORTFOLIO_URL}
+                size={428}
+                level="H"
+                bgColor="#ffffff"
+                fgColor="#0b0f0c"
+                aria-label="QR code linking to the portfolio welcome page"
+                role="img"
+              />
+            </div>
+            <div className="qurl">
+              <span>{displayUrl}</span>
+              <button type="button" onClick={copyLink}>{copied ? 'Copied' : 'Copy link'}</button>
+            </div>
+            <div className="qacts">
+              <button className="btn btn-green" type="button" onClick={downloadQrCode}>
+                <IconDownload size={18} />
+                Download QR Code
+              </button>
+              <button className="btn btn-line" type="button" onClick={() => window.print()}>
+                <IconPrint size={18} />
+                Print QR Code
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Portal for print-only layout placed directly under document.body */}
+      {/* Print-only layout, placed directly under <body> so it survives the #root print reset */}
       {createPortal(
         <div className="print-only-layout" aria-hidden="true">
-          <div className="print-layout-content">
-            <h1 className="print-title">{officer.rank.toUpperCase()} {officer.name.toUpperCase()}</h1>
-            <p className="print-description">Scan to visit the official portfolio</p>
-            <div className="print-qr-code">
-              <QRCodeCanvas
-                value={QR_PORTFOLIO_URL}
-                size={340}
-                level="H"
-                includeMargin={true}
-                bgColor="#ffffff"
-                fgColor="#000000"
-              />
-            </div>
-            <p className="print-url">{QR_PORTFOLIO_URL}</p>
+          <h1>{officer.rank} {officer.name}</h1>
+          <p>Scan to visit the official portfolio</p>
+          <div className="pq">
+            <QRCodeCanvas value={QR_PORTFOLIO_URL} size={340} level="H" marginSize={1} bgColor="#ffffff" fgColor="#000000" />
           </div>
+          <div className="pu">{QR_PORTFOLIO_URL}</div>
         </div>,
         document.body
       )}

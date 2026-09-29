@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore'
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import {
   officer as defaultOfficer,
@@ -264,10 +264,10 @@ export async function fetchPortfolioContent(): Promise<PortfolioData> {
  * Throws if the write fails so callers can surface the error to the admin.
  */
 export async function savePortfolioContent(updated: Partial<PortfolioData>): Promise<void> {
-  const current = await fetchPortfolioContent()
-  const merged: PortfolioData = { ...current, ...updated }
+  // Write only the changed sections in a single request (no read-before-write), so the
+  // live listeners on the public site receive the change as fast as possible.
   const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
-  await setDoc(docRef, merged, { merge: true })
+  await setDoc(docRef, { ...updated, updatedAt: serverTimestamp() }, { merge: true })
 }
 
 /**

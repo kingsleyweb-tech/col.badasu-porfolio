@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUp } from 'lucide-react'
+import { IconArrowUp } from './site/icons'
 
 export function ScrollToTopButton() {
   const [visible, setVisible] = useState(false)
@@ -11,18 +11,15 @@ export function ScrollToTopButton() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
   return (
     <button
-      className={`scroll-top ${visible ? 'is-visible' : ''}`}
+      className={`totop ${visible ? 'is-visible' : ''}`}
       type="button"
       aria-label="Scroll to top"
-      onClick={scrollToTop}
+      tabIndex={visible ? 0 : -1}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
     >
-      <ArrowUp size={22} aria-hidden="true" />
+      <IconArrowUp size={22} />
     </button>
   )
 }

@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
-import { PortfolioProvider } from './context/PortfolioContext'
+import { PortfolioProvider, usePortfolio } from './context/PortfolioContext'
 import { UploadProvider } from './context/UploadContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
-import { Footer } from './components/Footer'
-import { Navbar } from './components/Navbar'
+import { SiteFooter } from './components/site/SiteFooter'
+import { SiteNav } from './components/site/SiteNav'
+import { ShareContext } from './context/ShareContext'
 import { RouteScrollToTop } from './components/RouteScrollToTop'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { QrModal } from './components/QrModal'
@@ -43,8 +44,6 @@ import { HomeCardsAdmin } from './admin/pages/HomeCardsAdmin'
 import { FooterAdmin } from './admin/pages/FooterAdmin'
 import { RankAdmin } from './admin/pages/RankAdmin'
 
-const footerHiddenRoutes = new Set(['/awards', '/career', '/biography', '/welcome'])
-
 function App() {
   return (
     <AuthProvider>
@@ -63,68 +62,79 @@ function AppShell() {
   const { pathname } = useLocation()
   const [qrModalOpen, setQrModalOpen] = useState(false)
 
+  const openShare = useCallback(() => setQrModalOpen(true), [])
+  const closeShare = useCallback(() => setQrModalOpen(false), [])
+
   const isAdminRoute = pathname.startsWith('/admin')
-  const showFooter = !isAdminRoute && !footerHiddenRoutes.has(pathname)
-  const showNavbar = !isAdminRoute && pathname !== '/welcome'
-  const showScrollTop = !isAdminRoute && pathname !== '/welcome'
+  const isPortfolioPage = !isAdminRoute && pathname !== '/welcome'
+  const { data } = usePortfolio()
+  const { siteTitle, siteDescription } = data.siteSettings
+
+  // Browser tab title and meta description follow Admin › Site & Header Settings
+  useEffect(() => {
+    if (isAdminRoute) return
+    if (siteTitle) document.title = siteTitle
+    if (siteDescription) document.querySelector('meta[name="description"]')?.setAttribute('content', siteDescription)
+  }, [isAdminRoute, siteTitle, siteDescription])
 
   return (
-    <>
+    <ShareContext.Provider value={openShare}>
       <RouteScrollToTop />
-      {showNavbar && <Navbar />}
-      <main className={isAdminRoute ? 'is-admin-view' : ''}>
-        <Routes>
-          {/* Public Portfolio Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/welcome" element={<Welcome />} />
-          <Route path="/biography" element={<Biography />} />
-          <Route path="/career" element={<Career />} />
-          <Route path="/achievements" element={<Achievements />} />
-          <Route path="/awards" element={<Awards />} />
-          <Route path="/education" element={<Education />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/gallery/:collectionSlug" element={<Gallery />} />
+      <div className={isAdminRoute ? undefined : 'pf'}>
+        {isPortfolioPage && <SiteNav />}
+        <main className={isAdminRoute ? 'is-admin-view' : undefined}>
+          <Routes>
+            {/* Public Portfolio Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/welcome" element={<Welcome />} />
+            <Route path="/biography" element={<Biography />} />
+            <Route path="/career" element={<Career />} />
+            <Route path="/achievements" element={<Achievements />} />
+            <Route path="/awards" element={<Awards />} />
+            <Route path="/education" element={<Education />} />
+            <Route path="/gallery" element={<Gallery />} />
+            <Route path="/gallery/:collectionSlug" element={<Gallery />} />
 
-          {/* Admin Unprotected Route */}
-          <Route path="/admin/login" element={<AdminLogin />} />
+            {/* Admin Unprotected Route */}
+            <Route path="/admin/login" element={<AdminLogin />} />
 
-          {/* Admin Protected Routes Shell */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<MainDashboard />} />
-            <Route path="everyone" element={<EveryoneSection />} />
-            <Route path="hero" element={<HeroAdmin />} />
-            <Route path="biography" element={<BiographyAdmin />} />
-            <Route path="career" element={<CareerAdmin />} />
-            <Route path="awards" element={<AwardsAdmin />} />
-            <Route path="education" element={<EducationAdmin />} />
-            <Route path="courses" element={<CoursesAdmin />} />
-            <Route path="languages" element={<LanguagesAdmin />} />
-            <Route path="leadership" element={<LeadershipAdmin />} />
-            <Route path="gallery" element={<GalleryAdmin />} />
-            <Route path="welcome" element={<WelcomeAdmin />} />
-            <Route path="rank" element={<RankAdmin />} />
-            <Route path="settings" element={<SiteSettingsAdmin />} />
-            <Route path="achievements" element={<AchievementsAdmin />} />
-            <Route path="home-cards" element={<HomeCardsAdmin />} />
-            <Route path="footer" element={<FooterAdmin />} />
-            <Route path="users" element={<UsersAdmin />} />
-          </Route>
-        </Routes>
-      </main>
-      {showFooter && <Footer onQrModalOpen={() => setQrModalOpen(true)} />}
-      {showScrollTop && <ScrollToTopButton />}
-
-      <QrModal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} />
+            {/* Admin Protected Routes Shell */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<MainDashboard />} />
+              <Route path="everyone" element={<EveryoneSection />} />
+              <Route path="hero" element={<HeroAdmin />} />
+              <Route path="biography" element={<BiographyAdmin />} />
+              <Route path="career" element={<CareerAdmin />} />
+              <Route path="awards" element={<AwardsAdmin />} />
+              <Route path="education" element={<EducationAdmin />} />
+              <Route path="courses" element={<CoursesAdmin />} />
+              <Route path="languages" element={<LanguagesAdmin />} />
+              <Route path="leadership" element={<LeadershipAdmin />} />
+              <Route path="gallery" element={<GalleryAdmin />} />
+              <Route path="welcome" element={<WelcomeAdmin />} />
+              <Route path="rank" element={<RankAdmin />} />
+              <Route path="settings" element={<SiteSettingsAdmin />} />
+              <Route path="achievements" element={<AchievementsAdmin />} />
+              <Route path="home-cards" element={<HomeCardsAdmin />} />
+              <Route path="footer" element={<FooterAdmin />} />
+              <Route path="users" element={<UsersAdmin />} />
+            </Route>
+          </Routes>
+        </main>
+        {isPortfolioPage && <SiteFooter />}
+        {isPortfolioPage && <ScrollToTopButton />}
+        <QrModal isOpen={qrModalOpen} onClose={closeShare} />
+      </div>
       {/* Global upload progress toast — visible on any admin page */}
       <GlobalUploadToast />
-    </>
+    </ShareContext.Provider>
   )
 }
 

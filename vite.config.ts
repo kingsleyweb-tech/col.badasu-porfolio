@@ -32,6 +32,10 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        // No offline copy of the app: every page request must reach the server so the access
+        // check runs. Devices that installed the earlier offline worker receive one that removes
+        // itself and its cached pages. "Add to home screen" keeps working through the manifest.
+        selfDestroying: true,
         workbox: {
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           // The access page and API must always come from the server, never from the offline cache

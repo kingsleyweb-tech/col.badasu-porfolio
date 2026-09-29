@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
     <meta name="theme-color" content="#07150d" />
-    <link rel="icon" type="image/png" href="/pwa.png" />
+    <link rel="icon" type="image/svg+xml" href="/crest.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -15,7 +15,7 @@
   <body>
     <main class="ac">
       <div class="in">
-        <img class="crest" src="/crest.png" alt="Ghana Armed Forces crest" width="92" height="92" />
+        <img class="crest" src="/crest.svg" alt="Ghana Armed Forces crest" width="92" height="92" />
         <div class="pre">Official Portfolio · Restricted Access</div>
         <h1>Enter your <em>access code</em></h1>
         <p class="intro" id="intro">This portfolio is shared privately. Enter the access code you were given to continue.</p>
@@ -23,7 +23,7 @@
         <form id="form" novalidate>
           <label for="code">Access code</label>
           <div class="field">
-            <input id="code" name="code" type="password" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="GAF-XXXX-XXXX-XXXX" maxlength="100" aria-describedby="msg" required />
+            <input id="code" name="code" type="password" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" maxlength="100" aria-describedby="msg" required />
             <button type="button" class="show" id="show" aria-controls="code" aria-pressed="false">Show</button>
           </div>
           <p class="msg" id="msg" role="alert" aria-live="assertive"></p>

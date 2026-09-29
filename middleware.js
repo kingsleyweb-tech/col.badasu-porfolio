@@ -16,7 +16,7 @@ const OPEN = [
   /^\/access(?:\.html|\.css|\.js)?\/?$/,
   /^\/admin(?:\/.*)?$/,
   /^\/assets\/[^/]+\.(?:js|css|woff2?|ttf|map)$/,
-  /^\/(?:sw\.js|workbox-[\w-]+\.js|registerSW\.js|manifest\.json|manifest\.webmanifest|pwa\.png|crest\.png|favicon\.ico|robots\.txt)$/,
+  /^\/(?:sw\.js|workbox-[\w-]+\.js|registerSW\.js|manifest\.json|manifest\.webmanifest|pwa\.png|crest\.png|crest\.svg|favicon\.ico|robots\.txt)$/,
 ]
 
 const META_CACHE_MS = 5000

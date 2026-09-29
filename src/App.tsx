@@ -95,7 +95,7 @@ function AppShell() {
       <div className={isAdminRoute ? undefined : 'pf'}>
         {waitingForContent && (
           <div className="pf-splash" role="status" aria-label="Loading the portfolio">
-            <img src="/crest.png" alt="" />
+            <img src="/crest.svg" alt="" />
           </div>
         )}
         {isPortfolioPage && !waitingForContent && <SiteNav />}

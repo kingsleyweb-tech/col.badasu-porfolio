@@ -67,7 +67,7 @@ export type WorkHistoryItem = {
   description: string[]
 }
 
-const crest = '/crest.png'
+const crest = '/crest.svg'
 
 export const brandAssets = {
   // Served from /public so the access page and admin sign-in can show it without a session

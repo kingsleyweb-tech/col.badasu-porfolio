@@ -2,7 +2,7 @@ import { resolveImageUrl } from '../utils/imageResolver'
 
 /** Local photographs used as fixed artwork across the public pages (page heroes, mosaics, feature panels). */
 export const siteImages = {
-  crest: resolveImageUrl('image.png'),
+  crest: '/crest.svg',
   portrait: resolveImageUrl('hero/a1.png'),
   officersGroup: resolveImageUrl('hero/a4.png'),
   meeting: resolveImageUrl('hero/a5.png'),

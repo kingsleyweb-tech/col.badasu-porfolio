@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, Search, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { brandAssets } from '../../data/officerData'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { adminNavGroups, dashboardItem, everyoneItem, usersItem, type AdminNavItem } from '../adminNav'
 
@@ -18,7 +19,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen = false, onCl
   const navigate = useNavigate()
 
   const settings = data.siteSettings
-  const sidebarLogo = resolveImageUrl(settings.logoUrl || 'image.png')
+  const sidebarLogo = resolveImageUrl(settings.logoUrl || brandAssets.gafLogo.src)
   const sidebarTitle = settings.adminSidebarTitle || 'Col. Badasu'
   const sidebarSubtitle = settings.adminSidebarSubtitle || 'PORTFOLIO ADMIN'
   const displayName = settings.adminHeaderDisplayName || 'Col. Henry K. Badasu'

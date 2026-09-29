@@ -2,6 +2,7 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ArrowUpRight, Menu, Search } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { brandAssets } from '../../data/officerData'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { findAdminNavItem } from '../adminNav'
 
@@ -20,7 +21,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar, onOpe
     <header className="ad-tb">
       {/* Phone-only brand bar */}
       <div className="ad-tb-brand">
-        <img src={resolveImageUrl(data.siteSettings.logoUrl || 'image.png')} alt="Ghana Armed Forces crest" />
+        <img src={resolveImageUrl(data.siteSettings.logoUrl || brandAssets.gafLogo.src)} alt="Ghana Armed Forces crest" />
         <div>
           <b>{data.siteSettings.adminSidebarTitle || 'Col. Badasu'}</b>
           <small>ADMIN</small>

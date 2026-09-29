@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { ShieldCheck, Lock, Mail, Loader2, AlertCircle, CheckCircle2, ArrowRight, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { usePortfolio } from '../../context/PortfolioContext'
+import { brandAssets } from '../../data/officerData'
 import { resolveImageUrl } from '../../utils/imageResolver'
 
 export const AdminLogin: React.FC = () => {
@@ -25,7 +26,7 @@ export const AdminLogin: React.FC = () => {
   const [forgotError, setForgotError] = useState<string | null>(null)
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/admin'
-  const logo = resolveImageUrl(data.siteSettings.logoUrl || 'image.png')
+  const logo = resolveImageUrl(data.siteSettings.logoUrl || brandAssets.gafLogo.src)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,7 +75,7 @@ export const AdminLogin: React.FC = () => {
     <div className="ad-login">
       <div className="l">
         {/* Portfolio photos are served only after the access check, so the sign-in page uses the public crest */}
-        <img className="bg crest" src="/crest.png" alt="" />
+        <img className="bg crest" src="/crest.svg" alt="" />
         <div className="sh" />
         <div className="brand">
           <img src={logo} alt="Ghana Armed Forces crest" />

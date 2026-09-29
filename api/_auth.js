@@ -31,7 +31,7 @@ export async function requireAdmin(request, response) {
   } catch (error) {
     if (error instanceof NotConfiguredError) {
       console.error('[admin] ' + error.message)
-      const message = /could not be read|missing private_key/.test(error.message)
+      const message = /could not be read|missing private_key|is not set/.test(error.message)
         ? error.message
         : 'The server has no Firebase service-account key yet, so it cannot run admin actions.'
       response.status(503).json({ error: 'setup_required', message })

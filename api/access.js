@@ -34,7 +34,7 @@ export default async function handler(request, response) {
   } catch (error) {
     console.error('[access] request failed', error instanceof NotConfiguredError ? error.message : error)
     // A coarse reason (never the error text) so the owner can tell which server setting to fix
-    response.status(503).json({ error: 'unavailable', reason: failureReason(error), detail: `${error?.code ?? ''} ${String(error?.message || error).split('\n')[0].slice(0, 140)}` })
+    response.status(503).json({ error: 'unavailable', reason: failureReason(error) })
   }
 }
 

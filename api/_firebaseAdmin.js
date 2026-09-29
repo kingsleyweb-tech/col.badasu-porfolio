@@ -37,7 +37,15 @@ function escapeNewlinesInStrings(text) {
 
 function readServiceAccount() {
   const file = (process.env.FIREBASE_SERVICE_ACCOUNT_FILE || '').trim()
-  let raw = (process.env.FIREBASE_SERVICE_ACCOUNT || (file ? readFileSync(file, 'utf8') : '')).trim()
+  let raw = (process.env.FIREBASE_SERVICE_ACCOUNT || '').trim()
+  if (!raw && file) {
+    // The key file exists only on a local machine; on Vercel the key must be in FIREBASE_SERVICE_ACCOUNT
+    try {
+      raw = readFileSync(file, 'utf8').trim()
+    } catch {
+      throw new NotConfiguredError(`FIREBASE_SERVICE_ACCOUNT is not set and the key file "${file}" is not on this server: paste the whole key file contents into FIREBASE_SERVICE_ACCOUNT.`)
+    }
+  }
   if (!raw) return null
   // Tolerate the value being wrapped in quotes when pasted
   if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"{') && raw.endsWith('}"'))) raw = raw.slice(1, -1).trim()

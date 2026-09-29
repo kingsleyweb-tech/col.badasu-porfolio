@@ -31,7 +31,16 @@ export async function requireAdmin(request, response) {
   } catch (error) {
     if (error instanceof NotConfiguredError) {
       console.error('[admin] ' + error.message)
-      response.status(503).json({ error: 'setup_required', message: 'The server has no Firebase service-account key yet, so it cannot run admin actions.' })
+      const message = /could not be read|missing private_key/.test(error.message)
+        ? error.message
+        : 'The server has no Firebase service-account key yet, so it cannot run admin actions.'
+      response.status(503).json({ error: 'setup_required', message })
+      return null
+    }
+    // A key that parses but is rejected by Google (wrong, revoked or damaged private key)
+    if (/private key|DECODER|invalid_grant|PEM|Could not load the default credentials/i.test(String(error?.message))) {
+      console.error('[admin] service-account key rejected:', error.message)
+      response.status(503).json({ error: 'setup_required', message: 'The FIREBASE_SERVICE_ACCOUNT key was rejected by Google. Paste the whole key file again, or generate a new key.' })
       return null
     }
     console.error('Admin check failed', error)

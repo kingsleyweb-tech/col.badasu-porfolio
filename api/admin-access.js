@@ -14,6 +14,8 @@ import {
   markActiveSessionsRevoked,
   updateAccessConfig,
   weakCodeReason,
+  decryptAccessCode,
+  encryptAccessCode,
 } from './_access.js'
 import { requireAdmin } from './_auth.js'
 import { adminDb } from './_firebaseAdmin.js'
@@ -61,6 +63,8 @@ async function overview(response) {
   response.status(200).json({
     enabled: config.enabled,
     hasCode: !!config.codeHash,
+    // Only this admin-only, no-store response ever carries the readable code
+    code: config.codeHash ? decryptAccessCode(config.codeEncrypted) : null,
     codeVersion: config.codeVersion,
     codeUpdatedAt: config.codeUpdatedAt,
     updatedAt: config.updatedAt,
@@ -83,9 +87,11 @@ async function act(request, response, admin) {
       return
     }
     const codeHash = await hashAccessCode(code)
+    const codeEncrypted = encryptAccessCode(code.trim())
     const revoked = await markActiveSessionsRevoked('code changed')
     const config = await updateAccessConfig((current) => ({
       codeHash,
+      codeEncrypted,
       codeVersion: (Number(current.codeVersion) || 0) + 1,
       epoch: (Number(current.epoch) || 0) + 1,
       codeUpdatedAt: new Date().toISOString(),

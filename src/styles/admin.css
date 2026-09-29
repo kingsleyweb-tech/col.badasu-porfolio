@@ -555,3 +555,8 @@ textarea.ad-field { resize: vertical; line-height: 1.6; }
   .ad-acc-acts .ad-b { flex: 1 1 auto; }
   .ad-acc-new { padding: 20px; }
 }
+.ad-acc-code { align-items: center; flex-wrap: wrap; }
+.ad-acc-code .val { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.ad-acc-code .plain { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 15px; letter-spacing: .06em; user-select: all; }
+.ad-acc-note { font-weight: 600; color: var(--muted) !important; text-align: right; max-width: 60%; }
+@media (max-width: 720px) { .ad-acc-code .val { justify-content: flex-start; width: 100%; } .ad-acc-note { max-width: 100%; text-align: left; } }

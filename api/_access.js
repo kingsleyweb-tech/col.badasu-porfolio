@@ -9,7 +9,7 @@
 //
 // site_meta/access mirrors the non-secret parts ({ enabled, codeVersion, epoch }) so open pages and
 // the routing middleware can react to changes. The access code itself is never stored or logged.
-import { randomBytes, randomInt, scrypt, timingSafeEqual } from 'node:crypto'
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, randomInt, scrypt, timingSafeEqual } from 'node:crypto'
 import { adminAuth, adminDb } from './_firebaseAdmin.js'
 import { ADMIN_COOKIE, VISITOR_COOKIE, readAdminToken, readCookie, readVisitorToken, sha256 } from './_token.js'
 
@@ -71,6 +71,37 @@ export async function verifyAccessCode(code, stored) {
   return actual.length === expected.length && timingSafeEqual(actual, expected)
 }
 
+// ─── Viewable copy for the administrator ───────────────────────────────────────
+// Visitors' entries are checked against the hash above. So the administrator can always see and
+// copy the current code, it is also kept encrypted (AES-256-GCM, key derived from
+// ACCESS_SESSION_SECRET). Firestore never holds it in plain text; only the admin API decrypts it.
+
+function codeKey() {
+  const secret = process.env.ACCESS_SESSION_SECRET || ''
+  if (secret.length < 32) throw new Error('ACCESS_SESSION_SECRET is missing or too short.')
+  return Buffer.from(hkdfSync('sha256', secret, 'portfolio-access-code', 'v1', 32))
+}
+
+export function encryptAccessCode(code) {
+  const iv = randomBytes(12)
+  const cipher = createCipheriv('aes-256-gcm', codeKey(), iv)
+  const data = Buffer.concat([cipher.update(String(code), 'utf8'), cipher.final()])
+  return ['v1', iv.toString('base64'), cipher.getAuthTag().toString('base64'), data.toString('base64')].join('.')
+}
+
+/** Returns the code, or null when it cannot be decrypted (older code, or the secret changed). */
+export function decryptAccessCode(stored) {
+  try {
+    const [version, iv, tag, data] = String(stored || '').split('.')
+    if (version !== 'v1') return null
+    const decipher = createDecipheriv('aes-256-gcm', codeKey(), Buffer.from(iv, 'base64'))
+    decipher.setAuthTag(Buffer.from(tag, 'base64'))
+    return Buffer.concat([decipher.update(Buffer.from(data, 'base64')), decipher.final()]).toString('utf8')
+  } catch {
+    return null
+  }
+}
+
 // ─── Configuration ─────────────────────────────────────────────────────────────
 
 let configCache = null
@@ -82,6 +113,7 @@ export async function getAccessConfig({ fresh = false } = {}) {
   const config = {
     enabled: data.enabled !== false,
     codeHash: data.codeHash || null,
+    codeEncrypted: data.codeEncrypted || null,
     codeVersion: Number(data.codeVersion) || 0,
     epoch: Number(data.epoch) || 0,
     updatedAt: data.updatedAt || null,
@@ -101,6 +133,7 @@ export async function updateAccessConfig(changes) {
     const merged = {
       enabled: current.enabled !== false,
       codeHash: current.codeHash || null,
+      codeEncrypted: current.codeEncrypted || null,
       codeVersion: Number(current.codeVersion) || 0,
       epoch: Number(current.epoch) || 0,
       codeUpdatedAt: current.codeUpdatedAt || null,

@@ -9,19 +9,51 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 
 export class NotConfiguredError extends Error {
-  constructor() {
-    super('Server access to Firebase is not configured (FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_FILE).')
+  constructor(message = 'Server access to Firebase is not configured (FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_FILE).') {
+    super(message)
   }
+}
+
+/** Line breaks pasted inside JSON strings (common with the private key) are not valid JSON; escape them. */
+function escapeNewlinesInStrings(text) {
+  let out = ''
+  let inString = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inString && ch === '\\') {
+      out += ch + (text[i + 1] ?? '')
+      i++
+    } else if (ch === '"') {
+      inString = !inString
+      out += ch
+    } else if (inString && ch === '\n') {
+      out += '\\n'
+    } else if (!(inString && ch === '\r')) {
+      out += ch
+    }
+  }
+  return out
 }
 
 function readServiceAccount() {
   const file = (process.env.FIREBASE_SERVICE_ACCOUNT_FILE || '').trim()
-  const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || (file ? readFileSync(file, 'utf8') : '')).trim()
+  let raw = (process.env.FIREBASE_SERVICE_ACCOUNT || (file ? readFileSync(file, 'utf8') : '')).trim()
   if (!raw) return null
+  // Tolerate the value being wrapped in quotes when pasted
+  if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"{') && raw.endsWith('}"'))) raw = raw.slice(1, -1).trim()
   const json = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8')
-  const account = JSON.parse(json)
+
+  let account
+  try {
+    account = JSON.parse(escapeNewlinesInStrings(json))
+  } catch {
+    throw new NotConfiguredError('FIREBASE_SERVICE_ACCOUNT could not be read: paste the whole key file contents, from { to }.')
+  }
+  if (!account.private_key || !account.client_email) {
+    throw new NotConfiguredError('FIREBASE_SERVICE_ACCOUNT is missing private_key or client_email: paste the whole key file contents.')
+  }
   // Keys pasted into env settings often carry literal "\n" sequences
-  if (account.private_key) account.private_key = account.private_key.replace(/\\n/g, '\n')
+  account.private_key = account.private_key.replace(/\\n/g, '\n')
   return account
 }
 

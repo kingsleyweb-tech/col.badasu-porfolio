@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, CheckCircle2, Copy, KeyRound, Loader2, LockKeyhole, Power, RefreshCw, ShieldCheck, ShieldOff, UserX, X } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Copy, Eye, EyeOff, KeyRound, Loader2, LockKeyhole, Power, RefreshCw, ShieldCheck, ShieldOff, UserX, X } from 'lucide-react'
 import { adminFetch } from '../../services/adminApi'
 
 type Session = {
@@ -29,6 +29,7 @@ type LogEntry = {
 type Overview = {
   enabled: boolean
   hasCode: boolean
+  code: string | null
   codeVersion: number
   codeUpdatedAt: string | null
   sessionSeconds: number
@@ -75,18 +76,20 @@ export const AccessControlAdmin: React.FC = () => {
   const [message, setMessage] = useState<{ text: string; type: 'ok' | 'err' } | null>(null)
   const [newCode, setNewCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [copiedCurrent, setCopiedCurrent] = useState(false)
   const [customCode, setCustomCode] = useState('')
   const [showCustom, setShowCustom] = useState(false)
-  const [setupRequired, setSetupRequired] = useState(false)
+  const [setupRequired, setSetupRequired] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       const res = await adminFetch('/api/admin-access')
       if (!res.ok) throw await readError(res)
       setOverview(await res.json())
-      setSetupRequired(false)
+      setSetupRequired(null)
     } catch (err) {
-      if (err instanceof SetupRequiredError) setSetupRequired(true)
+      if (err instanceof SetupRequiredError) setSetupRequired(err.message || 'Server setup needed.')
       else setMessage({ text: err instanceof Error ? err.message : 'Could not load access control.', type: 'err' })
     } finally {
       setLoading(false)
@@ -143,6 +146,17 @@ export const AccessControlAdmin: React.FC = () => {
     }
   }
 
+  const copyCurrent = async () => {
+    if (!overview?.code) return
+    try {
+      await navigator.clipboard.writeText(overview.code)
+      setCopiedCurrent(true)
+      window.setTimeout(() => setCopiedCurrent(false), 2000)
+    } catch {
+      setCopiedCurrent(false)
+    }
+  }
+
   const status = !overview ? null : !overview.hasCode ? 'nocode' : overview.enabled ? 'active' : 'disabled'
   const hours = overview ? overview.sessionSeconds / 3600 : 1
 
@@ -174,7 +188,7 @@ export const AccessControlAdmin: React.FC = () => {
           <div>
             <span className="ad-tag"><i />New access code</span>
             <code>{newCode}</code>
-            <p>Copy it now and share it privately. It is shown only once; only a secure hash is stored.</p>
+            <p>Share it privately. You can see and copy it again any time under Portfolio access.</p>
           </div>
           <div className="acts">
             <button type="button" className="ad-b gold" onClick={copyCode}>
@@ -194,6 +208,7 @@ export const AccessControlAdmin: React.FC = () => {
             </div>
             <span className="ad-pill gold">Setup</span>
           </div>
+          <div className="ad-alert err" style={{ marginBottom: 16 }}><AlertCircle size={18} /><span>{setupRequired}</span></div>
           <ol className="ad-acc-steps">
             <li>Open the Firebase console, then <b>Project settings → Service accounts</b>.</li>
             <li>Click <b>Generate new private key</b> and download the file.</li>
@@ -220,7 +235,24 @@ export const AccessControlAdmin: React.FC = () => {
                 </span>
               </div>
 
-              <div className="ad-kv"><span>Access code</span><b className="ad-acc-mask">{overview.hasCode ? '••••••••••••' : 'Not set'}</b></div>
+              <div className="ad-kv ad-acc-code">
+                <span>Access code</span>
+                {!overview.hasCode ? (
+                  <b>Not set</b>
+                ) : overview.code ? (
+                  <span className="val">
+                    <b className={revealed ? 'plain' : 'ad-acc-mask'}>{revealed ? overview.code : '••••••••••••'}</b>
+                    <button type="button" className="ad-b sm l" onClick={() => setRevealed((v) => !v)} aria-pressed={revealed}>
+                      {revealed ? <EyeOff size={14} /> : <Eye size={14} />} {revealed ? 'Hide' : 'Show'}
+                    </button>
+                    <button type="button" className="ad-b sm gold" onClick={copyCurrent}>
+                      {copiedCurrent ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedCurrent ? 'Copied' : 'Copy'}
+                    </button>
+                  </span>
+                ) : (
+                  <b className="ad-acc-note">Set before codes were viewable. Generate a new code to see and copy it here.</b>
+                )}
+              </div>
               <div className="ad-kv"><span>Code version</span><b>{overview.codeVersion || '—'}</b></div>
               <div className="ad-kv"><span>Code last changed</span><b>{formatTime(overview.codeUpdatedAt)}</b></div>
               <div className="ad-kv"><span>Session duration</span><b>{hours} hour{hours === 1 ? '' : 's'} (not extended by activity)</b></div>

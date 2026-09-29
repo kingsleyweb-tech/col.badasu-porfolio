@@ -33,8 +33,18 @@ export default async function handler(request, response) {
     response.status(405).json({ error: 'Method not allowed' })
   } catch (error) {
     console.error('[access] request failed', error instanceof NotConfiguredError ? error.message : error)
-    response.status(503).json({ error: 'unavailable' })
+    // A coarse reason (never the error text) so the owner can tell which server setting to fix
+    response.status(503).json({ error: 'unavailable', reason: failureReason(error) })
   }
+}
+
+function failureReason(error) {
+  if (error instanceof NotConfiguredError) return 'server_key_missing'
+  const text = `${error?.code ?? ''} ${error?.message ?? ''}`
+  if (/private key|DECODER|PEM|invalid_grant|JWT|UNAUTHENTICATED|credentials|^16 /i.test(text)) return 'server_key_rejected'
+  if (/PERMISSION_DENIED|^7 /i.test(text)) return 'server_key_no_permission'
+  if (/NOT_FOUND|^5 /i.test(text)) return 'database_not_found'
+  return 'database_error'
 }
 
 async function signIn(request, response) {

@@ -30,8 +30,10 @@
     submit.classList.toggle('busy', busy)
   }
 
-  function unavailable() {
+  function unavailable(reason) {
     say('unavailable')
+    // A server setting problem: show its short code so the site owner knows what to fix
+    if (reason) msg.textContent += ' (' + reason + ')'
     input.disabled = true
     submit.disabled = true
   }
@@ -48,10 +50,10 @@
   })
 
   fetch('/api/access', { credentials: 'same-origin', cache: 'no-store' })
-    .then(function (res) { return res.ok ? res.json() : { available: false } })
+    .then(function (res) { return res.json().catch(function () { return {} }).then(function (body) { return res.ok ? body : { available: false, reason: body.reason } }) })
     .then(function (status) {
       if (status.authenticated) location.replace(next)
-      else if (status.available === false) unavailable()
+      else if (status.available === false) unavailable(status.reason)
     })
     .catch(function () {})
 
@@ -80,7 +82,7 @@
         }
         return res.json().catch(function () { return {} }).then(function (body) {
           setBusy(false)
-          if (body.error === 'unavailable') return unavailable()
+          if (body.error === 'unavailable') return unavailable(body.reason)
           say(MESSAGES[body.error] ? body.error : 'error')
           input.select()
         })

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { User } from 'firebase/auth'
 import {
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
@@ -9,17 +10,15 @@ import {
   updatePassword as updateFirebasePassword,
 } from 'firebase/auth'
 import { auth, db } from '../lib/firebase'
-import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore'
+import { deleteDoc, deleteField, doc, getDoc, setDoc } from 'firebase/firestore'
 
 export type AdminCredentials = {
   email: string
-  pass: string
   updatedAt?: string
 }
 
 type AuthContextType = {
   user: User | null
-  isDemoAdmin: boolean
   loading: boolean
   error: string | null
   adminCredentials: AdminCredentials
@@ -32,151 +31,132 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const DEFAULT_EMAIL = 'admin@colonelbadasu.com'
-const DEFAULT_PASS = 'Colonel2026!'
-
 // ─── Firestore paths ───────────────────────────────────────────────────────────
-const CREDS_DOC = 'admin_account'    // portfolio/admin_account
-const SESSION_DOC = 'admin_session'  // portfolio/admin_session
+// portfolio/admin_account records which Firebase Auth account is the administrator ({ email, uid }).
+// Firestore Security Rules only allow that account to write portfolio content.
+const CREDS_DOC = 'admin_account'
+// Left over from the old shared "demo session"; removed on the next sign-in.
+const LEGACY_SESSION_DOC = 'admin_session'
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+const adminAccountRef = () => doc(db, 'portfolio', CREDS_DOC)
 
-async function loadCredentialsFromFirestore(): Promise<AdminCredentials> {
+const sameEmail = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Returns true when the signed-in Firebase user is the portfolio administrator. The first time the
+ * administrator signs in with Firebase Auth, their account id is recorded in admin_account.
+ */
+async function confirmAdmin(user: User): Promise<boolean> {
+  let data: { email?: string; uid?: string }
   try {
-    const snap = await getDoc(doc(db, 'portfolio', CREDS_DOC))
-    if (snap.exists()) {
-      const data = snap.data() as AdminCredentials
-      if (data.email && data.pass) return data
-    }
+    const snap = await getDoc(adminAccountRef())
+    data = snap.exists() ? snap.data() : {}
   } catch {
-    // Firestore unavailable – fall back to defaults
+    // Security Rules refuse the read for anyone who is not the administrator
+    return false
   }
-  return { email: DEFAULT_EMAIL, pass: DEFAULT_PASS }
+
+  if (data.uid) return data.uid === user.uid
+  if (!sameEmail(data.email, user.email)) return false
+
+  await setDoc(
+    adminAccountRef(),
+    { email: user.email, uid: user.uid, pass: deleteField(), updatedAt: new Date().toISOString() },
+    { merge: true }
+  )
+  return true
 }
 
-function generateSessionToken(): string {
-  return `session_${Date.now()}_${Math.random().toString(36).slice(2)}`
+/**
+ * Accounts created before Firebase Auth was used kept their password in admin_account. When that
+ * password matches, the administrator's Firebase Auth account is created with it (one time only),
+ * and the stored password is deleted by confirmAdmin().
+ */
+async function migrateLegacyAdmin(email: string, pass: string): Promise<boolean> {
+  let legacy: { email?: string; pass?: string; uid?: string }
+  try {
+    const snap = await getDoc(adminAccountRef())
+    legacy = snap.exists() ? snap.data() : {}
+  } catch {
+    return false
+  }
+  if (legacy.uid || !legacy.pass || !sameEmail(legacy.email, email) || legacy.pass !== pass) return false
+
+  try {
+    await createUserWithEmailAndPassword(auth, email.trim(), pass)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function friendlyAuthError(err: unknown, fallback: string): string {
+  const code = (err as { code?: string }).code || ''
+  if (code === 'auth/requires-recent-login') return 'For security, sign out and sign in again, then repeat this change.'
+  if (code === 'auth/weak-password') return 'Choose a stronger password (at least 6 characters).'
+  if (code === 'auth/email-already-in-use') return 'That email address is already used by another account.'
+  if (code === 'auth/invalid-email') return 'Enter a valid email address.'
+  if (code === 'auth/operation-not-allowed') return 'Firebase requires the new email to be verified first. Use the password reset link instead, or change the email in the Firebase console.'
+  if (code === 'auth/too-many-requests') return 'Too many attempts. Wait a few minutes and try again.'
+  if (code === 'auth/network-request-failed') return 'Network error. Check your connection.'
+  return fallback
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
-  const [isDemoAdmin, setIsDemoAdmin] = useState<boolean>(false)
-  const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>({
-    email: DEFAULT_EMAIL,
-    pass: DEFAULT_PASS,
-  })
+  const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>({ email: '' })
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
-  // In-memory session token (only lives for this browser session)
-  const sessionToken = useRef<string | null>(null)
-
-  // On mount: listen to Firebase Auth state changes
+  // Firebase Auth keeps the session across reloads; each restored session is re-checked here
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser)
-      // If Firebase Auth logs us out (e.g. token expired), clear demo state too
-      if (!currentUser) setIsDemoAdmin(false)
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        setUser(null)
+        setLoading(false)
+        return
+      }
+      const isAdmin = await confirmAdmin(currentUser).catch(() => false)
+      if (isAdmin) {
+        setUser(currentUser)
+        setAdminCredentials({ email: currentUser.email || '' })
+        deleteDoc(doc(db, 'portfolio', LEGACY_SESSION_DOC)).catch(() => {})
+      } else {
+        setUser(null)
+        setError('This account is not the portfolio administrator.')
+        await signOut(auth).catch(() => {})
+      }
       setLoading(false)
     })
-
-    // Load admin credentials from Firestore on boot
-    loadCredentialsFromFirestore().then(setAdminCredentials)
-
-    // Check for an active demo session stored in Firestore
-    async function restoreSession() {
-      try {
-        const snap = await getDoc(doc(db, 'portfolio', SESSION_DOC))
-        if (snap.exists()) {
-          const data = snap.data()
-          if (data?.active === true && data?.token) {
-            sessionToken.current = data.token
-            setIsDemoAdmin(true)
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
-    restoreSession()
-
     return () => unsubscribe()
   }, [])
 
   const login = async (email: string, pass: string) => {
     setError(null)
     setLoading(true)
-
     try {
-      // Primary path: real Firebase email/password auth
-      await signInWithEmailAndPassword(auth, email, pass)
-      setIsDemoAdmin(false)
+      await signInWithEmailAndPassword(auth, email.trim(), pass)
     } catch (firebaseErr: unknown) {
-      const errCode = (firebaseErr as { code?: string }).code
+      const code = (firebaseErr as { code?: string }).code
+      const badCredentials =
+        code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-email'
 
-      // Only fall through to credential check for auth errors, not network errors
-      if (
-        errCode === 'auth/invalid-credential' ||
-        errCode === 'auth/user-not-found' ||
-        errCode === 'auth/wrong-password' ||
-        errCode === 'auth/invalid-email'
-      ) {
-        // Fallback: check against Firestore-stored admin credentials
-        const creds = await loadCredentialsFromFirestore()
-        const emailMatch = email.trim().toLowerCase() === creds.email.trim().toLowerCase()
-        const passMatch = pass === creds.pass
+      if (badCredentials && (await migrateLegacyAdmin(email, pass))) return
 
-        if (emailMatch && passMatch) {
-          // Credentials are valid – create a demo session in Firestore
-          const token = generateSessionToken()
-          sessionToken.current = token
-          setAdminCredentials(creds)
-          setIsDemoAdmin(true)
-
-          // Persist session to Firestore so it survives page refresh
-          try {
-            await setDoc(doc(db, 'portfolio', SESSION_DOC), {
-              active: true,
-              token,
-              createdAt: new Date().toISOString(),
-            })
-          } catch {
-            // Session persistence is non-critical
-          }
-        } else {
-          setError('Invalid administrator email or password. Please try again.')
-          setLoading(false)
-          throw new Error('Invalid credentials')
-        }
-      } else {
-        // Re-throw unexpected errors (network, etc.)
-        const msg = (firebaseErr as { message?: string }).message
-        setError(msg || 'Login failed. Please check your connection.')
-        setLoading(false)
-        throw firebaseErr
-      }
-    } finally {
+      setError(badCredentials ? 'Invalid administrator email or password. Please try again.' : friendlyAuthError(firebaseErr, 'Login failed. Please check your connection.'))
       setLoading(false)
+      throw firebaseErr
     }
+    // onAuthStateChanged confirms the account and clears `loading`
   }
 
   const logout = async () => {
     setLoading(true)
     try {
-      // Clear Firestore demo session
-      await deleteDoc(doc(db, 'portfolio', SESSION_DOC)).catch(() => {})
-      sessionToken.current = null
-
-      // Sign out of Firebase Auth if we have a real session
-      if (auth.currentUser) {
-        await signOut(auth)
-      }
-    } catch {
-      // ignore
+      await signOut(auth)
     } finally {
-      setIsDemoAdmin(false)
       setUser(null)
       setLoading(false)
     }
@@ -184,31 +164,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateCredentials = async (newEmail: string, newPass: string) => {
     setError(null)
+    const current = auth.currentUser
+    if (!current) throw new Error('Not signed in')
     try {
       const cleanEmail = newEmail.trim()
-      const updated: AdminCredentials = {
-        email: cleanEmail,
-        pass: newPass,
-        updatedAt: new Date().toISOString(),
-      }
+      if (!sameEmail(cleanEmail, current.email)) await updateFirebaseEmail(current, cleanEmail)
+      if (newPass) await updateFirebasePassword(current, newPass)
 
-      // Update Firebase Auth user if authenticated via real email/password
-      if (auth.currentUser && !isDemoAdmin) {
-        if (cleanEmail !== auth.currentUser.email) {
-          await updateFirebaseEmail(auth.currentUser, cleanEmail).catch(() => {})
-        }
-        if (newPass) {
-          await updateFirebasePassword(auth.currentUser, newPass).catch(() => {})
-        }
-      }
-
-      // Persist updated credentials to Firestore (this is the source of truth)
-      await setDoc(doc(db, 'portfolio', CREDS_DOC), updated, { merge: true })
+      const updated: AdminCredentials = { email: cleanEmail, updatedAt: new Date().toISOString() }
+      await setDoc(adminAccountRef(), updated, { merge: true })
       setAdminCredentials(updated)
     } catch (err: unknown) {
-      const firebaseErr = err as { message?: string }
-      setError(firebaseErr.message || 'Failed to update credentials.')
-      throw err
+      const message = friendlyAuthError(err, 'Failed to update credentials.')
+      setError(message)
+      throw new Error(message, { cause: err })
     }
   }
 
@@ -217,9 +186,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await sendPasswordResetEmail(auth, email)
     } catch (err: unknown) {
-      const firebaseErr = err as { message?: string }
-      setError(firebaseErr.message || 'Failed to send password reset email.')
-      throw err
+      const message = friendlyAuthError(err, 'Failed to send password reset email.')
+      setError(message)
+      throw new Error(message, { cause: err })
     }
   }
 
@@ -229,7 +198,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        isDemoAdmin,
         loading,
         error,
         adminCredentials,

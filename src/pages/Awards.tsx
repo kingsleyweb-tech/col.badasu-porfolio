@@ -17,7 +17,7 @@ const groupOf = (title: string): Group => (/united nations|\bun\b/i.test(title) 
 
 export function Awards() {
   const { data } = usePortfolio()
-  const awards = (data?.awards?.length ? data.awards : defaultAwards).map((a) => ({ ...a, group: groupOf(a.title) }))
+  const awards = (data?.awards ?? defaultAwards).map((a) => ({ ...a, group: groupOf(a.title) }))
   const chronology = [...awards].sort((a, b) => (parseInt(a.year) || 0) - (parseInt(b.year) || 0))
   const counts = (Object.keys(GROUPS) as Group[])
     .map((g) => ({ g, count: awards.filter((a) => a.group === g).length }))

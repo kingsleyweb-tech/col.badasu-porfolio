@@ -1,16 +1,61 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access to portfolio data & deleted collections so admin edits persist live on the public website
-    match /portfolio/{document=**} {
-      allow read, write: if true;
+
+    // The administrator is the Firebase Auth account whose uid is recorded in portfolio/admin_account.
+    function adminAccount() {
+      return get(/databases/$(database)/documents/portfolio/admin_account).data;
     }
-    match /deleted_collections/{document=**} {
-      allow read, write: if true;
+    function isAdmin() {
+      return request.auth != null && adminAccount().get('uid', '') == request.auth.uid;
     }
-    match /{document=**} {
+    // One-time claim: the record names the administrator's email but no account id yet, and the
+    // signed-in account has that email.
+    function canClaimAdmin() {
+      return request.auth != null
+        && resource != null
+        && resource.data.get('uid', '') == ''
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() == resource.data.get('email', '').lower();
+    }
+
+    // Who the administrator is: never public.
+    match /portfolio/admin_account {
+      allow read: if isAdmin() || canClaimAdmin();
+      allow update: if isAdmin()
+        || (canClaimAdmin() && request.resource.data.uid == request.auth.uid);
+      allow create, delete: if false;
+    }
+
+    // Obsolete shared session record from the old login; only the administrator may remove it.
+    match /portfolio/admin_session {
+      allow read, create, update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Portfolio content: everyone can read the public site, only the administrator can change it.
+    match /portfolio/{docId} {
+      allow read: if docId != 'admin_account' && docId != 'admin_session';
+      allow write: if isAdmin() && docId != 'admin_account' && docId != 'admin_session';
+    }
+
+    // Gallery records kept alongside Cloudinary.
+    match /gallery_collections/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /gallery_images/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /deleted_collections/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

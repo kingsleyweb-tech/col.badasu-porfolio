@@ -22,6 +22,7 @@ import {
 import { usePortfolio } from '../../context/PortfolioContext'
 import { CollectionDetailModal, type CollectionItem } from '../components/CollectionDetailModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
+import { adminFetch } from '../../services/adminApi'
 
 export const EveryoneSection: React.FC = () => {
   const { updatePortfolio } = usePortfolio()
@@ -107,7 +108,7 @@ export const EveryoneSection: React.FC = () => {
           reader.readAsDataURL(file)
         })
 
-        const res = await fetch('/api/upload', {
+        const res = await adminFetch('/api/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

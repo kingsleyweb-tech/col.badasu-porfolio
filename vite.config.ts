@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
   process.env.CLOUDINARY_API_KEY = env.CLOUDINARY_API_KEY
   process.env.CLOUDINARY_API_SECRET = env.CLOUDINARY_API_SECRET
   process.env.CLOUDINARY_GALLERY_ROOT = env.CLOUDINARY_GALLERY_ROOT || 'colonel-badasu'
+  // The write endpoints verify the admin's Firebase sign-in (api/_auth.js)
+  process.env.VITE_FIREBASE_API_KEY = env.VITE_FIREBASE_API_KEY
+  process.env.VITE_FIREBASE_PROJECT_ID = env.VITE_FIREBASE_PROJECT_ID
 
   return {
     plugins: [
@@ -99,7 +102,8 @@ async function handleApiRequest(server: ViteDevServer, req: IncomingMessage, res
     res.end(JSON.stringify(data))
   }
 
-  if (!/^[\w-]+$/.test(route) || !fs.existsSync(file)) {
+  // Files starting with "_" are shared helpers, not routes (same as Vercel)
+  if (!/^[\w-]+$/.test(route) || route.startsWith('_') || !fs.existsSync(file)) {
     sendJson(404, { error: `API route /api/${route} not found` })
     return
   }

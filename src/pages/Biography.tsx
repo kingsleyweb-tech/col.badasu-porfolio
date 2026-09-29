@@ -17,12 +17,12 @@ const SECTIONS = [
 export function Biography() {
   const { data } = usePortfolio()
   const officer = { ...defaultOfficer, ...data?.officer }
-  const biography = officer.biography?.length ? officer.biography : defaultOfficer.biography
-  const details = data?.biographicDetails?.length ? data.biographicDetails : defaultDetails
-  const spoken = data?.languages?.spoken?.length ? data.languages.spoken : officer.spokenLanguages
-  const written = data?.languages?.written?.length ? data.languages.written : officer.writtenLanguages
+  const biography = officer.biography ?? defaultOfficer.biography
+  const details = data?.biographicDetails ?? defaultDetails
+  const spoken = data?.languages?.spoken ?? officer.spokenLanguages
+  const written = data?.languages?.written ?? officer.writtenLanguages
   const languages = spoken.concat(written.filter((l) => !spoken.includes(l)))
-  const hobbies = data?.languages?.hobbies?.length ? data.languages.hobbies : officer.hobbies
+  const hobbies = data?.languages?.hobbies ?? officer.hobbies
   const frenchLevel = data?.languages?.frenchLevel || officer.frenchLevel
   const [firstName, ...otherNames] = officer.name.split(' ')
   const portrait = resolveImageUrl(officer.profileImageUrl) || siteImages.portrait

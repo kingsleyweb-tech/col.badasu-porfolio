@@ -1,3 +1,5 @@
+import { requireAdmin } from './_auth.js'
+
 const rootFolder = process.env.CLOUDINARY_GALLERY_ROOT || 'colonel-badasu'
 
 export default async function handler(request, response) {
@@ -6,6 +8,8 @@ export default async function handler(request, response) {
     response.status(405).json({ error: 'Method not allowed' })
     return
   }
+
+  if (!(await requireAdmin(request, response))) return
 
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME
   const apiKey = process.env.CLOUDINARY_API_KEY

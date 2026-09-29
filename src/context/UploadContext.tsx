@@ -9,6 +9,7 @@ import {
   type QueuedFile
 } from '../services/uploadQueue'
 import { saveGalleryImageRecord } from '../services/galleryFirestore'
+import { adminFetch } from '../services/adminApi'
 
 export type FileUploadStatus = 'pending' | 'uploading' | 'done' | 'error' | 'cancelled'
 
@@ -146,7 +147,7 @@ async function uploadBlob(
     if (signal.aborted) throw new Error('Upload cancelled')
     onProgress(45, 'Uploading to Cloudinary...')
 
-    const res = await fetch('/api/upload', {
+    const res = await adminFetch('/api/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ file: base64, folder, filename }),

@@ -5,6 +5,7 @@ import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
+import { adminFetch } from '../../services/adminApi'
 
 export const SiteSettingsAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -81,7 +82,7 @@ export const SiteSettingsAdmin: React.FC = () => {
         reader.readAsDataURL(file)
       })
 
-      const res = await fetch('/api/upload', {
+      const res = await adminFetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

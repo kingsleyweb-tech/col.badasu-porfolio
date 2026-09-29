@@ -8,6 +8,7 @@ import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { useUpload } from '../../context/UploadContext'
 import { deleteGalleryCollectionFromFirestore, fetchFirestoreCollections, fetchDeletedCollectionSlugs } from '../../services/galleryFirestore'
+import { adminFetch } from '../../services/adminApi'
 
 interface PreviewFile {
   file: File
@@ -172,7 +173,7 @@ export const GalleryAdmin: React.FC = () => {
 
     try {
       // 1. Delete Cloudinary folder and assets
-      const res = await fetch('/api/delete-collection', {
+      const res = await adminFetch('/api/delete-collection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ folderName: col.name, slug: col.slug })

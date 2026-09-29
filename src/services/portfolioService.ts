@@ -240,6 +240,31 @@ export const defaultPortfolioData: PortfolioData = {
   },
 }
 
+// ─── Achievement cards ─────────────────────────────────────────────────────────
+// The achievement cards on the Home page and the Achievements page are one list: the text lives in
+// `achievements` and each card's photo in `homeAchievementCards` at the same position. Both admin
+// screens read and write them through these helpers so the two fields never drift apart.
+
+export function achievementCardsFrom(data: Pick<PortfolioData, 'achievements' | 'homeAchievementCards'>): HomeCard[] {
+  const photos = data.homeAchievementCards ?? []
+  return (data.achievements ?? []).map((a, i) => ({
+    title: a.title,
+    description: a.description,
+    category: a.category ?? '',
+    to: a.to,
+    meta: photos[i]?.meta || 'Institutional Service',
+    imageUrl: photos[i]?.imageUrl || '',
+    imagePublicId: photos[i]?.imagePublicId || '',
+  }))
+}
+
+export function achievementCardsUpdate(cards: HomeCard[]): Pick<PortfolioData, 'achievements' | 'homeAchievementCards'> {
+  return {
+    achievements: cards.map(({ title, description, category, to }) => ({ title, description, category, to })),
+    homeAchievementCards: cards,
+  }
+}
+
 // ─── Firestore CRUD ────────────────────────────────────────────────────────────
 // Firestore is the ONLY data source. No localStorage. No caching.
 

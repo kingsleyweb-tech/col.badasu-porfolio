@@ -1,4 +1,5 @@
 import type { PortfolioData } from './portfolioService'
+import { adminFetch } from './adminApi'
 
 export interface UploadResult {
   success: boolean
@@ -60,7 +61,7 @@ export async function uploadImageToCloudinary(file: File, folder = 'uploads'): P
     reader.onload = async () => {
       try {
         const base64Data = reader.result as string
-        const response = await fetch('/api/upload', {
+        const response = await adminFetch('/api/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -112,7 +113,7 @@ export async function deleteCloudinaryImageIfUnused(
   }
 
   try {
-    const res = await fetch('/api/delete-image', {
+    const res = await adminFetch('/api/delete-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ publicId })

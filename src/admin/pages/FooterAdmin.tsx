@@ -6,6 +6,7 @@ import { SaveSuccessModal } from '../components/SaveSuccessModal'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
 import { officer as defaultOfficer, brandAssets } from '../../data/officerData'
+import { adminFetch } from '../../services/adminApi'
 
 export const FooterAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -70,7 +71,7 @@ export const FooterAdmin: React.FC = () => {
       reader.onload = () => resolve(reader.result as string)
       reader.readAsDataURL(file)
     })
-    const res = await fetch('/api/upload', {
+    const res = await adminFetch('/api/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ file: base64, folder: 'site/footer', filename: file.name }),

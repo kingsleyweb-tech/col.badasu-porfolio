@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { Loader2, Shield } from 'lucide-react'
 
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isDemoAdmin, loading } = useAuth()
+  const { user, loading } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -21,7 +21,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
     )
   }
 
-  const isAuthenticated = Boolean(user || isDemoAdmin)
+  const isAuthenticated = Boolean(user)
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />

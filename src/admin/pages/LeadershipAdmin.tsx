@@ -7,32 +7,42 @@ import { SaveSuccessModal } from '../components/SaveSuccessModal'
 export const LeadershipAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
 
-  const [p1Title, setP1Title] = useState(data.leadership?.pillar1?.title || 'Leadership')
-  const [p1Desc, setP1Desc] = useState(data.leadership?.pillar1?.description || 'Demonstrated strategic command, operational direction, and team management across UN missions.')
-  const [p2Title, setP2Title] = useState(data.leadership?.pillar2?.title || 'Service')
-  const [p2Desc, setP2Desc] = useState(data.leadership?.pillar2?.description || 'Over 28 years of unblemished military service to Ghana and the international community.')
-  const [p3Title, setP3Title] = useState(data.leadership?.pillar3?.title || 'Excellence')
-  const [p3Desc, setP3Desc] = useState(data.leadership?.pillar3?.description || 'Rigorous adherence to military ethics, strategic education, and professional development.')
+  // These are the three pillars on the welcome page. They are the same fields as in
+  // Admin › QR & Welcome Page, so an edit on either screen shows on the site.
+  const stored = {
+    p1Title: data.welcome?.leadershipTitle || 'Leadership',
+    p1Desc: data.welcome?.leadershipText || '',
+    p2Title: data.welcome?.serviceTitle || 'Service',
+    p2Desc: data.welcome?.serviceText || '',
+    p3Title: data.welcome?.excellenceTitle || 'Excellence',
+    p3Desc: data.welcome?.excellenceText || '',
+  }
+
+  const [p1Title, setP1Title] = useState(stored.p1Title)
+  const [p1Desc, setP1Desc] = useState(stored.p1Desc)
+  const [p2Title, setP2Title] = useState(stored.p2Title)
+  const [p2Desc, setP2Desc] = useState(stored.p2Desc)
+  const [p3Title, setP3Title] = useState(stored.p3Title)
+  const [p3Desc, setP3Desc] = useState(stored.p3Desc)
 
   const [saving, setSaving] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
 
-  const stored = data.leadership
   const isDirty =
-    p1Title !== (stored?.pillar1?.title || 'Leadership') ||
-    p1Desc !== (stored?.pillar1?.description || '') ||
-    p2Title !== (stored?.pillar2?.title || 'Service') ||
-    p2Desc !== (stored?.pillar2?.description || '') ||
-    p3Title !== (stored?.pillar3?.title || 'Excellence') ||
-    p3Desc !== (stored?.pillar3?.description || '')
+    p1Title !== stored.p1Title ||
+    p1Desc !== stored.p1Desc ||
+    p2Title !== stored.p2Title ||
+    p2Desc !== stored.p2Desc ||
+    p3Title !== stored.p3Title ||
+    p3Desc !== stored.p3Desc
 
   const handleReset = () => {
-    setP1Title(stored?.pillar1?.title || 'Leadership')
-    setP1Desc(stored?.pillar1?.description || '')
-    setP2Title(stored?.pillar2?.title || 'Service')
-    setP2Desc(stored?.pillar2?.description || '')
-    setP3Title(stored?.pillar3?.title || 'Excellence')
-    setP3Desc(stored?.pillar3?.description || '')
+    setP1Title(stored.p1Title)
+    setP1Desc(stored.p1Desc)
+    setP2Title(stored.p2Title)
+    setP2Desc(stored.p2Desc)
+    setP3Title(stored.p3Title)
+    setP3Desc(stored.p3Desc)
   }
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -40,10 +50,14 @@ export const LeadershipAdmin: React.FC = () => {
     setSaving(true)
     try {
       await updatePortfolio({
-        leadership: {
-          pillar1: { title: p1Title, description: p1Desc },
-          pillar2: { title: p2Title, description: p2Desc },
-          pillar3: { title: p3Title, description: p3Desc },
+        welcome: {
+          ...data.welcome,
+          leadershipTitle: p1Title,
+          leadershipText: p1Desc,
+          serviceTitle: p2Title,
+          serviceText: p2Desc,
+          excellenceTitle: p3Title,
+          excellenceText: p3Desc,
         },
       })
       setShowSuccessModal(true)

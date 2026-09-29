@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom'
 import { usePortfolio } from '../context/PortfolioContext'
 import { achievements as defaultAchievements, recentAssignments as defaultAssignments, volunteerExperience as defaultVolunteer } from '../data/officerData'
 import { siteImages } from '../data/siteImages'
-import type { AchievementCardItem, VolunteerItem } from '../services/portfolioService'
+import type { VolunteerItem } from '../services/portfolioService'
+import { achievementCardsFrom } from '../services/portfolioService'
 import { IconArrowRight, IconCross, IconMap, IconPeople } from '../components/site/icons'
 import { NextPrev, PageHero, SectionHead, SubNav } from '../components/site/PageParts'
 import { resolveImageUrl } from '../utils/imageResolver'
@@ -16,14 +17,13 @@ const SECTIONS = [
 
 export function Achievements() {
   const { data } = usePortfolio()
-  const achievements: AchievementCardItem[] = data?.achievements?.length
-    ? data.achievements
-    : defaultAchievements.map(({ title, description, category, to }) => ({ title, description, category: category ?? '', to }))
-  const volunteer: VolunteerItem[] = data?.volunteerExperience?.length ? data.volunteerExperience : defaultVolunteer
-  const regional = (data?.recentAssignments?.length ? data.recentAssignments : defaultAssignments).slice(8)
+  // Same list as the Home page cards (Admin › Achievements & Highlights)
+  const achievements = achievementCardsFrom(data)
+  const volunteer: VolunteerItem[] = data?.volunteerExperience ?? defaultVolunteer
+  const regional = (data?.recentAssignments ?? defaultAssignments).slice(8)
 
   const imageFor = (i: number) =>
-    resolveImageUrl(data?.homeAchievementCards?.[i]?.imageUrl) || defaultAchievements[i]?.image.src || siteImages.ecowasChamber
+    resolveImageUrl(achievements[i]?.imageUrl) || defaultAchievements[i]?.image.src || siteImages.ecowasChamber
 
   const regionalIcon = (i: number) => {
     if (i === 0) return <IconCross size={26} strokeWidth={1.8} />

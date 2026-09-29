@@ -18,9 +18,9 @@ const SECTIONS = [
 export function Career() {
   const { data } = usePortfolio()
   const isMobile = useIsMobile()
-  const workHistory = data?.workHistory?.length ? data.workHistory : defaultWorkHistory
-  const assignments = data?.recentAssignments?.length ? data.recentAssignments : defaultAssignments
-  const operations = data?.operations?.length ? data.operations : defaultOperations
+  const workHistory = data?.workHistory ?? defaultWorkHistory
+  const assignments = data?.recentAssignments ?? defaultAssignments
+  const operations = data?.operations ?? defaultOperations
 
   const numbered = workHistory.map((item, i) => ({ item, n: i + 1 }))
   const lastAssignmentSpan = 3 - ((assignments.length - 1) % 3)

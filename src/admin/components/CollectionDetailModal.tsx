@@ -6,6 +6,7 @@ import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { useUpload } from '../../context/UploadContext'
 import { ConfirmDeleteModal } from './ConfirmDeleteModal'
+import { adminFetch } from '../../services/adminApi'
 import {
   deleteGalleryCollectionFromFirestore,
   deleteGalleryImageFromFirestore,
@@ -152,7 +153,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
     setToastMessage(null)
     try {
       // 1. Delete Cloudinary folder and images
-      await fetch('/api/delete-collection', {
+      await adminFetch('/api/delete-collection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ folderName: collection.name, slug: collection.slug })

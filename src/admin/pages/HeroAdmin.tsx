@@ -6,6 +6,7 @@ import { SaveSuccessModal } from '../components/SaveSuccessModal'
 import type { HeroSlide } from '../../services/portfolioService'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
+import { adminFetch } from '../../services/adminApi'
 
 export const HeroAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
@@ -59,7 +60,7 @@ export const HeroAdmin: React.FC = () => {
       reader.onload = () => resolve(reader.result as string)
       reader.readAsDataURL(file)
     })
-    const res = await fetch('/api/upload', {
+    const res = await adminFetch('/api/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ file: base64, folder: 'site/hero', filename: file.name }),

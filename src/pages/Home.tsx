@@ -13,6 +13,7 @@ import { siteImages } from '../data/siteImages'
 import { IconArrowRight, IconChevronDown, IconChevronLeft, IconChevronRight } from '../components/site/icons'
 import { SectionHead } from '../components/site/PageParts'
 import { mottoDots } from '../components/site/brand'
+import { achievementCardsFrom } from '../services/portfolioService'
 import { resolveImageUrl } from '../utils/imageResolver'
 import { pad2, parseOperation, shortPeriod, splitYear } from '../utils/portfolioFormat'
 
@@ -30,7 +31,7 @@ export function Home() {
   const { data } = usePortfolio()
   const officer = { ...defaultOfficer, ...data?.officer }
   const hero = data?.hero
-  const operations = data?.operations?.length ? data.operations : defaultOperations
+  const operations = data?.operations ?? defaultOperations
   // Hero heading comes from Admin › Hero Section; the words after the second one render in gold
   const titleWords = (hero?.title || `${officer.rank} ${officer.name}`).trim().split(/\s+/)
   const heroTitle = { lead: titleWords.slice(0, 2).join(' '), rest: titleWords.slice(2).join(' ') }
@@ -61,7 +62,7 @@ export function Home() {
   }, [active, total, go])
 
   // ── Content ────────────────────────────────────────────────────
-  const careerCards: HomeCardView[] = (data?.homeCareerCards?.length ? data.homeCareerCards : careerHighlights).map((c, i) => ({
+  const careerCards: HomeCardView[] = (data?.homeCareerCards ?? careerHighlights).map((c, i) => ({
     title: c.title,
     description: c.description,
     category: c.category ?? '',
@@ -69,20 +70,21 @@ export function Home() {
     image: ('imageUrl' in c && c.imageUrl ? resolveImageUrl(c.imageUrl) : '') || careerHighlights[i]?.image.src || siteImages.ecowasChamber,
   }))
 
-  const achievementCards: HomeCardView[] = (data?.homeAchievementCards?.length ? data.homeAchievementCards : defaultAchievements).map((c, i) => ({
+  // Same list as the Achievements page (Admin › Achievements & Highlights), with the Home card photos
+  const achievementCards: HomeCardView[] = achievementCardsFrom(data).map((c, i) => ({
     title: c.title,
     description: c.description,
     category: c.category ?? '',
     to: c.to,
-    image: ('imageUrl' in c && c.imageUrl ? resolveImageUrl(c.imageUrl) : '') || defaultAchievements[i]?.image.src || siteImages.ecowasChamber,
+    image: (c.imageUrl ? resolveImageUrl(c.imageUrl) : '') || defaultAchievements[i]?.image.src || siteImages.ecowasChamber,
   }))
 
   const courses = data?.professionalCourses ?? []
   const qualifications =
     (data?.professionalCertificates?.length ?? 0) + (data?.militaryDiplomas?.length ?? 0) + (data?.unitarPociCertificates?.length ?? 0) + courses.length
-  const languages = data?.languages?.spoken?.length ? data.languages.spoken : officer.spokenLanguages
+  const languages = data?.languages?.spoken ?? officer.spokenLanguages
   const enlisted = splitYear(officer.enlistment)
-  const biography = officer.biography?.length ? officer.biography : defaultOfficer.biography
+  const biography = officer.biography ?? defaultOfficer.biography
 
   const indexGroups = INDEX_ORDER.map((key) => ({
     key,

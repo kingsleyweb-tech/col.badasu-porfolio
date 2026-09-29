@@ -4,13 +4,13 @@ import { useAuth } from '../../context/AuthContext'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
 
 export const UsersAdmin: React.FC = () => {
-  const { user, isDemoAdmin, adminCredentials, updateCredentials, resetPassword } = useAuth()
+  const { user, adminCredentials, updateCredentials, resetPassword } = useAuth()
 
-  const currentEmail = user?.email || adminCredentials.email || 'admin@colonelbadasu.com'
+  const currentEmail = user?.email || adminCredentials.email || ''
 
   const [emailInput, setEmailInput] = useState(currentEmail)
-  const [passwordInput, setPasswordInput] = useState(adminCredentials.pass || '')
-  const [confirmPasswordInput, setConfirmPasswordInput] = useState(adminCredentials.pass || '')
+  const [passwordInput, setPasswordInput] = useState('')
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('')
 
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -21,11 +21,7 @@ export const UsersAdmin: React.FC = () => {
 
   useEffect(() => {
     setEmailInput(currentEmail)
-    if (adminCredentials.pass) {
-      setPasswordInput(adminCredentials.pass)
-      setConfirmPasswordInput(adminCredentials.pass)
-    }
-  }, [currentEmail, adminCredentials.pass])
+  }, [currentEmail])
 
   const handleUpdateCredentials = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,8 +50,8 @@ export const UsersAdmin: React.FC = () => {
         text: `Credentials updated successfully! You can now log in using ${emailInput.trim()} and your new password.`,
         type: 'success',
       })
-    } catch {
-      setAlertMsg({ text: 'Failed to update admin credentials. Please try again.', type: 'error' })
+    } catch (err) {
+      setAlertMsg({ text: err instanceof Error ? err.message : 'Failed to update admin credentials. Please try again.', type: 'error' })
     } finally {
       setSubmitting(false)
     }
@@ -118,7 +114,7 @@ export const UsersAdmin: React.FC = () => {
                 <p><Mail size={14} style={{ display: 'inline', marginRight: '6px' }} /> {currentEmail}</p>
                 <div className="admin-badge-row">
                   <span className="admin-badge admin-badge--primary">Primary Administrator</span>
-                  <span className="admin-badge admin-badge--secondary">{isDemoAdmin ? 'Custom Credentials' : 'Firebase Authenticated'}</span>
+                  <span className="admin-badge admin-badge--secondary">Firebase Authenticated</span>
                 </div>
               </div>
             </div>
@@ -246,7 +242,7 @@ export const UsersAdmin: React.FC = () => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
                 <span>Firebase Auth:</span>
-                <strong style={{ color: '#0f172a' }}>{isDemoAdmin ? 'Demo Credentials' : 'Active'}</strong>
+                <strong style={{ color: '#0f172a' }}>Active</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Password Strength:</span>

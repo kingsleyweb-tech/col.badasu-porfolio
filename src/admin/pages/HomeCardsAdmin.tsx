@@ -4,9 +4,11 @@ import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
 import type { HomeCard } from '../../services/portfolioService'
+import { achievementCardsFrom, achievementCardsUpdate } from '../../services/portfolioService'
 import { resolveImageUrl } from '../../utils/imageResolver'
 import { deleteCloudinaryImageIfUnused } from '../../services/imageManager'
 import { careerHighlights, achievements } from '../../data/officerData'
+import { adminFetch } from '../../services/adminApi'
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -16,7 +18,7 @@ async function uploadFile(file: File, folder: string): Promise<{ url: string; pu
     reader.onload = () => resolve(reader.result as string)
     reader.readAsDataURL(file)
   })
-  const res = await fetch('/api/upload', {
+  const res = await adminFetch('/api/upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ file: base64, folder, filename: file.name }),
@@ -132,12 +134,8 @@ function CardRow({
 export const HomeCardsAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
 
-  const [careerCards, setCareerCards] = useState<HomeCard[]>(
-    data?.homeCareerCards?.length ? data.homeCareerCards : []
-  )
-  const [achieveCards, setAchieveCards] = useState<HomeCard[]>(
-    data?.homeAchievementCards?.length ? data.homeAchievementCards : []
-  )
+  const [careerCards, setCareerCards] = useState<HomeCard[]>(data?.homeCareerCards ?? [])
+  const [achieveCards, setAchieveCards] = useState<HomeCard[]>(() => achievementCardsFrom(data))
   const [saving, setSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [uploadingCareer, setUploadingCareer] = useState<number | null>(null)
@@ -145,8 +143,9 @@ export const HomeCardsAdmin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'career' | 'achievements'>('career')
 
   useEffect(() => {
-    if (data?.homeCareerCards?.length) setCareerCards(data.homeCareerCards)
-    if (data?.homeAchievementCards?.length) setAchieveCards(data.homeAchievementCards)
+    setCareerCards(data?.homeCareerCards ?? [])
+    // Achievement text is shared with Admin › Achievements; photos are stored per position
+    setAchieveCards(achievementCardsFrom(data))
   }, [data])
 
   // Initialize with defaults if empty
@@ -174,17 +173,17 @@ export const HomeCardsAdmin: React.FC = () => {
 
   const isDirty =
     JSON.stringify(careerCards) !== JSON.stringify(data?.homeCareerCards || []) ||
-    JSON.stringify(achieveCards) !== JSON.stringify(data?.homeAchievementCards || [])
+    JSON.stringify(achieveCards) !== JSON.stringify(achievementCardsFrom(data))
 
   const handleReset = () => {
     setCareerCards(data?.homeCareerCards || [])
-    setAchieveCards(data?.homeAchievementCards || [])
+    setAchieveCards(achievementCardsFrom(data))
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      await updatePortfolio({ homeCareerCards: careerCards, homeAchievementCards: achieveCards })
+      await updatePortfolio({ homeCareerCards: careerCards, ...achievementCardsUpdate(achieveCards) })
       setShowSuccess(true)
     } catch {
       alert('Failed to save Home Cards.')
@@ -234,7 +233,7 @@ export const HomeCardsAdmin: React.FC = () => {
     if (result) {
       const next = achieveCards.map((c, i) => i === idx ? { ...c, imageUrl: result.url, imagePublicId: result.publicId } : c)
       setAchieveCards(next)
-      await updatePortfolio({ homeAchievementCards: next })
+      await updatePortfolio(achievementCardsUpdate(next))
     }
     setUploadingAchieve(null)
   }
@@ -244,7 +243,7 @@ export const HomeCardsAdmin: React.FC = () => {
     if (old.imagePublicId) await deleteCloudinaryImageIfUnused(old.imagePublicId, data)
     const next = achieveCards.map((c, i) => i === idx ? { ...c, imageUrl: '', imagePublicId: '' } : c)
     setAchieveCards(next)
-    await updatePortfolio({ homeAchievementCards: next })
+    await updatePortfolio(achievementCardsUpdate(next))
   }
 
   const activeCards = activeTab === 'career' ? careerCards : achieveCards
@@ -259,7 +258,7 @@ export const HomeCardsAdmin: React.FC = () => {
           <div className="admin-header-icon"><LayoutDashboard size={24} /></div>
           <div>
             <h1>Home Page Cards</h1>
-            <p>Upload or replace images and edit the text for Career and Achievements cards shown on the homepage.</p>
+            <p>Upload or replace images and edit the text for Career and Achievements cards shown on the homepage. Achievement cards are the same list as Admin › Achievements.</p>
           </div>
         </div>
         <button type="button" className="btn btn--primary" onClick={handleSave} disabled={saving}>

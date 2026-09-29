@@ -1,11 +1,15 @@
 import crypto from 'node:crypto'
 
+import { requireAdmin } from './_auth.js'
+
 export default async function handler(request, response) {
   if (request.method !== 'POST' && request.method !== 'DELETE') {
     response.setHeader('Allow', 'POST, DELETE')
     response.status(405).json({ error: 'Method not allowed' })
     return
   }
+
+  if (!(await requireAdmin(request, response))) return
 
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME
   const apiKey = process.env.CLOUDINARY_API_KEY

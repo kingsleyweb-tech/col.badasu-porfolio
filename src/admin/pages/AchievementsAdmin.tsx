@@ -3,12 +3,13 @@ import { Trophy, Save, Plus, Trash2, Loader2 } from 'lucide-react'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { UnsavedChangesBanner } from '../components/UnsavedChangesBanner'
 import { SaveSuccessModal } from '../components/SaveSuccessModal'
-import type { AchievementCardItem, VolunteerItem } from '../../services/portfolioService'
+import type { HomeCard, VolunteerItem } from '../../services/portfolioService'
+import { achievementCardsFrom, achievementCardsUpdate } from '../../services/portfolioService'
 
 export const AchievementsAdmin: React.FC = () => {
   const { data, updatePortfolio } = usePortfolio()
 
-  const [achievements, setAchievements] = useState<AchievementCardItem[]>(data.achievements || [])
+  const [achievements, setAchievements] = useState<HomeCard[]>(() => achievementCardsFrom(data))
   const [volunteers, setVolunteers] = useState<VolunteerItem[]>(data.volunteerExperience || [])
   const [recentAssignments, setRecentAssignments] = useState<string[]>(data.recentAssignments || [])
   const [operations, setOperations] = useState<string[]>(data.operations || [])
@@ -17,20 +18,21 @@ export const AchievementsAdmin: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
 
   useEffect(() => {
-    setAchievements(data.achievements || [])
+    // Each card keeps its Home page photo (Admin › Career & Achievement Cards) when cards are removed
+    setAchievements(achievementCardsFrom(data))
     setVolunteers(data.volunteerExperience || [])
     setRecentAssignments(data.recentAssignments || [])
     setOperations(data.operations || [])
   }, [data])
 
   const isDirty =
-    JSON.stringify(achievements) !== JSON.stringify(data.achievements || []) ||
+    JSON.stringify(achievements) !== JSON.stringify(achievementCardsFrom(data)) ||
     JSON.stringify(volunteers) !== JSON.stringify(data.volunteerExperience || []) ||
     JSON.stringify(recentAssignments) !== JSON.stringify(data.recentAssignments || []) ||
     JSON.stringify(operations) !== JSON.stringify(data.operations || [])
 
   const handleReset = () => {
-    setAchievements(data.achievements || [])
+    setAchievements(achievementCardsFrom(data))
     setVolunteers(data.volunteerExperience || [])
     setRecentAssignments(data.recentAssignments || [])
     setOperations(data.operations || [])
@@ -39,7 +41,7 @@ export const AchievementsAdmin: React.FC = () => {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await updatePortfolio({ achievements, volunteerExperience: volunteers, recentAssignments, operations })
+      await updatePortfolio({ ...achievementCardsUpdate(achievements), volunteerExperience: volunteers, recentAssignments, operations })
       setShowSuccessModal(true)
     } catch {
       alert('Failed to save achievements data.')
@@ -49,7 +51,7 @@ export const AchievementsAdmin: React.FC = () => {
   }
 
   // ─── Achievement Cards helpers ─────────────────────────────────────────
-  const updateAchievement = (idx: number, field: keyof AchievementCardItem, val: string) => {
+  const updateAchievement = (idx: number, field: keyof HomeCard, val: string) => {
     const next = [...achievements]
     next[idx] = { ...next[idx], [field]: val }
     setAchievements(next)
@@ -92,12 +94,12 @@ export const AchievementsAdmin: React.FC = () => {
         <div className="admin-card__header">
           <div>
             <h3>1. Achievements / Highlights (Feature Cards)</h3>
-            <p>These cards appear on the Achievements page under "Selected Areas of Contribution".</p>
+            <p>These cards appear on the Achievements page and in "Professional contributions" on the Home page. Card photos are set under Career &amp; Achievement Cards.</p>
           </div>
           <button
             type="button"
             className="btn btn--secondary btn--sm"
-            onClick={() => setAchievements([...achievements, { title: 'New Achievement', description: 'Description', category: 'Category', to: '/achievements' }])}
+            onClick={() => setAchievements([...achievements, { title: 'New Achievement', description: 'Description', category: 'Category', to: '/achievements', meta: 'Institutional Service', imageUrl: '', imagePublicId: '' }])}
           >
             <Plus size={16} />
             <span>Add Card</span>

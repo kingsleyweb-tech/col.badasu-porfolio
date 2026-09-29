@@ -44,7 +44,8 @@ export async function requireAdmin(request, response) {
       return null
     }
     console.error('Admin check failed', error)
-    response.status(503).json({ error: 'Could not verify the admin session. Try again.' })
+    // Only reached with a valid Firebase sign-in; Firebase error messages never contain key material
+    response.status(503).json({ error: `Could not verify the admin session: ${String(error?.message || error).slice(0, 160)}` })
     return null
   }
 }

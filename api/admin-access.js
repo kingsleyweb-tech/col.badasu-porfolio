@@ -32,7 +32,7 @@ export default async function handler(request, response) {
     response.status(405).json({ error: 'Method not allowed' })
   } catch (error) {
     console.error('[admin-access] failed', error)
-    response.status(503).json({ error: 'Access control is temporarily unavailable.' })
+    response.status(503).json({ error: `Access control is temporarily unavailable: ${String(error?.message || error).slice(0, 160)}` })
   }
 }
 

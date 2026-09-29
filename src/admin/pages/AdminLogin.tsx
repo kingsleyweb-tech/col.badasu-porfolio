@@ -4,7 +4,6 @@ import { ShieldCheck, Lock, Mail, Loader2, AlertCircle, CheckCircle2, ArrowRight
 import { useAuth } from '../../context/AuthContext'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { resolveImageUrl } from '../../utils/imageResolver'
-import ecowasBg from '../../assets/images/ecowas/ecowas-bg.jpeg'
 
 export const AdminLogin: React.FC = () => {
   const { login, resetPassword, error, clearError } = useAuth()
@@ -74,7 +73,8 @@ export const AdminLogin: React.FC = () => {
   return (
     <div className="ad-login">
       <div className="l">
-        <img className="bg" src={ecowasBg} alt="" />
+        {/* Portfolio photos are served only after the access check, so the sign-in page uses the public crest */}
+        <img className="bg crest" src="/crest.png" alt="" />
         <div className="sh" />
         <div className="brand">
           <img src={logo} alt="Ghana Armed Forces crest" />
@@ -87,7 +87,7 @@ export const AdminLogin: React.FC = () => {
           <span className="ad-tag"><i />Content management</span>
           <h1>Command<br /><em>console</em></h1>
           <p>
-            Manage every section of the official portfolio of {data.officer.rank} {data.officer.name}: biography, career, awards,
+            Manage every section of the official portfolio{data.officer.name ? ` of ${data.officer.rank} ${data.officer.name}`.replace(/\s+/g, ' ') : ''}: biography, career, awards,
             education, gallery and site settings.
           </p>
         </div>

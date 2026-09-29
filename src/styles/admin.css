@@ -266,6 +266,7 @@ textarea.ad-field { resize: vertical; line-height: 1.6; }
 .ad-login { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); min-height: 100vh; font-family: var(--sans); background: #fff; color: var(--ink); -webkit-font-smoothing: antialiased; }
 .ad-login .l { position: relative; background: var(--g-950); color: #fff; overflow: hidden; min-height: 320px; }
 .ad-login .l .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: pf-kb 20s ease-in-out infinite alternate; }
+.ad-login .l .bg.crest { inset: auto -8% -14% auto; width: min(560px, 70%); height: auto; aspect-ratio: 1; object-fit: contain; opacity: .16; filter: grayscale(1) invert(1); mix-blend-mode: screen; animation: none; }
 .ad-login .l .sh { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(7, 21, 13, .95) 10%, rgba(7, 21, 13, .45) 60%, rgba(7, 21, 13, .6)); }
 .ad-login .brand { position: absolute; left: 56px; top: 48px; display: flex; align-items: center; gap: 14px; }
 .ad-login .brand img { width: 52px; height: 52px; border-radius: 99px; background: #fff; padding: 5px; object-fit: contain; }
@@ -465,10 +466,12 @@ textarea.ad-field { resize: vertical; line-height: 1.6; }
   .ad-savebar .sp { display: none; }
   .ad-savebar > span { flex: 1; min-width: 60%; }
   .ad-login { grid-template-columns: 1fr; }
-  .ad-login .l { min-height: 300px; }
-  .ad-login .brand { left: 22px; top: 22px; }
-  .ad-login .in { left: 22px; right: 22px; bottom: 26px; }
-  .ad-login h1 { font-size: 56px; }
+  /* Stack the brand and the title instead of pinning both, so they never overlap on phones */
+  .ad-login .l { min-height: 0; display: flex; flex-direction: column; gap: 28px; padding: 22px 22px 28px; }
+  .ad-login .brand, .ad-login .in { position: relative; inset: auto; }
+  .ad-login .brand img { width: 46px; height: 46px; }
+  .ad-login .l .bg.crest { width: 240px; right: -50px; bottom: -40px; }
+  .ad-login h1 { font-size: clamp(44px, 14vw, 56px); margin-top: 14px; }
   .ad-login .in p { font-size: 14px; }
   .ad-login .r { padding: 32px 20px 40px; }
   .ad-login h2 { font-size: 38px; }

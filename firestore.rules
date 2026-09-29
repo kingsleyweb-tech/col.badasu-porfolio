@@ -9,21 +9,28 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null && adminAccount().get('uid', '') == request.auth.uid;
     }
-    // One-time claim: the record names the administrator's email but no account id yet, and the
-    // signed-in account has that email.
+    // One-time switch from the old stored password to Firebase Auth. The record has no account id
+    // yet, the signed-in account has the recorded email, and it proves that email is its own:
+    // either the write carries the stored password (claimPass, never readable) or Firebase has
+    // verified the email (for example through the password reset link). Only uid and claimPass change.
     function canClaimAdmin() {
       return request.auth != null
         && resource != null
         && resource.data.get('uid', '') == ''
         && request.auth.token.email != null
-        && request.auth.token.email.lower() == resource.data.get('email', '').lower();
+        && request.auth.token.email.lower() == resource.data.get('email', '').lower()
+        && request.resource.data.get('uid', '') == request.auth.uid
+        && (
+          request.auth.token.get('email_verified', false) == true
+          || (resource.data.get('pass', '') != '' && request.resource.data.get('claimPass', '') == resource.data.pass)
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'claimPass']);
     }
 
     // Who the administrator is: never public.
     match /portfolio/admin_account {
-      allow read: if isAdmin() || canClaimAdmin();
-      allow update: if isAdmin()
-        || (canClaimAdmin() && request.resource.data.uid == request.auth.uid);
+      allow read: if isAdmin();
+      allow update: if isAdmin() || canClaimAdmin();
       allow create, delete: if false;
     }
 

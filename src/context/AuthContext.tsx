@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { User } from 'firebase/auth'
 import {
   createUserWithEmailAndPassword,
@@ -42,52 +42,34 @@ const adminAccountRef = () => doc(db, 'portfolio', CREDS_DOC)
 
 const sameEmail = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
 
-/**
- * Returns true when the signed-in Firebase user is the portfolio administrator. The first time the
- * administrator signs in with Firebase Auth, their account id is recorded in admin_account.
- */
-async function confirmAdmin(user: User): Promise<boolean> {
-  let data: { email?: string; uid?: string }
+/** True when the signed-in Firebase user is the account recorded as the administrator. */
+async function isRecordedAdmin(user: User): Promise<boolean> {
   try {
     const snap = await getDoc(adminAccountRef())
-    data = snap.exists() ? snap.data() : {}
+    return snap.exists() && snap.data().uid === user.uid
   } catch {
     // Security Rules refuse the read for anyone who is not the administrator
     return false
   }
-
-  if (data.uid) return data.uid === user.uid
-  if (!sameEmail(data.email, user.email)) return false
-
-  await setDoc(
-    adminAccountRef(),
-    { email: user.email, uid: user.uid, pass: deleteField(), updatedAt: new Date().toISOString() },
-    { merge: true }
-  )
-  return true
 }
 
 /**
- * Accounts created before Firebase Auth was used kept their password in admin_account. When that
- * password matches, the administrator's Firebase Auth account is created with it (one time only),
- * and the stored password is deleted by confirmAdmin().
+ * One-time switch from the password stored in admin_account to Firebase Auth. The stored password
+ * is never readable; instead the Security Rules accept this write only when claimPass equals it
+ * and the account's email matches. Afterwards the stored password is deleted.
  */
-async function migrateLegacyAdmin(email: string, pass: string): Promise<boolean> {
-  let legacy: { email?: string; pass?: string; uid?: string }
+async function claimAdmin(user: User, pass: string): Promise<boolean> {
   try {
-    const snap = await getDoc(adminAccountRef())
-    legacy = snap.exists() ? snap.data() : {}
+    await setDoc(adminAccountRef(), { uid: user.uid, claimPass: pass }, { merge: true })
   } catch {
     return false
   }
-  if (legacy.uid || !legacy.pass || !sameEmail(legacy.email, email) || legacy.pass !== pass) return false
-
-  try {
-    await createUserWithEmailAndPassword(auth, email.trim(), pass)
-    return true
-  } catch {
-    return false
-  }
+  await setDoc(
+    adminAccountRef(),
+    { email: user.email, pass: deleteField(), claimPass: deleteField(), updatedAt: new Date().toISOString() },
+    { merge: true }
+  ).catch(() => {})
+  return true
 }
 
 function friendlyAuthError(err: unknown, fallback: string): string {
@@ -110,23 +92,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
+  // login() does its own checks; the listener must not sign the user out halfway through them
+  const loginInProgress = useRef(false)
+
+  const acceptAdmin = (currentUser: User) => {
+    setUser(currentUser)
+    setAdminCredentials({ email: currentUser.email || '' })
+    deleteDoc(doc(db, 'portfolio', LEGACY_SESSION_DOC)).catch(() => {})
+  }
+
   // Firebase Auth keeps the session across reloads; each restored session is re-checked here
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
-        setUser(null)
-        setLoading(false)
-        return
-      }
-      const isAdmin = await confirmAdmin(currentUser).catch(() => false)
-      if (isAdmin) {
-        setUser(currentUser)
-        setAdminCredentials({ email: currentUser.email || '' })
-        deleteDoc(doc(db, 'portfolio', LEGACY_SESSION_DOC)).catch(() => {})
+      if (loginInProgress.current) return
+      if (currentUser && (await isRecordedAdmin(currentUser))) {
+        acceptAdmin(currentUser)
       } else {
         setUser(null)
-        setError('This account is not the portfolio administrator.')
-        await signOut(auth).catch(() => {})
+        if (currentUser) await signOut(auth).catch(() => {})
       }
       setLoading(false)
     })
@@ -134,22 +117,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const login = async (email: string, pass: string) => {
+    const invalid = 'Invalid administrator email or password. Please try again.'
     setError(null)
     setLoading(true)
+    loginInProgress.current = true
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), pass)
-    } catch (firebaseErr: unknown) {
-      const code = (firebaseErr as { code?: string }).code
-      const badCredentials =
-        code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-email'
+      let current: User
+      let created = false
+      try {
+        current = (await signInWithEmailAndPassword(auth, email.trim(), pass)).user
+      } catch (signInErr: unknown) {
+        const code = (signInErr as { code?: string }).code
+        const badCredentials =
+          code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-email'
+        if (!badCredentials) throw new Error(friendlyAuthError(signInErr, 'Login failed. Please check your connection.'), { cause: signInErr })
 
-      if (badCredentials && (await migrateLegacyAdmin(email, pass))) return
+        // No Firebase account yet: create it, then prove it belongs to the administrator below
+        try {
+          current = (await createUserWithEmailAndPassword(auth, email.trim(), pass)).user
+          created = true
+        } catch (createErr: unknown) {
+          throw new Error(invalid, { cause: createErr })
+        }
+      }
 
-      setError(badCredentials ? 'Invalid administrator email or password. Please try again.' : friendlyAuthError(firebaseErr, 'Login failed. Please check your connection.'))
+      if ((await isRecordedAdmin(current)) || (await claimAdmin(current, pass))) {
+        acceptAdmin(current)
+        return
+      }
+
+      // Wrong password for the administrator: remove the account that was just created
+      if (created) await current.delete().catch(() => {})
+      await signOut(auth).catch(() => {})
+      throw new Error(created ? invalid : 'This account is not the portfolio administrator.')
+    } catch (err: unknown) {
+      setUser(null)
+      setError(err instanceof Error ? err.message : invalid)
+      throw err
+    } finally {
+      loginInProgress.current = false
       setLoading(false)
-      throw firebaseErr
     }
-    // onAuthStateChanged confirms the account and clears `loading`
   }
 
   const logout = async () => {

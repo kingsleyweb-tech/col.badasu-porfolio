@@ -40,25 +40,37 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Portfolio content: everyone can read the public site, only the administrator can change it.
+    // Portfolio content is protected: only the administrator reads or writes it directly. Visitors
+    // receive it from /api/portfolio after the server has checked their access-code session.
     match /portfolio/{docId} {
-      allow read: if docId != 'admin_account' && docId != 'admin_session';
-      allow write: if isAdmin() && docId != 'admin_account' && docId != 'admin_session';
+      allow read, write: if isAdmin() && docId != 'admin_account' && docId != 'admin_session';
     }
 
-    // Gallery records kept alongside Cloudinary.
-    match /gallery_collections/{docId} {
+    // Content-free change markers that open pages watch to refresh or re-check access.
+    // content: { updatedAt } written by the administrator when saving.
+    // access:  { enabled, codeVersion, epoch } written only by the server.
+    match /site_meta/content {
       allow read: if true;
       allow write: if isAdmin();
+    }
+    match /site_meta/access {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Gallery records kept alongside Cloudinary (admin dashboard only).
+    match /gallery_collections/{docId} {
+      allow read, write: if isAdmin();
     }
     match /gallery_images/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
     match /deleted_collections/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
+
+    // Access control (access_control, visitor_sessions, access_logs, access_rate_limits) is
+    // server-only: the rule below closes it to every browser, including the administrator's.
 
     // Everything else is closed.
     match /{document=**} {

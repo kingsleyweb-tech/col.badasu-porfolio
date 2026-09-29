@@ -10,6 +10,7 @@ import {
   updatePassword as updateFirebasePassword,
 } from 'firebase/auth'
 import { auth, db } from '../lib/firebase'
+import { adminFetch } from '../services/adminApi'
 import { deleteDoc, deleteField, doc, getDoc, setDoc } from 'firebase/firestore'
 
 export type AdminCredentials = {
@@ -99,6 +100,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(currentUser)
     setAdminCredentials({ email: currentUser.email || '' })
     deleteDoc(doc(db, 'portfolio', LEGACY_SESSION_DOC)).catch(() => {})
+    // Lets the administrator open the protected portfolio pages without the visitor access code
+    adminFetch('/api/admin-session', { method: 'POST' }).catch(() => {})
   }
 
   // Firebase Auth keeps the session across reloads; each restored session is re-checked here
@@ -163,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setLoading(true)
     try {
+      await fetch('/api/admin-session', { method: 'DELETE' }).catch(() => {})
       await signOut(auth)
     } finally {
       setUser(null)

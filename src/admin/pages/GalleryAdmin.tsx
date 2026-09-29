@@ -104,7 +104,7 @@ export const GalleryAdmin: React.FC = () => {
       }
 
       // Retry Cloudinary API up to 3 times for live collections
-      const res = await fetchWithRetry(() => fetch('/api/gallery?fresh=1'), 1)
+      const res = await fetchWithRetry(() => adminFetch('/api/gallery?fresh=1'), 1)
 
       let apiCols: CollectionItem[] = []
       if (res && res.ok) {

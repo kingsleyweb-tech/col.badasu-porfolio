@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { usePortfolio } from '../../context/PortfolioContext'
 import { resolveImageUrl } from '../../utils/imageResolver'
+import { adminFetch } from '../../services/adminApi'
 
 type Section = {
   title: string
@@ -43,7 +44,7 @@ export const MainDashboard: React.FC = () => {
     const loadGalleryStats = async () => {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          const res = await fetch('/api/gallery')
+          const res = await adminFetch('/api/gallery')
           if (!res.ok) throw new Error(`HTTP ${res.status}`)
           const json = await res.json()
           if (active && json && Array.isArray(json.collections)) {

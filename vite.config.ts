@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -18,16 +19,23 @@ export default defineConfig(({ mode }) => {
   // The write endpoints verify the admin's Firebase sign-in (api/_auth.js)
   process.env.VITE_FIREBASE_API_KEY = env.VITE_FIREBASE_API_KEY
   process.env.VITE_FIREBASE_PROJECT_ID = env.VITE_FIREBASE_PROJECT_ID
+  // Server-only access-control settings (never prefixed VITE_, so never sent to the browser)
+  for (const key of ['FIREBASE_SERVICE_ACCOUNT', 'FIREBASE_SERVICE_ACCOUNT_FILE', 'ACCESS_SESSION_SECRET', 'FIRESTORE_EMULATOR_HOST', 'FIREBASE_AUTH_EMULATOR_HOST']) {
+    if (env[key]) process.env[key] = env[key]
+  }
 
   return {
     plugins: [
+      localAccessGate(),
       localApi(),
       react(),
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
         workbox: {
-          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+          // The access page and API must always come from the server, never from the offline cache
+          navigateFallbackDenylist: [/^\/api\//, /^\/access/]
         },
         includeAssets: ['favicon.svg', 'icons.svg', 'pwa.png'],
         manifest: {
@@ -71,26 +79,98 @@ export default defineConfig(({ mode }) => {
 })
 
 type ApiHandler = (req: unknown, res: unknown) => Promise<void> | void
+type Loader = (file: string) => Promise<Record<string, unknown>>
+type Middlewares = { use: (fn: (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => void) => void }
+type AccessGate = { isOpenPath: (path: string) => boolean; hasPortfolioAccess: (cookie?: string | null) => Promise<boolean> }
+
+// Dev loads server files through Vite; `vite preview` (the production build) imports them directly
+const devLoader = (server: ViteDevServer): Loader => (file) => server.ssrLoadModule(file)
+const previewLoader: Loader = (file) => import(pathToFileURL(file).href)
+
+/** Security headers from vercel.json, applied by `vite preview` so the built site is tested as deployed. */
+function vercelHeaders(): Array<{ key: string; value: string }> {
+  try {
+    const config = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'vercel.json'), 'utf8'))
+    return config.headers?.find((h: { source: string }) => h.source === '/(.*)')?.headers ?? []
+  } catch {
+    return []
+  }
+}
 
 /**
- * Serves the Vercel-style functions in /api directly from the Vite dev server,
- * so `npm run dev` loads the Cloudinary gallery without a second API process.
- * Production is unaffected: Vercel runs the same files as serverless functions.
+ * Applies middleware.js (the Vercel Routing Middleware) locally, so the dev server and `vite preview`
+ * lock the portfolio the same way production does. In dev, Vite's own module and tooling paths stay
+ * open; photographs under src/assets/images are gated like the built /assets files.
  */
-function localApi(): Plugin {
+function localAccessGate(): Plugin {
+  const devOpen = (p: string) => /^\/(?:@|node_modules\/|__vite|src\/(?!assets\/images\/))/.test(p)
+
+  const install = (middlewares: Middlewares, load: Loader, preview: boolean) => {
+    const headers = preview ? vercelHeaders() : []
+    middlewares.use((req, res, next) => {
+      headers.forEach(({ key, value }) => res.setHeader(key, value))
+      const url = new URL(req.url ?? '/', 'http://localhost')
+      if (url.pathname === '/access' || url.pathname === '/access/') {
+        req.url = `/access.html${url.search}`
+        return next()
+      }
+      // In dev an image import is a tiny JS module holding only the image URL (?import); the
+      // image file itself is still gated below
+      if (!preview && (devOpen(url.pathname) || url.searchParams.has('import'))) return next()
+      load(path.resolve(process.cwd(), 'middleware.js'))
+        .then(async (gate) => {
+          const { isOpenPath, hasPortfolioAccess } = gate as AccessGate
+          if (isOpenPath(url.pathname) || (await hasPortfolioAccess(req.headers.cookie))) return next()
+          res.setHeader('Cache-Control', 'no-store')
+          if (req.method === 'GET' && (req.headers.accept || '').includes('text/html')) {
+            const target = url.pathname + url.search
+            res.statusCode = 302
+            res.setHeader('Location', `/access${target === '/' ? '' : `?next=${encodeURIComponent(target)}`}`)
+            res.end()
+          } else {
+            res.statusCode = 401
+            res.end('Access required')
+          }
+        })
+        .catch(next)
+    })
+  }
+
   return {
-    name: 'local-api',
+    name: 'local-access-gate',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        if (!req.url?.startsWith('/api/')) return next()
-        handleApiRequest(server, req, res).catch(next)
-      })
+      install(server.middlewares, devLoader(server), false)
+    },
+    configurePreviewServer(server) {
+      install(server.middlewares, previewLoader, true)
     },
   }
 }
 
-async function handleApiRequest(server: ViteDevServer, req: IncomingMessage, res: ServerResponse) {
+/**
+ * Serves the Vercel-style functions in /api from the Vite dev and preview servers, so the site works
+ * locally without a second API process. Production is unaffected: Vercel runs the same files.
+ */
+function localApi(): Plugin {
+  const install = (middlewares: Middlewares, load: Loader) =>
+    middlewares.use((req, res, next) => {
+      if (!req.url?.startsWith('/api/')) return next()
+      handleApiRequest(load, req, res).catch(next)
+    })
+  return {
+    name: 'local-api',
+    apply: 'serve',
+    configureServer(server) {
+      install(server.middlewares, devLoader(server))
+    },
+    configurePreviewServer(server) {
+      install(server.middlewares, previewLoader)
+    },
+  }
+}
+
+async function handleApiRequest(load: Loader, req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://localhost')
   const route = url.pathname.slice('/api/'.length).split('/')[0]
   const file = path.resolve(process.cwd(), 'api', `${route}.js`)
@@ -138,12 +218,12 @@ async function handleApiRequest(server: ViteDevServer, req: IncomingMessage, res
   }
 
   try {
-    const mod = await server.ssrLoadModule(file)
+    const mod = await load(file)
     const handler = mod.default as ApiHandler
     await handler({ method: req.method ?? 'GET', query, body, headers: req.headers, url: req.url }, apiRes)
     if (!res.writableEnded) sendJson(statusCode, {})
   } catch (err) {
-    server.config.logger.error(`[local-api] /api/${route} failed: ${err instanceof Error ? err.stack : String(err)}`)
-    sendJson(500, { error: 'API server error', detail: err instanceof Error ? err.message : String(err) })
+    console.error(`[local-api] /api/${route} failed: ${err instanceof Error ? err.stack : String(err)}`)
+    sendJson(500, { error: 'API server error' })
   }
 }

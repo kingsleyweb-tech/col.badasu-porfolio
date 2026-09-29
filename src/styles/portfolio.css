@@ -1054,3 +1054,9 @@
   .wl .name { font-size: 68px; }
   .glass b { font-size: 30px; }
 }
+
+/* Shown while the protected portfolio content loads after the access check */
+.pf-splash { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: var(--g-950); }
+.pf-splash img { width: 84px; height: 84px; border-radius: 999px; background: #fff; padding: 9px; object-fit: contain; box-shadow: 0 0 0 10px rgba(255, 255, 255, .08), 0 0 0 22px rgba(255, 255, 255, .04); animation: pf-splash 1.4s ease-in-out infinite; }
+@keyframes pf-splash { 50% { opacity: .55; transform: scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .pf-splash img { animation: none; } }

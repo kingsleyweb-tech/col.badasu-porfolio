@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import {
   officer as defaultOfficer,
@@ -10,7 +10,6 @@ import {
   unitarPociCertificates as defaultUnitarCertificates,
   professionalCourses as defaultProfessionalCourses,
   brandAssets as defaultBrandAssets,
-  achievements as defaultAchievementCards,
   recentAssignments as defaultRecentAssignments,
   operations as defaultOperations,
 } from '../data/officerData'
@@ -128,115 +127,54 @@ export type PortfolioData = {
 }
 
 // ─── Default Values ────────────────────────────────────────────────────────────
+// Empty on purpose: the portfolio content is not shipped in the browser bundle. Public pages get it
+// from /api/portfolio after the access check; the admin dashboard reads Firestore directly.
 
-export const defaultAwards = [
-  { title: 'United Nations Medal (UNIFIL - Lebanon)', year: '2006', description: 'Awarded for distinguished service in UNIFIL operations.' },
-  { title: 'United Nations Medal (MONUC - DR Congo)', year: '2007', description: 'Awarded for peace support operations in MONUC.' },
-  { title: "United Nations Medal (UNOCI - Cote d'Ivoire)", year: '2004', description: 'Awarded for peacekeeping and ceasefire monitoring.' },
-  { title: 'United Nations Medal (UNAMSIL - Sierra Leone)', year: '1999', description: 'Awarded for disarmament and peace enforcement service.' },
-  { title: 'ECOWAS Medal (ECOMIG - The Gambia)', year: '2018', description: 'Awarded for ECOWAS mission operations as Chief Operations Officer.' },
-  { title: 'Long Service & Good Conduct Medal (Ghana Armed Forces)', year: '2015', description: 'Awarded for unblemished long military service.' },
-]
+export const defaultAwards: PortfolioData['awards'] = []
 
-const defaultHeroSlides: HeroSlide[] = [
-  { url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_1600/v2/colonel-badasu/site/hero/a1', publicId: 'colonel-badasu/site/hero/a1' },
-  { url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_1600/v2/colonel-badasu/site/hero/a4', publicId: 'colonel-badasu/site/hero/a4' },
-  { url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_1600/v2/colonel-badasu/site/hero/a5', publicId: 'colonel-badasu/site/hero/a5' },
-  { url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_1600/v2/colonel-badasu/site/hero/graduation', publicId: 'colonel-badasu/site/hero/graduation' },
-  { url: 'https://res.cloudinary.com/lxjudwn8/image/upload/f_auto,q_auto,w_1600/v2/colonel-badasu/site/hero/boundary', publicId: 'colonel-badasu/site/hero/boundary' },
-]
+const emptyPillar: LeadershipPillar = { title: '', description: '' }
 
 export const defaultPortfolioData: PortfolioData = {
   officer: defaultOfficer,
   biographicDetails: defaultBiographicDetails,
   workHistory: defaultWorkHistory,
-  volunteerExperience: defaultVolunteerExperience.map((v) => ({
-    location: v.location,
-    period: v.period,
-    description: v.description,
-  })),
+  volunteerExperience: defaultVolunteerExperience,
   professionalCertificates: defaultProfessionalCertificates,
   militaryDiplomas: defaultMilitaryDiplomas,
   unitarPociCertificates: defaultUnitarCertificates,
   professionalCourses: defaultProfessionalCourses,
   awards: defaultAwards,
-  achievements: defaultAchievementCards.map((a) => ({
-    title: a.title,
-    description: a.description,
-    category: a.category || '',
-    to: a.to,
-  })),
+  achievements: [],
   recentAssignments: defaultRecentAssignments,
   operations: defaultOperations,
-  languages: {
-    spoken: defaultOfficer.spokenLanguages,
-    written: defaultOfficer.writtenLanguages,
-    frenchLevel: defaultOfficer.frenchLevel,
-    hobbies: defaultOfficer.hobbies,
-  },
-  leadership: {
-    pillar1: { title: 'Leadership', description: 'Demonstrated strategic command, operational direction, and team management across UN missions.' },
-    pillar2: { title: 'Service', description: 'Over 28 years of unblemished military service to Ghana and the international community.' },
-    pillar3: { title: 'Excellence', description: 'Rigorous adherence to military ethics, strategic education, and professional development.' },
-  },
-  hero: {
-    title: 'Colonel Henry Kwaku Badasu',
-    personalIntro: defaultOfficer.shortBio,
-    supportingText: 'Senior Army Officer of the Ghana Armed Forces specializing in UN Peacekeeping, International Security, Crisis Management & Strategic Operations.',
-    slides: defaultHeroSlides,
-  },
+  languages: { spoken: [], written: [], frenchLevel: '', hobbies: [] },
+  leadership: { pillar1: emptyPillar, pillar2: emptyPillar, pillar3: emptyPillar },
+  hero: { title: '', personalIntro: '', supportingText: '', slides: [] },
   welcome: {
-    title: 'Welcome to the Official Portfolio',
-    subtitle: 'Col. Henry Kwaku Badasu - Senior Army Officer, Ghana Armed Forces',
-    description: 'Explore the military service, international peacekeeping missions, strategic leadership, academic milestones, and professional honors of Colonel Henry Kwaku Badasu.',
-    qrRedirectUrl: 'https://colonelbadasu.com',
-    heroImageSrc: defaultOfficer.biography[0],
-    leadershipTitle: 'LEADERSHIP',
-    leadershipText: 'Leading with vision, integrity and purpose.',
-    leadershipImage: '',
-    leadershipImagePublicId: '',
-    serviceTitle: 'SERVICE',
-    serviceText: 'Dedicated to duty, country and people.',
-    serviceImage: '',
-    serviceImagePublicId: '',
-    excellenceTitle: 'EXCELLENCE',
-    excellenceText: 'Striving for the highest standards in all I do.',
-    excellenceImage: '',
-    excellenceImagePublicId: '',
+    title: '',
+    subtitle: '',
+    description: '',
+    qrRedirectUrl: '',
+    heroImageSrc: '',
+    leadershipTitle: '',
+    leadershipText: '',
+    serviceTitle: '',
+    serviceText: '',
+    excellenceTitle: '',
+    excellenceText: '',
   },
-  homeCareerCards: [
-    { title: 'Chief Operations Officer, ECOMIG Force Headquarters', description: 'Planning, force generation, rotation, repatriation, doctrine review, and peacekeeping threat assessment.', category: 'Command', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },
-    { title: 'Deputy Director Army Peacekeeping Operations', description: 'Nomination, screening, pre-deployment training, rotation planning, and peacekeeping reporting.', category: 'Operations', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },
-    { title: 'Deputy Director Army Administration', description: 'Headquarters administration, operational coordination, training activities, and stakeholder liaison.', category: 'Staff', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },
-    { title: 'UN and ECOWAS Operational Service', description: "Assignments across Sierra Leone, Liberia, Cote d'Ivoire, DR Congo, Lebanon, South Sudan, and The Gambia.", category: 'Service', meta: 'Career Record', to: '/career', imageUrl: '', imagePublicId: '' },
-  ],
-  homeAchievementCards: [
-    { title: 'UN Peacekeeping Operations in Africa', description: 'Extensive operational experience in United Nations peacekeeping operations across Africa.', category: 'Peacekeeping', meta: 'Institutional Service', to: '/career#operational-experience', imageUrl: '', imagePublicId: '' },
-    { title: 'Risk, Crisis, and Security Management', description: 'Demonstrated understanding of risk, crisis, and security management in military operational contexts.', category: 'Security', meta: 'Institutional Service', to: '/career#work-history', imageUrl: '', imagePublicId: '' },
-    { title: 'Strategic Leadership Preparation', description: 'War College Strategic Level Leadership and Management preparation for senior military responsibilities.', category: 'Leadership', meta: 'Institutional Service', to: '/education#professional-courses', imageUrl: '', imagePublicId: '' },
-    { title: 'Professional Mentorship and Service', description: 'Mentorship for ASIS International Certifications and guidance for professional development.', category: 'Mentorship', meta: 'Institutional Service', to: '/career#work-history', imageUrl: '', imagePublicId: '' },
-  ],
-  footer: {
-    displayName: 'Henry Kwaku Badasu',
-    displayRank: 'Colonel',
-    tagline: 'A concise professional profile of his service, leadership, education, and documented achievements.',
-    imageUrl: '',
-    imagePublicId: '',
-  },
+  homeCareerCards: [],
+  homeAchievementCards: [],
+  footer: { displayName: '', displayRank: '', tagline: '', imageUrl: '', imagePublicId: '' },
   siteSettings: {
-    siteTitle: 'Col. Henry Kwaku Badasu Portfolio',
-    siteDescription: 'Official portfolio of Col. Henry Kwaku Badasu, Senior Army Officer of the Ghana Armed Forces.',
+    siteTitle: '',
+    siteDescription: '',
     logoUrl: defaultBrandAssets.gafLogo.src,
-    logoPublicId: 'colonel-badasu/site/root/image',
-    footerCopyright: '© 2026 Colonel Henry Kwaku Badasu. All Rights Reserved.',
-    contactEmail: 'info@colonelbadasu.com',
-    contactPhone: '+233 24 000 0000',
-    contactAddress: 'Army Headquarters, Burma Camp, Accra - Ghana',
-    adminSidebarTitle: 'Col. Badasu',
-    adminSidebarSubtitle: 'PORTFOLIO ADMIN',
-    adminHeaderDisplayName: 'Col. Henry K. Badasu',
-    adminHeaderRole: 'Administrator',
-    adminHeaderInitials: 'MB',
+    logoPublicId: '',
+    footerCopyright: '',
+    contactEmail: '',
+    contactPhone: '',
+    contactAddress: '',
   },
 }
 
@@ -266,50 +204,77 @@ export function achievementCardsUpdate(cards: HomeCard[]): Pick<PortfolioData, '
 }
 
 // ─── Firestore CRUD ────────────────────────────────────────────────────────────
-// Firestore is the ONLY data source. No localStorage. No caching.
+// Firestore is the only store of portfolio content. Only the signed-in administrator may read or
+// write portfolio/portfolio_main directly (Security Rules); public pages use /api/portfolio.
 
 const PORTFOLIO_DOC_ID = 'portfolio_main'
+// Public, content-free change markers: { updatedAt } for content, { enabled, codeVersion, epoch } for access
+const CONTENT_META = ['site_meta', 'content'] as const
+const ACCESS_META = ['site_meta', 'access'] as const
 
-/**
- * Fetch portfolio data from Firestore (single read).
- * Returns app defaults if the document does not exist yet.
- */
+const withDefaults = (stored: Partial<PortfolioData>): PortfolioData => ({ ...defaultPortfolioData, ...stored })
+
+/** Admin: one read of the stored document. */
 export async function fetchPortfolioContent(): Promise<PortfolioData> {
-  const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
-  const snap = await getDoc(docRef)
-  if (snap.exists()) {
-    return { ...defaultPortfolioData, ...snap.data() } as PortfolioData
-  }
-  // Document does not exist yet – return defaults (created on first save)
-  return defaultPortfolioData
+  const snap = await getDoc(doc(db, 'portfolio', PORTFOLIO_DOC_ID))
+  return snap.exists() ? withDefaults(snap.data() as Partial<PortfolioData>) : defaultPortfolioData
 }
 
 /**
- * Save portfolio data to Firestore.
- * Throws if the write fails so callers can surface the error to the admin.
+ * Admin: save changed sections in one atomic write, and bump the public change marker so open
+ * portfolio pages fetch the new content within a second.
  */
 export async function savePortfolioContent(updated: Partial<PortfolioData>): Promise<void> {
-  // Write only the changed sections in a single request (no read-before-write), so the
-  // live listeners on the public site receive the change as fast as possible.
-  const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
-  await setDoc(docRef, { ...updated, updatedAt: serverTimestamp() }, { merge: true })
+  const batch = writeBatch(db)
+  batch.set(doc(db, 'portfolio', PORTFOLIO_DOC_ID), { ...updated, updatedAt: serverTimestamp() }, { merge: true })
+  batch.set(doc(db, ...CONTENT_META), { updatedAt: serverTimestamp() })
+  await batch.commit()
 }
 
-/**
- * Subscribe to real-time Firestore updates.
- * Calls callback whenever the Firestore document changes.
- */
-export function subscribePortfolioContent(callback: (data: PortfolioData) => void): () => void {
-  const docRef = doc(db, 'portfolio', PORTFOLIO_DOC_ID)
+/** Admin: live updates of the stored document. */
+export function subscribePortfolioContent(callback: (data: PortfolioData) => void, onError?: (err: unknown) => void): () => void {
   return onSnapshot(
-    docRef,
+    doc(db, 'portfolio', PORTFOLIO_DOC_ID),
     (snap) => {
-      if (snap.exists()) {
-        callback({ ...defaultPortfolioData, ...snap.data() } as PortfolioData)
-      }
+      if (snap.exists()) callback(withDefaults(snap.data() as Partial<PortfolioData>))
     },
     (err) => {
       console.error('[Portfolio] Realtime snapshot error:', err)
+      onError?.(err)
     }
   )
+}
+
+export type PublicSession = { kind: 'visitor' | 'admin'; expiresAt: number }
+
+export class AccessRequiredError extends Error {
+  constructor() {
+    super('access_required')
+  }
+}
+
+/** Public pages: the content, returned only for a valid visitor session (or the administrator). */
+export async function fetchPublicPortfolio(): Promise<{ data: PortfolioData; session: PublicSession }> {
+  const res = await fetch('/api/portfolio', { credentials: 'same-origin', cache: 'no-store' })
+  if (res.status === 401) throw new AccessRequiredError()
+  if (!res.ok) throw new Error(`Portfolio request failed (${res.status})`)
+  const body = (await res.json()) as { data: Partial<PortfolioData>; session: PublicSession }
+  return { data: withDefaults(body.data), session: body.session }
+}
+
+/** Public pages: fires when the administrator saves content or changes portfolio access. */
+export function subscribePublicChanges(onChange: (kind: 'content' | 'access') => void): () => void {
+  const seen = { content: '', access: '' }
+  const watch = (kind: 'content' | 'access', path: readonly [string, string]) =>
+    onSnapshot(
+      doc(db, ...path),
+      (snap) => {
+        const marker = JSON.stringify(snap.data() ?? null)
+        if (seen[kind] && seen[kind] !== marker) onChange(kind)
+        seen[kind] = marker
+      },
+      () => {}
+    )
+  const stops = [watch('content', CONTENT_META), watch('access', ACCESS_META)]
+  return () => stops.forEach((stop) => stop())
 }

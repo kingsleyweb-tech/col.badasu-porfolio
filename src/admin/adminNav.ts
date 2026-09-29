@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Layers,
   LayoutDashboard,
+  LockKeyhole,
   PanelBottom,
   QrCode,
   Settings,
@@ -88,6 +89,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { to: '/admin/welcome', label: 'QR & Welcome Page', icon: QrCode, publicPath: '/welcome', publicLabel: 'welcome page' },
       { to: '/admin/footer', label: 'Footer Settings', icon: PanelBottom, publicPath: '/', publicLabel: 'site' },
       { to: '/admin/settings', label: 'Site & Header Settings', icon: Settings, publicPath: '/', publicLabel: 'site' },
+      { to: '/admin/access', label: 'Access Control', icon: LockKeyhole, publicPath: '/access', publicLabel: 'access page' },
     ],
   },
 ]

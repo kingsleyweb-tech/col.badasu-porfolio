@@ -69,7 +69,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
     setError(null)
     try {
       const [res, fsImages] = await Promise.all([
-        fetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}&fresh=1`).catch(() => null),
+        adminFetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}&fresh=1`).catch(() => null),
         fetchFirestoreGalleryImages(collection.slug).catch(() => [])
       ])
 
@@ -111,7 +111,7 @@ export const CollectionDetailModal: React.FC<CollectionDetailModalProps> = ({
     if (!collection || !nextCursor || loadingMore) return
     setLoadingMore(true)
     try {
-      const res = await fetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}&cursor=${encodeURIComponent(nextCursor)}`)
+      const res = await adminFetch(`/api/gallery?collection=${encodeURIComponent(collection.slug)}&cursor=${encodeURIComponent(nextCursor)}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const page: GalleryPage = await res.json()
       setImages((prev) => {

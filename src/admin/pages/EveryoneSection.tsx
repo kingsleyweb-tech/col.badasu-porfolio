@@ -51,7 +51,7 @@ export const EveryoneSection: React.FC = () => {
     let lastData: CollectionItem[] | null = null
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const res = await fetch('/api/gallery')
+        const res = await adminFetch('/api/gallery')
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         lastData = data.collections || []

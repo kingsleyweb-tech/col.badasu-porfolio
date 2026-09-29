@@ -43,18 +43,28 @@ import { AchievementsAdmin } from './admin/pages/AchievementsAdmin'
 import { HomeCardsAdmin } from './admin/pages/HomeCardsAdmin'
 import { FooterAdmin } from './admin/pages/FooterAdmin'
 import { RankAdmin } from './admin/pages/RankAdmin'
+import { AccessControlAdmin } from './admin/pages/AccessControlAdmin'
 
 function App() {
   return (
     <AuthProvider>
-      <PortfolioProvider>
-        <UploadProvider>
-          <BrowserRouter>
-            <AppShell />
-          </BrowserRouter>
-        </UploadProvider>
-      </PortfolioProvider>
+      <UploadProvider>
+        <BrowserRouter>
+          <RoutedApp />
+        </BrowserRouter>
+      </UploadProvider>
     </AuthProvider>
+  )
+}
+
+/** Admin pages read Firestore as the administrator; portfolio pages read the protected /api/portfolio. */
+function RoutedApp() {
+  const { pathname } = useLocation()
+  const source = pathname.startsWith('/admin') ? 'admin' : 'public'
+  return (
+    <PortfolioProvider key={source} source={source}>
+      <AppShell />
+    </PortfolioProvider>
   )
 }
 
@@ -67,8 +77,10 @@ function AppShell() {
 
   const isAdminRoute = pathname.startsWith('/admin')
   const isPortfolioPage = !isAdminRoute && pathname !== '/welcome'
-  const { data } = usePortfolio()
+  const { data, loading } = usePortfolio()
   const { siteTitle, siteDescription } = data.siteSettings
+  // Portfolio pages wait for the protected content instead of flashing an empty layout
+  const waitingForContent = !isAdminRoute && loading
 
   // Browser tab title and meta description follow Admin › Site & Header Settings
   useEffect(() => {
@@ -81,55 +93,63 @@ function AppShell() {
     <ShareContext.Provider value={openShare}>
       <RouteScrollToTop />
       <div className={isAdminRoute ? undefined : 'pf'}>
-        {isPortfolioPage && <SiteNav />}
-        <main className={isAdminRoute ? 'is-admin-view' : undefined}>
-          <Routes>
-            {/* Public Portfolio Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/welcome" element={<Welcome />} />
-            <Route path="/biography" element={<Biography />} />
-            <Route path="/career" element={<Career />} />
-            <Route path="/achievements" element={<Achievements />} />
-            <Route path="/awards" element={<Awards />} />
-            <Route path="/education" element={<Education />} />
-            <Route path="/gallery" element={<Gallery />} />
-            <Route path="/gallery/:collectionSlug" element={<Gallery />} />
-
-            {/* Admin Unprotected Route */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-
-            {/* Admin Protected Routes Shell */}
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<MainDashboard />} />
-              <Route path="everyone" element={<EveryoneSection />} />
-              <Route path="hero" element={<HeroAdmin />} />
-              <Route path="biography" element={<BiographyAdmin />} />
-              <Route path="career" element={<CareerAdmin />} />
-              <Route path="awards" element={<AwardsAdmin />} />
-              <Route path="education" element={<EducationAdmin />} />
-              <Route path="courses" element={<CoursesAdmin />} />
-              <Route path="languages" element={<LanguagesAdmin />} />
-              <Route path="leadership" element={<LeadershipAdmin />} />
-              <Route path="gallery" element={<GalleryAdmin />} />
-              <Route path="welcome" element={<WelcomeAdmin />} />
-              <Route path="rank" element={<RankAdmin />} />
-              <Route path="settings" element={<SiteSettingsAdmin />} />
-              <Route path="achievements" element={<AchievementsAdmin />} />
-              <Route path="home-cards" element={<HomeCardsAdmin />} />
-              <Route path="footer" element={<FooterAdmin />} />
-              <Route path="users" element={<UsersAdmin />} />
-            </Route>
-          </Routes>
-        </main>
-        {isPortfolioPage && <SiteFooter />}
-        {isPortfolioPage && <ScrollToTopButton />}
+        {waitingForContent && (
+          <div className="pf-splash" role="status" aria-label="Loading the portfolio">
+            <img src="/crest.png" alt="" />
+          </div>
+        )}
+        {isPortfolioPage && !waitingForContent && <SiteNav />}
+        {!waitingForContent && (
+          <main className={isAdminRoute ? 'is-admin-view' : undefined}>
+            <Routes>
+              {/* Public Portfolio Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/welcome" element={<Welcome />} />
+              <Route path="/biography" element={<Biography />} />
+              <Route path="/career" element={<Career />} />
+              <Route path="/achievements" element={<Achievements />} />
+              <Route path="/awards" element={<Awards />} />
+              <Route path="/education" element={<Education />} />
+              <Route path="/gallery" element={<Gallery />} />
+              <Route path="/gallery/:collectionSlug" element={<Gallery />} />
+  
+              {/* Admin Unprotected Route */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+  
+              {/* Admin Protected Routes Shell */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<MainDashboard />} />
+                <Route path="everyone" element={<EveryoneSection />} />
+                <Route path="hero" element={<HeroAdmin />} />
+                <Route path="biography" element={<BiographyAdmin />} />
+                <Route path="career" element={<CareerAdmin />} />
+                <Route path="awards" element={<AwardsAdmin />} />
+                <Route path="education" element={<EducationAdmin />} />
+                <Route path="courses" element={<CoursesAdmin />} />
+                <Route path="languages" element={<LanguagesAdmin />} />
+                <Route path="leadership" element={<LeadershipAdmin />} />
+                <Route path="gallery" element={<GalleryAdmin />} />
+                <Route path="welcome" element={<WelcomeAdmin />} />
+                <Route path="rank" element={<RankAdmin />} />
+                <Route path="settings" element={<SiteSettingsAdmin />} />
+                <Route path="achievements" element={<AchievementsAdmin />} />
+                <Route path="home-cards" element={<HomeCardsAdmin />} />
+                <Route path="footer" element={<FooterAdmin />} />
+                <Route path="users" element={<UsersAdmin />} />
+                <Route path="access" element={<AccessControlAdmin />} />
+              </Route>
+            </Routes>
+          </main>
+        )}
+        {isPortfolioPage && !waitingForContent && <SiteFooter />}
+        {isPortfolioPage && !waitingForContent && <ScrollToTopButton />}
         <QrModal isOpen={qrModalOpen} onClose={closeShare} />
       </div>
       {/* Global upload progress toast — visible on any admin page */}

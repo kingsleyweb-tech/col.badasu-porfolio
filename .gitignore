@@ -32,3 +32,7 @@ src/assets/images/*
 !src/assets/images/*.jpg
 !src/assets/images/hero/
 !src/assets/images/ecowas/
+
+# Firebase service-account keys (server secrets, never commit)
+service-account*.json
+*-firebase-adminsdk-*.json

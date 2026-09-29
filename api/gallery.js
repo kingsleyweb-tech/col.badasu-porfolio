@@ -1,3 +1,5 @@
+import { requireViewer } from './_access.js'
+
 const rootFolder = process.env.CLOUDINARY_GALLERY_ROOT || 'colonel-badasu'
 const pageSize = 36
 
@@ -31,13 +33,12 @@ export default async function handler(request, response) {
     return
   }
 
+  // Photo listings are protected: only a visitor session or the administrator gets them, and
+  // responses are never stored in a shared cache (requireViewer sets private, no-store).
+  if (!(await requireViewer(request, response))) return
+
+  // Admin requests (fresh=1) skip the short in-memory cache so uploads/deletes show immediately
   const fresh = request.query.fresh === '1'
-  // Admin requests (fresh=1) must reflect uploads/deletes immediately; public requests may be
-  // served from the CDN for a minute, which keeps the Admin API quota safe.
-  response.setHeader(
-    'Cache-Control',
-    fresh ? 'no-store, no-cache, must-revalidate' : 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
-  )
 
   let library
   try {

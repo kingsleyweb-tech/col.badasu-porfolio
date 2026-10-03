@@ -100,8 +100,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(currentUser)
     setAdminCredentials({ email: currentUser.email || '' })
     deleteDoc(doc(db, 'portfolio', LEGACY_SESSION_DOC)).catch(() => {})
-    // Lets the administrator open the protected portfolio pages without the visitor access code
-    adminFetch('/api/admin-session', { method: 'POST' }).catch(() => {})
+    // Lets the administrator preview the protected portfolio pages without the visitor access code.
+    // Issued only from the dashboard: restoring the sign-in on a portfolio page must not quietly
+    // give that browser portfolio access when its visitor session ends.
+    if (window.location.pathname.startsWith('/admin')) adminFetch('/api/admin-session', { method: 'POST' }).catch(() => {})
   }
 
   // Firebase Auth keeps the session across reloads; each restored session is re-checked here

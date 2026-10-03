@@ -6,6 +6,7 @@ import { UploadProvider } from './context/UploadContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { SiteFooter } from './components/site/SiteFooter'
 import { SiteNav } from './components/site/SiteNav'
+import { SessionStatus } from './components/site/SessionStatus'
 import { ShareContext } from './context/ShareContext'
 import { RouteScrollToTop } from './components/RouteScrollToTop'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
@@ -150,6 +151,8 @@ function AppShell() {
         )}
         {isPortfolioPage && !waitingForContent && <SiteFooter />}
         {isPortfolioPage && !waitingForContent && <ScrollToTopButton />}
+        {/* Remaining visitor access time and the warnings before it ends */}
+        {!isAdminRoute && !waitingForContent && <SessionStatus />}
         <QrModal isOpen={qrModalOpen} onClose={closeShare} />
       </div>
       {/* Global upload progress toast — visible on any admin page */}

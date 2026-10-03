@@ -6,9 +6,9 @@
 //   • the JavaScript/CSS bundles (they contain no portfolio content; that comes from /api/portfolio)
 //   • /api/* (every endpoint enforces its own authorization)
 //
-// The cookie is checked here by signature and expiry, plus the revocation counters published in
-// site_meta/access (cached for a few seconds). The data endpoints do the full check against the
-// stored session on every request.
+// The cookie is checked here by signature and its signed 30-minute expiry, plus the revocation
+// counters published in site_meta/access (cached for a few seconds). The data endpoints do the
+// full check against the stored session on every request.
 import { ADMIN_COOKIE, VISITOR_COOKIE, readAdminToken, readCookie, readVisitorToken, sessionSecret } from './api/_token.js'
 
 const OPEN = [

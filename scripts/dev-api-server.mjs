@@ -21,7 +21,8 @@ const server = http.createServer(async (req, res) => {
   const routeName = urlObj.pathname.replace('/api/', '').split('/')[0]
   const handlerFile = path.join(process.cwd(), 'api', `${routeName}.js`)
 
-  if (!fs.existsSync(handlerFile)) {
+  // Files starting with "_" are shared helpers, not routes (same as Vercel)
+  if (!/^[\w-]+$/.test(routeName) || routeName.startsWith('_') || !fs.existsSync(handlerFile)) {
     res.statusCode = 404
     res.setHeader('Content-Type', 'application/json')
     res.end(JSON.stringify({ error: `API route /api/${routeName} not found` }))

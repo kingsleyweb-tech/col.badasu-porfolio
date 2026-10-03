@@ -18,7 +18,7 @@ export default async function handler(request, response) {
     const snap = await adminDb().doc('portfolio/portfolio_main').get()
     const data = snap.exists ? snap.data() : {}
     delete data.updatedAt
-    response.status(200).json({ data, session: { kind: viewer.kind, expiresAt: viewer.expiresAt } })
+    response.status(200).json({ data, session: { kind: viewer.kind, expiresAt: viewer.expiresAt, serverNow: Date.now() } })
   } catch (error) {
     console.error('[portfolio] read failed', error)
     response.status(503).json({ error: 'unavailable' })

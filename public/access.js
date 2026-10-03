@@ -7,15 +7,20 @@
   var show = document.getElementById('show')
   var params = new URLSearchParams(location.search)
 
-  // Only same-site portfolio paths are accepted as the destination
-  var next = params.get('next') || '/'
-  if (!/^\/(?!\/)/.test(next) || /^\/(api|access|admin)(\/|\.|\?|$)/.test(next)) next = '/'
+  // Only same-site portfolio paths are accepted as the destination. The value is resolved the way
+  // the browser will resolve it, so tricks like "/\evil.com" (a backslash counts as "/") are refused.
+  var next = '/'
+  try {
+    var target = new URL(params.get('next') || '/', location.origin)
+    var path = target.pathname + target.search + target.hash
+    if (target.origin === location.origin && !/^\/(api|access|admin)(\/|\.|\?|#|$)/i.test(path)) next = path
+  } catch (e) {}
 
   var MESSAGES = {
     invalid: 'That access code is not valid. Check it and try again.',
-    too_many_attempts: 'Too many attempts. Please wait a few minutes and try again.',
+    too_many_attempts: 'Too many attempts. Please try again later.',
     unavailable: 'Portfolio access is temporarily unavailable.',
-    expired: 'Your one-hour access has ended. Enter the access code again to continue.',
+    expired: 'Your session has expired. Please enter the access code again.',
     revoked: 'Your access has ended. Enter the current access code to continue.',
     error: 'Something went wrong. Check your connection and try again.',
   }

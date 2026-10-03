@@ -1,16 +1,16 @@
 // Visitor access to the portfolio.
-//   POST   /api/access  { code }  check the access code and start a one-hour session (sets pf_access)
+//   POST   /api/access  { code }  check the access code and start a 30-minute session (sets pf_access)
 //   GET    /api/access            session status for the open page
 //   DELETE /api/access            end the session
 import {
   SESSION_SECONDS,
   clearFailedAttempts,
   createVisitorSession,
+  failureDelay,
   getAccessConfig,
   getViewer,
   logAccess,
-  rateLimitWait,
-  recordFailedAttempt,
+  reserveAttempt,
   verifyAccessCode,
 } from './_access.js'
 import { NotConfiguredError, adminDb } from './_firebaseAdmin.js'
@@ -51,10 +51,11 @@ async function signIn(request, response) {
   const body = typeof request.body === 'string' ? safeJson(request.body) : request.body || {}
   const code = typeof body.code === 'string' ? body.code : ''
 
-  const wait = await rateLimitWait(request)
+  // The attempt is counted before the code is checked, so concurrent guesses share one budget
+  const { wait, attempt, blocked } = await reserveAttempt(request)
   if (wait > 0) {
+    // No Retry-After: the length of a block is not disclosed
     await logAccess(request, 'rate_limited')
-    response.setHeader('Retry-After', String(wait))
     response.status(429).json({ error: 'too_many_attempts' })
     return
   }
@@ -67,8 +68,8 @@ async function signIn(request, response) {
   }
 
   if (!code.trim() || code.length > 200 || !(await verifyAccessCode(code, config.codeHash))) {
-    const { blocked } = await recordFailedAttempt(request)
     await logAccess(request, 'failure', { codeVersion: config.codeVersion, detail: blocked ? 'address throttled' : null })
+    await failureDelay(attempt)
     response.status(401).json({ error: 'invalid' })
     return
   }
@@ -80,13 +81,13 @@ async function signIn(request, response) {
   await logAccess(request, 'success', { codeVersion: config.codeVersion, session: session.id.slice(0, 10), expiresAt: session.expiresAt })
 
   response.setHeader('Set-Cookie', cookieHeader(VISITOR_COOKIE, token, SESSION_SECONDS))
-  response.status(200).json({ ok: true, expiresAt: session.expiresAt })
+  response.status(200).json({ ok: true, expiresAt: session.expiresAt, serverNow: Date.now() })
 }
 
 async function status(request, response) {
   const viewer = await getViewer(request)
   if (viewer) {
-    response.status(200).json({ authenticated: true, viewer: viewer.kind, expiresAt: viewer.expiresAt })
+    response.status(200).json({ authenticated: true, viewer: viewer.kind, expiresAt: viewer.expiresAt, serverNow: Date.now() })
     return
   }
   const config = await getAccessConfig()

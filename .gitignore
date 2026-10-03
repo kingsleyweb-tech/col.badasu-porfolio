@@ -36,3 +36,6 @@ src/assets/images/*
 # Firebase service-account keys (server secrets, never commit)
 service-account*.json
 *-firebase-adminsdk-*.json
+
+# Local throwaway scripts (have held credentials; never commit)
+scratch/

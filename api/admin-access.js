@@ -12,6 +12,7 @@ import {
   hashAccessCode,
   logAccess,
   markActiveSessionsRevoked,
+  sessionEndsAt,
   updateAccessConfig,
   weakCodeReason,
   decryptAccessCode,
@@ -47,16 +48,17 @@ async function overview(response) {
 
   const sessions = sessionsSnap.docs.map((d) => {
     const s = d.data()
-    const valid = !s.revokedAt && s.expiresAt > now && s.codeVersion === config.codeVersion && s.epoch === config.epoch && config.enabled
+    const endsAt = sessionEndsAt(s)
+    const valid = !s.revokedAt && endsAt > now && s.codeVersion === config.codeVersion && s.epoch === config.epoch && config.enabled
     return {
       id: d.id.slice(0, 10),
       createdAt: s.createdAt,
-      expiresAt: s.expiresAt,
+      expiresAt: endsAt,
       codeVersion: s.codeVersion,
       ip: s.ip,
       userAgent: s.userAgent,
-      status: valid ? 'active' : s.revokedAt ? 'revoked' : s.expiresAt <= now ? 'expired' : 'ended',
-      revokedReason: s.revokedReason || (valid || s.expiresAt <= now ? null : 'code changed or access revoked'),
+      status: valid ? 'active' : s.revokedAt ? 'revoked' : endsAt <= now ? 'expired' : 'ended',
+      revokedReason: s.revokedReason || (valid || endsAt <= now ? null : 'code changed or access revoked'),
     }
   })
 

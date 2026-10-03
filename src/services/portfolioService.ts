@@ -1,5 +1,6 @@
 import { doc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import type { PublicSession } from './visitorSession'
 import {
   officer as defaultOfficer,
   biographicDetails as defaultBiographicDetails,
@@ -244,8 +245,6 @@ export function subscribePortfolioContent(callback: (data: PortfolioData) => voi
     }
   )
 }
-
-export type PublicSession = { kind: 'visitor' | 'admin'; expiresAt: number }
 
 export class AccessRequiredError extends Error {
   constructor() {

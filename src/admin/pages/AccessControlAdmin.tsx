@@ -158,7 +158,8 @@ export const AccessControlAdmin: React.FC = () => {
   }
 
   const status = !overview ? null : !overview.hasCode ? 'nocode' : overview.enabled ? 'active' : 'disabled'
-  const hours = overview ? overview.sessionSeconds / 3600 : 1
+  const sessionMinutes = overview ? Math.round(overview.sessionSeconds / 60) : 30
+  const duration = sessionMinutes % 60 === 0 ? `${sessionMinutes / 60} hour${sessionMinutes === 60 ? '' : 's'}` : `${sessionMinutes} minute${sessionMinutes === 1 ? '' : 's'}`
 
   return (
     <div className="ad-page">
@@ -167,7 +168,7 @@ export const AccessControlAdmin: React.FC = () => {
           <span className="ic"><LockKeyhole size={26} /></span>
           <div>
             <h1>Access control</h1>
-            <p>Visitors need the access code to open the portfolio. Each code entry gives exactly {hours} hour{hours === 1 ? '' : 's'} of access.</p>
+            <p>Visitors need the access code to open the portfolio. Each code entry gives exactly {duration} of access.</p>
           </div>
         </div>
         <button type="button" className="ad-b l" onClick={() => { setLoading(true); load() }} disabled={loading}>
@@ -255,7 +256,7 @@ export const AccessControlAdmin: React.FC = () => {
               </div>
               <div className="ad-kv"><span>Code version</span><b>{overview.codeVersion || '—'}</b></div>
               <div className="ad-kv"><span>Code last changed</span><b>{formatTime(overview.codeUpdatedAt)}</b></div>
-              <div className="ad-kv"><span>Session duration</span><b>{hours} hour{hours === 1 ? '' : 's'} (not extended by activity)</b></div>
+              <div className="ad-kv"><span>Session duration</span><b>{duration} (not extended by activity)</b></div>
               <div className="ad-kv"><span>Visitors signed in now</span><b className="green">{overview.activeSessions}</b></div>
 
               {status === 'nocode' && (
@@ -337,7 +338,7 @@ export const AccessControlAdmin: React.FC = () => {
                 <ol className="ad-acc-steps">
                   <li>They scan the QR code or open the portfolio link.</li>
                   <li>The access page asks for the code; the server checks it.</li>
-                  <li>They can browse for {hours} hour{hours === 1 ? '' : 's'}, then the code is needed again.</li>
+                  <li>They can browse for {duration}, then the code is needed again.</li>
                 </ol>
                 <p className="ad-hint"><ShieldCheck size={13} style={{ verticalAlign: '-2px' }} /> The visitor code never opens this dashboard. Share the code privately, never inside the QR code.</p>
               </div>

@@ -208,6 +208,17 @@
 .totop { position: fixed; right: 28px; bottom: 28px; width: 52px; height: 52px; border-radius: 999px; background: var(--g-800); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 30px rgba(7, 21, 13, .3); z-index: 55; border: 0; opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .3s, transform .3s var(--ease); }
 .totop.is-visible { opacity: 1; transform: none; pointer-events: auto; }
 
+/* Visitor access: remaining time and the warnings before it ends (display only) */
+.pf-session { position: fixed; left: 28px; bottom: 28px; z-index: 55; display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 999px; background: var(--g-900); color: rgba(255, 255, 255, .82); font: 600 13px/1 var(--sans); letter-spacing: .01em; box-shadow: 0 12px 30px rgba(7, 21, 13, .28); border: 1px solid rgba(201, 162, 74, .35); pointer-events: none; }
+.pf-session b { color: var(--gold-2); font-weight: 800; font-variant-numeric: tabular-nums; }
+.pf-session.is-low { border-color: var(--gold); }
+.pf-session.is-admin { color: var(--gold-2); }
+.pf-session-toast-region { position: fixed; left: 28px; bottom: 80px; z-index: 115; max-width: min(380px, calc(100vw - 56px)); }
+.pf-session-toast { display: flex; align-items: flex-start; gap: 12px; padding: 14px 14px 14px 18px; border-radius: var(--r-sm); background: var(--g-950); color: #fff; font: 600 14px/1.45 var(--sans); box-shadow: 0 18px 40px rgba(7, 21, 13, .35); border-left: 3px solid var(--gold); animation: pf-fade .3s both; }
+.pf-session-toast span { flex: 1; }
+.pf-session-toast button { flex: none; width: 26px; height: 26px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .1); color: #fff; font-size: 17px; line-height: 1; cursor: pointer; }
+.pf-session-toast button:hover { background: rgba(255, 255, 255, .2); }
+
 /* status notices (gallery loading / errors) */
 .notice { display: flex; align-items: center; gap: 12px; padding: 20px 24px; border-radius: var(--r); background: var(--surface); color: var(--ink-2); font-weight: 600; font-size: 15px; }
 .notice.err { background: #fbeeee; color: #7a2020; }
@@ -780,6 +791,8 @@
   .nextp b { font-size: 30px; }
   .pf .nextp a { padding: 22px 24px; }
   .totop { right: 16px; bottom: 16px; width: 48px; height: 48px; }
+  .pf-session { left: 16px; bottom: 16px; padding: 8px 12px; font-size: 12px; }
+  .pf-session-toast-region { left: 16px; right: 16px; bottom: 64px; max-width: none; }
 
   /* home */
   .pg-home .hero { height: 720px; min-height: 0; max-height: none; }

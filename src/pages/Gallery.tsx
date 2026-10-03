@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { usePortfolio } from '../context/PortfolioContext'
+import { AccessRequiredError } from '../services/portfolioService'
+import { announceSessionEnded, goToAccessPage } from '../services/visitorSession'
 import { officer as defaultOfficer } from '../data/officerData'
 import { siteImages } from '../data/siteImages'
 import { useIsMobile } from '../hooks/useMediaQuery'
@@ -348,18 +350,25 @@ function GalleryPhoto({ image, index, onOpen }: { image: GalleryImage; index: nu
 
 /**
  * Fetches from /api/gallery with automatic retry (up to 3 attempts, exponential backoff).
- * Prevents single transient network errors from showing a permanent failure state.
+ * Prevents single transient network errors from showing a permanent failure state. An ended
+ * visitor session (401) is not retried: the page leaves for the access page.
  */
 async function fetchGalleryWithRetry(query = '', maxAttempts = 3): Promise<GalleryResponse> {
   let lastError: unknown
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await fetch(`/api/gallery${query ? `?${query}` : ''}`)
+      const response = await fetch(`/api/gallery${query ? `?${query}` : ''}`, { credentials: 'same-origin', cache: 'no-store' })
+      if (response.status === 401) {
+        announceSessionEnded()
+        goToAccessPage('expired')
+        throw new AccessRequiredError()
+      }
       if (!response.ok) {
         throw new Error(`Gallery API responded with ${response.status}`)
       }
       return (await response.json()) as GalleryResponse
     } catch (err) {
+      if (err instanceof AccessRequiredError) throw err
       lastError = err
       if (attempt < maxAttempts) {
         const delay = 400 * Math.pow(2, attempt - 1) // 400ms → 800ms

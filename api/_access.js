@@ -13,10 +13,12 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, randomInt, scr
 import { adminAuth, adminDb } from './_firebaseAdmin.js'
 import { ADMIN_COOKIE, VISITOR_COOKIE, readAdminToken, readCookie, readVisitorToken, sha256 } from './_token.js'
 
-export const SESSION_SECONDS = 60 * 60 // exactly one hour, never extended
+export const SESSION_SECONDS = 30 * 60 // exactly 30 minutes from sign-in, never extended
 const RATE_WINDOW_MS = 15 * 60 * 1000
 const RATE_MAX_FAILURES = 5
-const RATE_BLOCK_MS = 15 * 60 * 1000
+const RATE_BLOCK_MS = 15 * 60 * 1000 // first block; doubles for each further block within a day
+const RATE_BLOCK_MAX_MS = 24 * 60 * 60 * 1000
+const RATE_STRIKE_RESET_MS = 24 * 60 * 60 * 1000
 const CONFIG_CACHE_MS = 3000
 
 const CONFIG_DOC = 'access_control/config'
@@ -160,11 +162,29 @@ export function clientIp(request) {
   return (header(request, 'x-real-ip') || header(request, 'x-forwarded-for').split(',')[0] || 'unknown').trim()
 }
 
-/** Stored in logs instead of the full address: 203.0.113.57 → 203.0.113.0, IPv6 → first four groups. */
+/** The first four groups (the /64 network) of an IPv6 address, with "::" expanded; null if not IPv6. */
+function ipv6Network(ip) {
+  if (!ip.includes(':')) return null
+  const [head, tail = ''] = ip.split('%')[0].toLowerCase().split('::')
+  const left = head ? head.split(':') : []
+  const right = ip.includes('::') && tail ? tail.split(':') : []
+  const groups = ip.includes('::') ? [...left, ...Array(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right] : left
+  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':')
+}
+
+/** Stored in logs instead of the full address: 203.0.113.57 → 203.0.113.0, IPv6 → its /64 network. */
 export function maskIp(ip) {
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ip.replace(/\.\d+$/, '.0')
-  if (ip.includes(':')) return `${ip.split(':').slice(0, 4).join(':')}::`
-  return 'unknown'
+  const v4 = ip.replace(/^::ffff:/i, '')
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(v4)) return v4.replace(/\.\d+$/, '.0')
+  const net = ipv6Network(ip)
+  return net ? `${net}::` : 'unknown'
+}
+
+/** What the rate limit counts against: one IPv4 address, or one IPv6 /64 (a single subscriber's block). */
+function rateKey(ip) {
+  const v4 = ip.replace(/^::ffff:/i, '')
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(v4)) return v4
+  return ipv6Network(ip) ? `${ipv6Network(ip)}::/64` : ip
 }
 
 export const userAgent = (request) => header(request, 'user-agent').slice(0, 200)
@@ -188,29 +208,44 @@ export async function logAccess(request, type, details = {}) {
 // ─── Rate limiting (per network address) ───────────────────────────────────────
 
 async function rateDoc(request) {
-  return adminDb().collection('access_rate_limits').doc(await sha256(`rate:${clientIp(request)}`))
+  return adminDb().collection('access_rate_limits').doc(await sha256(`rate:${rateKey(clientIp(request))}`))
 }
 
-/** Returns the number of seconds the address must wait, or 0 when it may try. */
-export async function rateLimitWait(request) {
-  const snap = await (await rateDoc(request)).get()
-  const blockedUntil = snap.exists ? Number(snap.data().blockedUntil) || 0 : 0
-  return blockedUntil > Date.now() ? Math.ceil((blockedUntil - Date.now()) / 1000) : 0
-}
-
-export async function recordFailedAttempt(request) {
+/**
+ * Claims one attempt for the address before the code is checked, in a transaction, so parallel
+ * requests cannot all slip past the limit while the (deliberately slow) check runs. Returns
+ * { wait } in seconds when the address is blocked, otherwise { wait: 0, attempt, blocked } where
+ * `blocked` means this attempt used up the window. Each block in a day lasts twice as long as the
+ * one before (15 min, 30 min, 1 h … up to 24 h). A correct code clears the record.
+ */
+export async function reserveAttempt(request) {
   const ref = await rateDoc(request)
   const now = Date.now()
   return adminDb().runTransaction(async (tx) => {
     const snap = await tx.get(ref)
     const data = snap.exists ? snap.data() : {}
+    const blockedUntil = Number(data.blockedUntil) || 0
+    if (blockedUntil > now) return { wait: Math.ceil((blockedUntil - now) / 1000) }
+
     const inWindow = now - (Number(data.windowStart) || 0) < RATE_WINDOW_MS
-    const failures = (inWindow ? Number(data.failures) || 0 : 0) + 1
-    const blockedUntil = failures >= RATE_MAX_FAILURES ? now + RATE_BLOCK_MS : 0
-    tx.set(ref, { failures, windowStart: inWindow ? data.windowStart : now, blockedUntil, updatedAt: new Date(now).toISOString() })
-    return { failures, blocked: blockedUntil > 0 }
+    const attempt = (inWindow ? Number(data.failures) || 0 : 0) + 1
+    const recentStrikes = now - (Number(data.strikesAt) || 0) < RATE_STRIKE_RESET_MS ? Number(data.strikes) || 0 : 0
+    const blocked = attempt >= RATE_MAX_FAILURES
+    const strikes = blocked ? recentStrikes + 1 : recentStrikes
+    tx.set(ref, {
+      failures: blocked ? 0 : attempt,
+      windowStart: inWindow && !blocked ? data.windowStart : now,
+      blockedUntil: blocked ? now + Math.min(RATE_BLOCK_MS * 2 ** recentStrikes, RATE_BLOCK_MAX_MS) : 0,
+      strikes,
+      strikesAt: blocked ? now : Number(data.strikesAt) || 0,
+      updatedAt: new Date(now).toISOString(),
+    })
+    return { wait: 0, attempt, blocked }
   })
 }
+
+/** A short pause after a wrong code that grows with each attempt in the window (plus jitter). */
+export const failureDelay = (attempt) => new Promise((resolve) => setTimeout(resolve, Math.min(attempt * 300, 1500) + randomInt(250)))
 
 export async function clearFailedAttempts(request) {
   await (await rateDoc(request)).delete().catch(() => {})
@@ -235,6 +270,12 @@ export async function createVisitorSession(request, sessionId, config) {
   return { id, createdAt, expiresAt }
 }
 
+/**
+ * When a session ends: its stored expiry, but never later than SESSION_SECONDS after it started,
+ * so sessions issued under a longer earlier limit end on the current one.
+ */
+export const sessionEndsAt = (session) => Math.min(Number(session.expiresAt) || 0, (Number(session.createdAt) || 0) + SESSION_SECONDS * 1000)
+
 /** Marks every session that has not expired yet as revoked (for the activity view). */
 export async function markActiveSessionsRevoked(reason) {
   const db = adminDb()
@@ -252,7 +293,8 @@ export async function markActiveSessionsRevoked(reason) {
 /**
  * Who is asking for protected data: a visitor with a valid session, or the signed-in administrator.
  * Returns null when neither applies. Visitor sessions are checked against the stored session, the
- * current access-code version, the revocation epoch, the enabled switch and the one-hour expiry.
+ * current access-code version, the revocation epoch, the enabled switch and the absolute
+ * 30-minute expiry (counted from sign-in; activity never extends it).
  */
 export async function getViewer(request) {
   const cookies = header(request, 'cookie')
@@ -281,8 +323,9 @@ export async function getViewer(request) {
   const snap = await adminDb().collection('visitor_sessions').doc(id).get()
   if (!snap.exists) return null
   const session = snap.data()
-  if (session.revokedAt || session.expiresAt <= Date.now()) return null
-  return { kind: 'visitor', sessionId: id, expiresAt: session.expiresAt }
+  const endsAt = Math.min(sessionEndsAt(session), claims.expiresAt)
+  if (session.revokedAt || endsAt <= Date.now()) return null
+  return { kind: 'visitor', sessionId: id, expiresAt: endsAt }
 }
 
 /** Sends 401 (and no data) unless the request comes from a visitor session or the administrator. */
